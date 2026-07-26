@@ -1,0 +1,3432 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v22">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1F6F4A">
+<meta name="format-detection" content="telephone=no">
+<title>HACCP Baldoria v22</title>
+<style>
+  :root{
+    --cream:#FBF6EC;
+    --paper:#FFFFFF;
+    --ink:#2B2620;
+    --ink-soft:#6B6155;
+    --green:#1F6F4A;
+    --green-dark:#155334;
+    --green-pale:#E4F1E9;
+    --yellow:#F2B705;
+    --yellow-pale:#FDF0CC;
+    --red:#C0392B;
+    --red-pale:#FBE6E3;
+    --amber:#B8720A;
+    --amber-pale:#FBEBD2;
+    --line:#E7DFCF;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;padding:0;background:var(--cream);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-tap-highlight-color:transparent;}
+  #app{max-width:900px;margin:0 auto;padding-bottom:60px;min-height:100vh;}
+
+  header.top{position:sticky;top:0;z-index:20;background:var(--green);color:#fff;
+    padding:14px 18px 0 18px;box-shadow:0 2px 10px rgba(0,0,0,.12);}
+  header.top .row1{display:flex;align-items:center;justify-content:space-between;}
+  header.top h1{font-size:19px;margin:0;font-weight:800;letter-spacing:.2px;}
+  header.top .sub{font-size:12px;opacity:.85;margin-top:2px;}
+  nav.tabs{display:flex;overflow-x:auto;gap:4px;margin-top:12px;scrollbar-width:none;}
+  nav.tabs::-webkit-scrollbar{display:none;}
+  nav.tabs button{flex:0 0 auto;background:transparent;border:none;color:#fff;
+    padding:10px 14px;font-size:13px;font-weight:700;opacity:.75;border-bottom:3px solid transparent;
+    cursor:pointer;white-space:nowrap;}
+  nav.tabs button.active{opacity:1;border-bottom:3px solid var(--yellow);}
+
+  main{padding:16px;}
+  .card{background:var(--paper);border-radius:var(--radius);padding:16px;margin-bottom:14px;
+    box-shadow:0 1px 3px rgba(43,38,32,.07);border:1px solid var(--line);}
+  .card h2{font-size:16px;margin:0 0 10px 0;font-weight:800;}
+  .card h3{font-size:14px;margin:14px 0 8px 0;font-weight:800;color:var(--green-dark);}
+  .muted{color:var(--ink-soft);font-size:13px;}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media(max-width:520px){.grid2{grid-template-columns:1fr;}}
+
+  .point-tile{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;
+    flex-direction:column;gap:6px;background:#fffdf8;cursor:pointer;}
+  .point-tile:active{transform:scale(.98);}
+  .point-tile .name{font-weight:800;font-size:14px;}
+  .point-tile .range{font-size:12px;color:var(--ink-soft);}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;
+    padding:4px 9px;border-radius:99px;width:fit-content;}
+  .chip.ok{background:var(--green-pale);color:var(--green-dark);}
+  .chip.bad{background:var(--red-pale);color:var(--red);}
+  .chip.missing{background:var(--amber-pale);color:var(--amber);}
+  .timer-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:800;
+    background:var(--yellow-pale);color:var(--amber);padding:3px 8px;border-radius:99px;}
+
+  button.btn{background:var(--green);color:#fff;border:none;border-radius:12px;
+    padding:13px 16px;font-size:14px;font-weight:800;cursor:pointer;}
+  button.btn:active{background:var(--green-dark);}
+  button.btn.secondary{background:var(--paper);color:var(--green-dark);border:2px solid var(--green);}
+  button.btn.danger{background:var(--red);}
+  button.btn.yellow{background:var(--yellow);color:var(--ink);}
+  button.btn:disabled{opacity:.5;}
+  button.btn.block{width:100%;}
+  button.iconbtn{background:var(--green-pale);border:none;border-radius:10px;padding:8px 12px;
+    font-weight:700;color:var(--green-dark);cursor:pointer;font-size:13px;}
+
+  label.field{display:block;font-size:12px;font-weight:800;color:var(--ink-soft);
+    margin:10px 0 5px 0;text-transform:uppercase;letter-spacing:.4px;}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%;padding:12px;border-radius:10px;border:1.5px solid var(--line);
+    font-size:15px;background:#fff;color:var(--ink);font-family:inherit;}
+  textarea{min-height:70px;resize:vertical;}
+  .rowbtns{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+
+  .overlay{position:fixed;inset:0;background:rgba(43,38,32,.45);z-index:50;display:flex;
+    align-items:flex-end;justify-content:center;}
+  .sheet{background:var(--cream);width:100%;max-width:640px;max-height:92vh;overflow-y:auto;
+    border-radius:20px 20px 0 0;padding:18px;}
+  .sheet .sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .sheet h2{margin:0;font-size:17px;}
+  .closex{background:none;border:none;font-size:22px;color:var(--ink-soft);cursor:pointer;padding:4px 8px;}
+
+  table.month{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px;}
+  table.month th,table.month td{border:1px solid var(--line);padding:4px 2px;text-align:center;}
+  table.month th{background:var(--green-pale);color:var(--green-dark);font-size:10px;}
+  table.month td.ok{background:var(--green-pale);color:var(--green-dark);font-weight:800;}
+  table.month td.bad{background:var(--red-pale);color:var(--red);font-weight:800;}
+  table.month td.today{outline:2px solid var(--yellow);}
+
+  .logrow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;
+    border-bottom:1px solid var(--line);gap:10px;}
+  .logrow:last-child{border-bottom:none;}
+  .logrow .meta{font-size:12px;color:var(--ink-soft);}
+  .logrow .val{font-weight:800;font-size:15px;}
+
+  .checklist-item{display:flex;align-items:center;justify-content:space-between;
+    padding:12px 4px;border-bottom:1px solid var(--line);}
+  .checklist-item:last-child{border-bottom:none;}
+  .checklist-item .lbl{font-weight:700;font-size:14px;}
+  .togglebtn{border:2px solid var(--green);background:#fff;color:var(--green-dark);
+    border-radius:10px;padding:9px 16px;font-weight:800;font-size:13px;cursor:pointer;min-width:90px;}
+  .togglebtn.done{background:var(--green);color:#fff;}
+
+  .photo-zone{border:2px dashed var(--line);border-radius:14px;padding:18px;text-align:center;
+    background:#fffdf8;}
+  .photo-zone img{max-width:100%;border-radius:10px;margin-top:10px;max-height:220px;object-fit:contain;}
+  .spinner{width:22px;height:22px;border:3px solid var(--green-pale);border-top-color:var(--green);
+    border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .noco-card{border-left:5px solid var(--red);background:var(--red-pale);border-radius:10px;
+    padding:12px;margin-bottom:10px;}
+  .noco-card.chiusa{border-left-color:var(--green);background:var(--green-pale);}
+  .badge-stato{font-size:11px;font-weight:800;padding:3px 8px;border-radius:99px;}
+  .badge-stato.aperta{background:var(--red);color:#fff;}
+  .badge-stato.chiusa{background:var(--green);color:#fff;}
+
+  .empty{text-align:center;padding:30px 10px;color:var(--ink-soft);}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);
+    color:#fff;padding:11px 18px;border-radius:99px;font-size:13px;font-weight:700;z-index:99;
+    box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .conforme-toggle{display:flex;gap:8px;}
+  .conforme-toggle button{flex:1;padding:11px;border-radius:10px;border:2px solid var(--line);
+    background:#fff;font-weight:800;font-size:13px;cursor:pointer;}
+  .conforme-toggle button.sel-ok{border-color:var(--green);background:var(--green-pale);color:var(--green-dark);}
+  .conforme-toggle button.sel-bad{border-color:var(--red);background:var(--red-pale);color:var(--red);}
+  .timer-badge.expired{background:var(--red);color:#fff;}
+  @keyframes pulseAmber{0%,100%{box-shadow:0 0 0 0 rgba(184,114,10,.5);}50%{box-shadow:0 0 0 8px rgba(184,114,10,0);}}
+  @keyframes blinkRed{0%,100%{background:var(--red-pale);border-color:var(--red);}50%{background:var(--red);border-color:var(--red);}}
+  .audit-notice{animation:pulseAmber 1.6s infinite;border:2px solid var(--amber) !important;}
+  .audit-escalated{animation:blinkRed .6s infinite;border:2px solid var(--red) !important;}
+  .timerbtn{background:none;border:1.5px solid var(--line);border-radius:9px;padding:6px 8px;
+    font-size:14px;cursor:pointer;color:var(--ink-soft);}
+  .card-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;}
+  .card-head h2{margin:0;}
+  .printbtn{background:var(--yellow-pale);color:var(--amber);border:none;border-radius:10px;
+    padding:7px 11px;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;}
+  .ac-opt{display:flex;gap:9px;align-items:flex-start;padding:10px 11px;margin-bottom:7px;
+    border:1.5px solid var(--line);border-radius:11px;font-size:13px;line-height:1.35;cursor:pointer;}
+  .ac-opt.sel{border-color:var(--green);background:var(--green-pale);font-weight:600;}
+  .ac-box{font-size:15px;line-height:1.2;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="row1">
+      <div>
+        <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
+        <div class="sub" style="opacity:.85;">versione 22 · ricerca ricette · 25/07/2026</div>
+        <div class="sub" id="todayLabel"></div>
+      </div>
+      <button id="settingsBtn" style="background:rgba(255,255,255,.18);border:none;color:#fff;
+        border-radius:10px;padding:9px 12px;font-size:18px;cursor:pointer;">⚙️</button>
+    </div>
+    <nav class="tabs" id="tabs"></nav>
+  </header>
+  <main id="main"><div class="empty" style="padding:24px;text-align:center;color:#6B6155;">Caricamento…</div></main>
+  <noscript><div style="padding:20px;font-family:sans-serif;">Per usare il registro HACCP occorre attivare JavaScript nelle impostazioni del browser.</div></noscript>
+</div>
+<div id="overlayRoot"></div>
+
+<script>
+// ---------- COMPATIBILITÀ E DIAGNOSTICA ----------
+if(typeof structuredClone !== "function"){
+  window.structuredClone = o => JSON.parse(JSON.stringify(o));
+}
+// Safari blocca localStorage con file:// o cookie disattivati: mai lasciarlo esplodere
+const LS = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } },
+  remove(k){ try{ localStorage.removeItem(k); }catch(e){} },
+  keys(){ try{ return Object.keys(localStorage); }catch(e){ return []; } },
+  get available(){ try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); return true; }catch(e){ return false; } }
+};
+function fatalError(msg, dettaglio){
+  const el = document.getElementById("main") || document.body;
+  el.innerHTML = `<div style="padding:18px;font-family:system-ui,-apple-system,sans-serif;">
+    <h2 style="color:#C0392B;font-size:16px;">Errore di avvio</h2>
+    <p style="font-size:14px;line-height:1.45;">${msg}</p>
+    ${dettaglio? `<pre style="background:#f2f2f2;padding:10px;border-radius:8px;font-size:11px;white-space:pre-wrap;word-break:break-word;">${String(dettaglio).slice(0,600)}</pre>`:""}
+    <p style="font-size:13px;color:#666;">Riprova a ricaricare la pagina. Se il problema resta, riferisci il testo qui sopra.</p>
+  </div>`;
+}
+window.addEventListener("error", e=>{
+  if(document.getElementById("main") && !document.getElementById("main").innerHTML.trim()){
+    fatalError("L'app non è riuscita ad avviarsi su questo dispositivo.", e.message);
+  }
+});
+
+// Sentinella: se dopo 5 secondi la pagina è ancora vuota, mostra la diagnosi
+window.__avviata = false;
+window.addEventListener("load", function(){
+  setTimeout(function(){
+    var m = document.getElementById("main");
+    if(!window.__avviata && m && !m.innerHTML.trim()){
+      fatalError("L'app non è partita su questo dispositivo. Probabilmente il browser è troppo datato per eseguire il codice.",
+        "Browser: " + navigator.userAgent + "\nSalvataggio disponibile: " + (LS.available ? "sì" : "no"));
+    }
+  }, 5000);
+});
+</script>
+<script>
+
+const ANTHROPIC_MODEL = "claude-sonnet-4-6";
+
+// ================= LIVELLO DATI =================
+// L'app funziona in tre modalità:
+//  claude   → dentro l'artefatto Claude (window.storage)
+//  supabase → autonoma, dati condivisi su database esterno
+//  local    → ripiego sul singolo dispositivo (memoria del browser)
+const DBCFG_KEY = "haccp-baldoria-dbconfig";
+let dbConfig = null;
+try{ dbConfig = JSON.parse(LS.get(DBCFG_KEY) || "null"); }catch(e){ dbConfig = null; }
+
+const DB = {
+  get mode(){
+    if(dbConfig && dbConfig.url && dbConfig.key) return "supabase";
+    if(typeof window.storage !== "undefined" && window.storage) return "claude";
+    return "local";
+  },
+  _headers(){
+    return {
+      "apikey": dbConfig.key,
+      "Authorization": "Bearer " + dbConfig.key,
+      "Content-Type": "application/json"
+    };
+  },
+  _url(path){ return dbConfig.url.replace(/\/+$/,"") + "/rest/v1/haccp_kv" + path; },
+
+  async get(key, shared){
+    if(this.mode==="claude") return window.storage.get(key, shared);
+    if(this.mode==="local"){
+      const v = LS.get("haccp:"+key);
+      if(v===null) throw new Error("not found");
+      return {key, value:v, shared:true};
+    }
+    const r = await fetch(this._url(`?key=eq.${encodeURIComponent(key)}&select=value`), {headers:this._headers()});
+    if(!r.ok) throw new Error("db get "+r.status);
+    const rows = await r.json();
+    if(!rows.length) throw new Error("not found");
+    return {key, value: rows[0].value, shared:true};
+  },
+  async set(key, value, shared){
+    if(this.mode==="claude") return window.storage.set(key, value, shared);
+    if(this.mode==="local"){
+      if(!LS.set("haccp:"+key, value)) throw new Error("memoria del browser non disponibile");
+      return {key, value, shared:true};
+    }
+    const r = await fetch(this._url(""), {
+      method:"POST",
+      headers:{...this._headers(), "Prefer":"resolution=merge-duplicates,return=minimal"},
+      body: JSON.stringify({key, value, updated_at:new Date().toISOString()})
+    });
+    if(!r.ok) throw new Error("db set "+r.status);
+    return {key, value, shared:true};
+  },
+  async delete(key, shared){
+    if(this.mode==="claude") return window.storage.delete(key, shared);
+    if(this.mode==="local"){ LS.remove("haccp:"+key); return {key, deleted:true}; }
+    const r = await fetch(this._url(`?key=eq.${encodeURIComponent(key)}`), {method:"DELETE", headers:this._headers()});
+    if(!r.ok) throw new Error("db delete "+r.status);
+    return {key, deleted:true, shared:true};
+  },
+  async list(prefix, shared){
+    if(this.mode==="claude") return window.storage.list(prefix, shared);
+    if(this.mode==="local"){
+      const keys = LS.keys().filter(k=>k.startsWith("haccp:"+(prefix||""))).map(k=>k.slice(6));
+      return {keys, prefix, shared:true};
+    }
+    const r = await fetch(this._url(`?key=like.${encodeURIComponent((prefix||"")+"*")}&select=key`), {headers:this._headers()});
+    if(!r.ok) throw new Error("db list "+r.status);
+    return {keys:(await r.json()).map(x=>x.key), prefix, shared:true};
+  },
+  async test(url, key){
+    const r = await fetch(url.replace(/\/+$/,"") + "/rest/v1/haccp_kv?select=key&limit=1", {
+      headers:{"apikey":key, "Authorization":"Bearer "+key}
+    });
+    if(r.ok) return {ok:true};
+    if(r.status===404) return {ok:false, msg:"Tabella haccp_kv non trovata: esegui prima lo script SQL."};
+    if(r.status===401) return {ok:false, msg:"Chiave non valida o permessi mancanti."};
+    return {ok:false, msg:"Errore di connessione ("+r.status+")."};
+  }
+};
+function dbModeLabel(){
+  return DB.mode==="supabase" ? "☁️ Database condiviso" :
+         DB.mode==="claude"   ? "💬 Archivio Claude" :
+                                "📱 Solo questo dispositivo";
+}
+
+// Vero solo se la lettura AI di Claude è disponibile (dentro l'artefatto, o fuori con proxy configurato)
+function canUseClaudeAI(){
+  return DB.mode==="claude" || (DB.mode==="supabase" && !!dbConfig.proxy);
+}
+
+// ---------- OCR GRATUITO DI RIPIEGO (Tesseract.js) ----------
+// Usato quando la lettura AI di Claude non è disponibile: gira nel browser, nessun costo, nessuna chiave.
+let _tesseractLoading = null;
+function ensureTesseractLoaded(){
+  if(typeof Tesseract !== "undefined") return Promise.resolve();
+  if(_tesseractLoading) return _tesseractLoading;
+  _tesseractLoading = new Promise((resolve, reject)=>{
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+    s.onload = ()=>resolve();
+    s.onerror = ()=>reject(new Error("Impossibile caricare il modulo di lettura testo (serve connessione internet)"));
+    document.head.appendChild(s);
+  });
+  return _tesseractLoading;
+}
+async function runOcr(dataUrl, onProgress){
+  await ensureTesseractLoaded();
+  const worker = await Tesseract.createWorker("ita+eng", 1, {
+    logger: onProgress ? (msg)=>{
+      if(msg.status==="recognizing text") onProgress(Math.round((msg.progress||0)*100));
+    } : undefined
+  });
+  try{
+    const { data } = await worker.recognize(dataUrl);
+    return (data && data.text || "").trim();
+  } finally {
+    worker.terminate().catch(()=>{});
+  }
+}
+// Estrae dal testo OCR grezzo il primo numero plausibile come temperatura
+function guessTemperatureFromText(text){
+  const matches = (text.match(/-?\d{1,3}[.,]\d/g) || text.match(/-?\d{1,3}(?=\s*°)/g) || []);
+  if(!matches.length) return null;
+  const val = parseFloat(matches[0].replace(",", "."));
+  return isNaN(val) ? null : val;
+}
+
+// Chiamate AI: dentro Claude vanno dirette, fuori passano dal proxy sicuro
+async function aiRequest(payload){
+  if(DB.mode==="supabase" && dbConfig.proxy){
+    const r = await fetch(dbConfig.url.replace(/\/+$/,"") + "/functions/v1/claude-proxy", {
+      method:"POST",
+      headers:{"Content-Type":"application/json", "Authorization":"Bearer "+dbConfig.key},
+      body: JSON.stringify(payload)
+    });
+    if(!r.ok) throw new Error("proxy "+r.status);
+    return r.json();
+  }
+  if(DB.mode==="supabase" && !dbConfig.proxy){
+    throw new Error("no-ai");
+  }
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)
+  });
+  return r.json();
+}
+const MONTHS = ["GEN","FEB","MAR","APR","MAG","GIU","LUG","AGO","SET","OTT","NOV","DIC"];
+const WEEKDAY_LOCALE = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
+
+let config = null;
+let logs = { temperature: [], sanificazione: [], moma: [], coai: [], noco: [], produzione: [], composizioni: [] };
+let activeTab = "home";
+let lastOperator = "";
+let timers = [];
+let ringingTimers = [];
+let alarmAudioTimer = null;
+
+const $main = document.getElementById("main");
+const $tabs = document.getElementById("tabs");
+const $overlay = document.getElementById("overlayRoot");
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function toLocalISODate(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function todayISO(){ return toLocalISODate(new Date()); }
+function isoWeekOfYear(isoDate){
+  const d = new Date(isoDate+"T00:00:00");
+  const target = new Date(d.valueOf());
+  const dayNr = (d.getDay()+6)%7;
+  target.setDate(target.getDate() - dayNr + 3);
+  const firstThursday = new Date(target.getFullYear(),0,4);
+  const fdayNr = (firstThursday.getDay()+6)%7;
+  firstThursday.setDate(firstThursday.getDate() - fdayNr + 3);
+  return 1 + Math.round((target - firstThursday)/(7*86400000));
+}
+function nowTime(){ return new Date().toTimeString().slice(0,5); }
+function fmtDate(iso){
+  const d = new Date(iso+"T00:00:00");
+  return d.toLocaleDateString("it-IT",{day:"2-digit",month:"2-digit",year:"numeric"});
+}
+function toast(msg){
+  const t = document.createElement("div");
+  t.className="toast"; t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2200);
+}
+
+// ---------- STORAGE ----------
+const DEFAULT_CONFIG = {
+  points: [
+    {id:"frigo1", name:"Frigo 1", type:"frigo", min:0, max:4},
+    {id:"frigo2", name:"Frigo 2", type:"frigo", min:0, max:4},
+    {id:"freezer1", name:"Freezer 1", type:"freezer", min:-30, max:-18},
+    {id:"caldo1", name:"Banco Caldo 1", type:"caldo", min:60, max:65},
+  ],
+  sanifItems: {
+    giornaliera: ["Banconi e superfici di lavoro","Piani cottura","Taglieri e utensili","Pavimenti cucina","Bagni clienti"],
+    settimanale: ["Interno frigoriferi","Cappe aspiranti","Attrezzature grandi (forno, friggitrice)","Magazzino"],
+    mensile: ["Celle frigorifere a fondo","Sistema di areazione","Serbatoi acqua"]
+  },
+  recipes: [],
+  nocoCounter: 0
+};
+async function loadAll(){
+  try{
+    const c = await DB.get("config", true);
+    config = c ? JSON.parse(c.value) : structuredClone(DEFAULT_CONFIG);
+  }catch(e){ config = structuredClone(DEFAULT_CONFIG); }
+
+  for(const key of ["temperature","sanificazione","moma","coai","noco","produzione","composizioni"]){
+    try{
+      const r = await DB.get("log-"+key, true);
+      logs[key] = r ? JSON.parse(r.value) : [];
+    }catch(e){ logs[key] = []; }
+  }
+  // L'ultimo operatore usato resta legato a QUESTO dispositivo (localStorage puro),
+  // non va condiviso tra dispositivi/operatori diversi.
+  lastOperator = LS.get("ui-last-operator-device") || "";
+  await loadTimers();
+  await loadAudits();
+}
+async function saveConfig(){
+  await DB.set("config", JSON.stringify(config), true);
+}
+async function saveLog(key){
+  await DB.set("log-"+key, JSON.stringify(logs[key]), true);
+}
+async function saveOperator(name){
+  lastOperator = name;
+  LS.set("ui-last-operator-device", name);
+}
+
+// ---------- TIMER / ALLARMI ----------
+async function loadTimers(){
+  try{
+    const r = await DB.get("timers", true);
+    timers = r ? JSON.parse(r.value) : [];
+  }catch(e){ timers = []; }
+}
+async function saveTimers(){
+  try{ await DB.set("timers", JSON.stringify(timers), true); }
+  catch(e){ toast("⚠️ Errore di salvataggio timer"); }
+}
+function fmtCountdown(ms){
+  if(ms<0) ms=0;
+  const totalSec = Math.floor(ms/1000);
+  const h = Math.floor(totalSec/3600);
+  const m = Math.floor((totalSec%3600)/60);
+  const s = totalSec%60;
+  if(h>0) return `${h}h ${String(m).padStart(2,'0')}m`;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function timerFor(targetKey){
+  return timers.find(t=>t.targetKey===targetKey);
+}
+function openTimerForm(kind, targetKey, label){
+  const existing = timerFor(targetKey);
+  openSheet(`⏱️ Timer — ${label}`, `
+    ${existing? `<p class="muted">Timer attivo, scade alle ${new Date(existing.endTime).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}.</p>
+      <div class="rowbtns"><button class="btn danger block" onclick="cancelTimer('${targetKey}')">Annulla timer</button></div>
+      <h3>Sostituisci con un nuovo timer</h3>` : ""}
+    <div class="rowbtns" style="margin-top:6px;">
+      <button class="btn secondary" onclick="startTimer('${kind}','${targetKey}','${label.replace(/'/g,"\\'")}',15)">15 min</button>
+      <button class="btn secondary" onclick="startTimer('${kind}','${targetKey}','${label.replace(/'/g,"\\'")}',30)">30 min</button>
+      <button class="btn secondary" onclick="startTimer('${kind}','${targetKey}','${label.replace(/'/g,"\\'")}',60)">1 ora</button>
+      <button class="btn secondary" onclick="startTimer('${kind}','${targetKey}','${label.replace(/'/g,"\\'")}',120)">2 ore</button>
+    </div>
+    <label class="field">Oppure minuti personalizzati</label>
+    <input type="number" id="customMinutes" placeholder="es. 45">
+    <div class="rowbtns"><button class="btn block" onclick="startTimerCustom('${kind}','${targetKey}','${label.replace(/'/g,"\\'")}')">Avvia timer personalizzato</button></div>
+  `);
+}
+async function startTimer(kind, targetKey, label, minutes){
+  timers = timers.filter(t=>t.targetKey!==targetKey);
+  timers.push({id:uid(), kind, targetKey, label, minutes, endTime: Date.now()+minutes*60000});
+  saveTimers();
+  toast(`Timer avviato: ${label} (${minutes} min)`);
+  render(); closeSheet();
+}
+function startTimerCustom(kind, targetKey, label){
+  const m = parseInt(document.getElementById("customMinutes").value);
+  if(!m || m<=0){ toast("Inserisci un numero di minuti valido"); return; }
+  startTimer(kind, targetKey, label, m);
+}
+async function cancelTimer(targetKey){
+  timers = timers.filter(t=>t.targetKey!==targetKey);
+  saveTimers();
+  ringingTimers = ringingTimers.filter(t=>t.targetKey!==targetKey);
+  toast("Timer annullato");
+  render(); closeSheet();
+  if(ringingTimers.length===0) stopAlarmSound();
+}
+function timerBadgeHtml(targetKey){
+  const t = timerFor(targetKey);
+  if(!t) return "";
+  return `<span class="timer-badge" data-timer-key="${targetKey}">⏱️ ${fmtCountdown(t.endTime-Date.now())}</span>`;
+}
+
+// ---------- ROLLOVER GIORNO ----------
+function getMondayOfWeek(d){
+  const day = d.getDay(); // 0=Dom,1=Lun...6=Sab
+  const diff = (day===0? -6 : 1-day);
+  const monday = new Date(d);
+  monday.setDate(d.getDate()+diff);
+  return toLocalISODate(monday);
+}
+function checkDateRollover(){
+  const cur = todayISO();
+  if(window._lastKnownDate===undefined) window._lastKnownDate = cur;
+  if(cur !== window._lastKnownDate){
+    window._lastKnownDate = cur;
+    toast("📅 Nuovo giorno — schede aggiornate: "+fmtDate(cur));
+    render();
+  }
+}
+
+// ---------- CONTROLLI HACCP AUTOMATICI (avviso + allarme, NON legati ai timer) ----------
+// audits: { daily: null|{noticeAt, escalated, missing}, weekly: ..., monthly: ... }
+let audits = { daily: null, weekly: null, monthly: null };
+let sirenAudioNode = null;
+async function loadAudits(){
+  try{ const r = await DB.get("audits", true); audits = r? JSON.parse(r.value) : {daily:null, weekly:null, monthly:null}; }
+  catch(e){ audits = {daily:null, weekly:null, monthly:null}; }
+}
+async function saveAudits(){
+  try{ await DB.set("audits", JSON.stringify(audits), true); }
+  catch(e){ toast("⚠️ Errore di salvataggio controlli"); }
+}
+function auditMissingDaily(){
+  const t = todayISO();
+  const missingTemp = config.points.filter(p=>!logs.temperature.some(r=>r.pointId===p.id && r.data===t));
+  const missingSanif = (config.sanifItems.giornaliera||[]).filter(item=>!logs.sanificazione.some(r=>r.item===item && r.frequenza==='giornaliera' && r.data===t));
+  return {missingTemp: missingTemp.map(p=>p.id), missingSanif, missingTempLabels: missingTemp.map(p=>p.name)};
+}
+function auditMissingWeekly(){
+  const mondayISO = getMondayOfWeek(new Date());
+  const missingSanif = (config.sanifItems.settimanale||[]).filter(item=>!logs.sanificazione.some(r=>r.item===item && r.frequenza==='settimanale' && r.data>=mondayISO));
+  const missingCoai = !logs.coai.some(c=>c.data>=mondayISO);
+  return {missingSanif, missingCoai};
+}
+function auditMissingMonthly(){
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const missingSanif = (config.sanifItems.mensile||[]).filter(item=>!logs.sanificazione.some(r=>r.item===item && r.frequenza==='mensile' && r.data.slice(0,7)===monthKey));
+  return {missingSanif};
+}
+function auditIsEmpty(type, missing){
+  if(type==='daily') return missing.missingTemp.length===0 && missing.missingSanif.length===0;
+  if(type==='weekly') return missing.missingSanif.length===0 && !missing.missingCoai;
+  return missing.missingSanif.length===0; // monthly
+}
+function auditComputeMissing(type){
+  if(type==='daily') return auditMissingDaily();
+  if(type==='weekly') return auditMissingWeekly();
+  return auditMissingMonthly();
+}
+function auditNoticeLabel(type, missing){
+  const parts = [];
+  if(type==='daily'){
+    if(missing.missingTempLabels.length) parts.push(`Temperature non registrate: ${missing.missingTempLabels.join(', ')}`);
+    if(missing.missingSanif.length) parts.push(`Sanificazioni giornaliere non fatte: ${missing.missingSanif.join(', ')}`);
+  } else if(type==='weekly'){
+    if(missing.missingSanif.length) parts.push(`Sanificazioni settimanali non fatte: ${missing.missingSanif.join(', ')}`);
+    if(missing.missingCoai) parts.push(`Controllo infestanti (COAI) non ancora fatto questa settimana`);
+  } else {
+    if(missing.missingSanif.length) parts.push(`Sanificazioni mensili non fatte: ${missing.missingSanif.join(', ')}`);
+  }
+  return parts.join(' · ');
+}
+function triggerAuditCheck(type){
+  const missing = auditComputeMissing(type);
+  if(auditIsEmpty(type, missing)){
+    audits[type] = null; // esito positivo: nulla da segnalare, si passa oltre
+    saveAudits().catch(()=>{});
+    return;
+  }
+  audits[type] = { noticeAt: Date.now(), escalated:false, missing };
+  saveAudits().catch(()=>{});
+  const labels = {daily:"Controllo ore 11:30", weekly:"Controllo settimanale (lunedì 18:00)", monthly:"Controllo mensile (1° del mese)"};
+  toast(`⚠️ ${labels[type]}: verifiche mancanti`);
+  render();
+}
+function recheckActiveAudits(){
+  let changed = false;
+  ['daily','weekly','monthly'].forEach(type=>{
+    const a = audits[type];
+    if(!a) return;
+    const missing = auditComputeMissing(type);
+    if(auditIsEmpty(type, missing)){
+      audits[type] = null; // risolto: esito positivo, si chiude senza allarme
+      changed = true;
+    } else {
+      a.missing = missing;
+      if(!a.escalated && (Date.now()-a.noticeAt >= 30*60*1000)){
+        a.escalated = true;
+        changed = true;
+      }
+    }
+  });
+  if(changed){ saveAudits().catch(()=>{}); render(); }
+  updateSirenState();
+}
+function anyAuditEscalated(){
+  return ['daily','weekly','monthly'].some(t=>audits[t] && audits[t].escalated);
+}
+function anyAuditActive(){
+  return ['daily','weekly','monthly'].some(t=>audits[t]);
+}
+function updateSirenState(){
+  if(window._sirenMuted) return;
+  if(anyAuditEscalated()) startSirenSound(); else stopSirenSound();
+}
+function muteSiren(){
+  window._sirenMuted = true;
+  stopSirenSound();
+  toast("🔇 Suono silenziato — le voci mancanti restano evidenziate finché non le completi");
+}
+function startSirenSound(){
+  if(sirenAudioNode) return;
+  try{
+    const ctx = window._alarmCtx || (window._alarmCtx = new (window.AudioContext||window.webkitAudioContext)());
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sawtooth";
+    gain.gain.value = 0.15;
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start();
+    let dir = 1, freq = 500;
+    const sweep = setInterval(()=>{
+      freq += dir*40;
+      if(freq>=1000){ freq=1000; dir=-1; }
+      if(freq<=500){ freq=500; dir=1; }
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    }, 60);
+    sirenAudioNode = {osc, sweep};
+  }catch(e){}
+}
+function stopSirenSound(){
+  if(sirenAudioNode){
+    try{ clearInterval(sirenAudioNode.sweep); sirenAudioNode.osc.stop(); }catch(e){}
+    sirenAudioNode = null;
+  }
+}
+// helper per evidenziare in UI i singoli elementi mancanti
+function pointAuditStatus(pointId){
+  for(const type of ['daily']){
+    const a = audits[type];
+    if(a && a.missing.missingTemp && a.missing.missingTemp.includes(pointId)) return a.escalated? 'escalated':'notice';
+  }
+  return null;
+}
+function sanifAuditStatus(freq, item){
+  const type = freq==='giornaliera' ? 'daily' : freq==='settimanale' ? 'weekly' : 'monthly';
+  const a = audits[type];
+  if(a && a.missing.missingSanif && a.missing.missingSanif.includes(item)) return a.escalated? 'escalated':'notice';
+  return null;
+}
+function coaiAuditStatus(){
+  const a = audits.weekly;
+  if(a && a.missing.missingCoai) return a.escalated? 'escalated':'notice';
+  return null;
+}
+function auditBannerHtml(){
+  if(!anyAuditActive()) return "";
+  const items = ['daily','weekly','monthly'].filter(t=>audits[t]).map(t=>{
+    const a = audits[t];
+    const label = t==='daily'?'Giornaliero':t==='weekly'?'Settimanale':'Mensile';
+    return `<div style="font-size:12px;">${a.escalated?'🚨':'⚠️'} <b>${label}:</b> ${auditNoticeLabel(t, a.missing)}</div>`;
+  }).join("");
+  return `<div class="card" style="border:2px solid var(--red);background:var(--red-pale);">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="color:var(--red);margin:0;">🔍 Controlli HACCP in sospeso</h2>
+      ${anyAuditEscalated()? `<button class="iconbtn" onclick="muteSiren()">🔇 Silenzia</button>` : ""}
+    </div>
+    ${items}
+  </div>`;
+}
+
+function checkScheduledAudits(){
+  const now = new Date();
+  const todayKey = todayISO();
+  if(now.getHours()===11 && now.getMinutes()===0 && window._lastTempReminder!==todayKey){
+    window._lastTempReminder = todayKey;
+    triggerTemperatureReminder();
+  }
+  if(now.getHours()===11 && now.getMinutes()===30 && window._lastDailyTrigger!==todayKey){
+    window._lastDailyTrigger = todayKey;
+    triggerAuditCheck('daily');
+  }
+  if(now.getDay()===1 && now.getHours()===18 && now.getMinutes()===0 && window._lastWeeklyTrigger!==todayKey){
+    window._lastWeeklyTrigger = todayKey;
+    triggerAuditCheck('weekly');
+  }
+  if(now.getDate()===1 && now.getHours()===9 && now.getMinutes()===0 && window._lastMonthlyTrigger!==todayKey){
+    window._lastMonthlyTrigger = todayKey;
+    triggerAuditCheck('monthly');
+  }
+  recheckActiveAudits();
+}
+function triggerTemperatureReminder(){
+  const {missingTemp, missingTempLabels} = auditMissingDaily();
+  if(missingTemp.length===0) return; // già tutte fatte, nessun promemoria necessario
+  toast(`🌡️ Ore 11:00 — ricordati di rilevare le temperature: ${missingTempLabels.join(', ')}`);
+}
+
+function tickTimers(){
+  checkDateRollover();
+  checkScheduledAudits();
+  // aggiorna i badge visibili senza ridisegnare tutto
+  document.querySelectorAll("[data-timer-key]").forEach(el=>{
+    const key = el.getAttribute("data-timer-key");
+    const t = timerFor(key);
+    if(t) el.textContent = `⏱️ ${fmtCountdown(t.endTime-Date.now())}`;
+  });
+  // controlla scadenze
+  const now = Date.now();
+  timers.forEach(t=>{
+    if(t.endTime<=now && !ringingTimers.find(r=>r.id===t.id)){
+      ringingTimers.push(t);
+    }
+  });
+  if(ringingTimers.length>0){
+    startAlarmSound();
+    renderAlarmOverlay();
+  }
+}
+async function pollTimersFromStorage(){
+  const before = timers.map(t=>t.id).sort().join(",");
+  await loadTimers();
+  const after = timers.map(t=>t.id).sort().join(",");
+  // rimuovi da ringingTimers quelli non più presenti (annullati da altro dispositivo)
+  ringingTimers = ringingTimers.filter(rt=>timers.find(t=>t.id===rt.id));
+  if(ringingTimers.length===0){
+    stopAlarmSound();
+    if(window._alarmShowing){ window._alarmShowing=false; $overlay.innerHTML=""; render(); }
+  }
+  if(before!==after && $overlay.innerHTML.trim()==="") render();
+}
+async function pollAuditsFromStorage(){
+  // Ricarica anche i registri usati per calcolare i controlli mancanti (temperature, sanificazione, COAI),
+  // altrimenti l'allarme resta bloccato sui dati vecchi rimasti in memoria su questo dispositivo,
+  // anche quando un ALTRO dispositivo ha già registrato il controllo mancante.
+  try{
+    const [rTemp, rSanif, rCoai] = await Promise.all([
+      DB.get("log-temperature", true).catch(()=>null),
+      DB.get("log-sanificazione", true).catch(()=>null),
+      DB.get("log-coai", true).catch(()=>null),
+    ]);
+    if(rTemp) logs.temperature = JSON.parse(rTemp.value);
+    if(rSanif) logs.sanificazione = JSON.parse(rSanif.value);
+    if(rCoai) logs.coai = JSON.parse(rCoai.value);
+  }catch(e){ /* silenzioso: se fallisce, il prossimo giro riprova */ }
+
+  const wasEscalated = {daily: !!(audits.daily&&audits.daily.escalated), weekly: !!(audits.weekly&&audits.weekly.escalated), monthly: !!(audits.monthly&&audits.monthly.escalated)};
+  const before = JSON.stringify(audits);
+  await loadAudits();
+  recheckActiveAudits(); // ricalcola subito con i dati freschi appena caricati, e salva/pulisce se risolto
+  const after = JSON.stringify(audits);
+  if(before!==after){
+    const newlyEscalated = ['daily','weekly','monthly'].some(t=> !wasEscalated[t] && audits[t] && audits[t].escalated);
+    if(newlyEscalated) window._sirenMuted = false;
+    updateSirenState();
+    if($overlay.innerHTML.trim()==="") render();
+  }
+}
+function renderAlarmOverlay(){
+  window._alarmShowing = true;
+  $overlay.innerHTML = `<div class="overlay" style="background:rgba(192,57,43,.55);">
+    <div class="sheet" style="border-top:6px solid var(--red);">
+      <div class="sheet-head"><h2>⏰ Timer scaduto</h2></div>
+      ${ringingTimers.map(t=>`
+        <div class="noco-card" style="margin-bottom:10px;">
+          <b>${t.label}</b>
+          <div class="rowbtns" style="margin-top:8px;">
+            <button class="btn danger block" onclick="dismissAlarm('${t.targetKey}')">🔕 Ho controllato — Ferma allarme</button>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  </div>`;
+}
+async function dismissAlarm(targetKey){
+  timers = timers.filter(t=>t.targetKey!==targetKey);
+  ringingTimers = ringingTimers.filter(t=>t.targetKey!==targetKey);
+  saveTimers();
+  if(ringingTimers.length===0){
+    stopAlarmSound();
+    window._alarmShowing = false;
+    $overlay.innerHTML = "";
+    render();
+  } else {
+    renderAlarmOverlay();
+  }
+}
+function beep(){
+  try{
+    const ctx = window._audioCtx || (window._audioCtx = new (window.AudioContext||window.webkitAudioContext)());
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime+0.25);
+  }catch(e){}
+}
+function startAlarmSound(){
+  if(alarmAudioTimer) return;
+  beep();
+  alarmAudioTimer = setInterval(beep, 900);
+}
+function stopAlarmSound(){
+  if(alarmAudioTimer){ clearInterval(alarmAudioTimer); alarmAudioTimer=null; }
+}
+
+// ---------- TABS ----------
+const TABS = [
+  {id:"home", label:"🏠 Home"},
+  {id:"temperature", label:"🌡️ Temperature"},
+  {id:"sanificazione", label:"🧽 Sanificazione"},
+  {id:"moma", label:"🚚 Matrici in ingresso"},
+  {id:"produzione", label:"📦 Produzione / Lotti"},
+  {id:"ricette", label:"🧾 Ricette"},
+  {id:"coai", label:"🐭 Infestanti"},
+  {id:"noco", label:"⚠️ Non conformità"},
+];
+
+function renderTabs(){
+  $tabs.innerHTML = "";
+  TABS.forEach(t=>{
+    const b = document.createElement("button");
+    b.textContent = t.label;
+    b.className = t.id===activeTab ? "active":"";
+    b.onclick = ()=>{ activeTab = t.id; render(); };
+    $tabs.appendChild(b);
+  });
+  const settingsBtn = document.getElementById("settingsBtn");
+  settingsBtn.style.outline = activeTab==="impostazioni" ? "2px solid var(--yellow)" : "none";
+  settingsBtn.onclick = ()=>{ activeTab="impostazioni"; render(); };
+}
+
+function setToday(){
+  const d = new Date();
+  document.getElementById("todayLabel").textContent =
+    WEEKDAY_LOCALE[d.getDay()] + " " + fmtDate(todayISO());
+}
+
+// ---------- OVERLAY / SHEET ----------
+function openSheet(title, bodyHtml, onMount){
+  $overlay.innerHTML = `<div class="overlay" id="ovBg">
+    <div class="sheet">
+      <div class="sheet-head"><h2>${title}</h2><button class="closex" id="ovClose">✕</button></div>
+      <div id="sheetBody">${bodyHtml}</div>
+    </div>
+  </div>`;
+  document.getElementById("ovClose").onclick = closeSheet;
+  document.getElementById("ovBg").addEventListener("click", (e)=>{ if(e.target.id==="ovBg") closeSheet(); });
+  if(onMount) onMount(document.getElementById("sheetBody"));
+}
+function closeSheet(){ $overlay.innerHTML = ""; render(); }
+
+// ---------- HOME ----------
+function render(){
+  renderTabs(); setToday();
+  if(activeTab==="home") renderHome();
+  else if(activeTab==="temperature") renderTemperature();
+  else if(activeTab==="sanificazione") renderSanificazione();
+  else if(activeTab==="moma") renderMoma();
+  else if(activeTab==="produzione") renderProduzione();
+  else if(activeTab==="ricette") renderRicette();
+  else if(activeTab==="coai") renderCoai();
+  else if(activeTab==="noco") renderNoco();
+  else if(activeTab==="impostazioni") renderImpostazioni();
+}
+
+function renderHome(){
+  const t = todayISO();
+  const tempsToday = logs.temperature.filter(r=>r.data===t);
+  const missingPoints = config.points.filter(p=>!tempsToday.some(r=>r.pointId===p.id));
+  const badToday = tempsToday.filter(r=>!r.conforme);
+
+  const sanifToday = {};
+  ["giornaliera","settimanale","mensile"].forEach(freq=>{
+    sanifToday[freq] = (config.sanifItems[freq]||[]).filter(item=>
+      !logs.sanificazione.some(r=>r.frequenza===freq && r.item===item && r.data===t));
+  });
+
+  const openNoco = logs.noco.filter(n=>n.stato==="aperta");
+  const attiviProd = logs.produzione.filter(p=>!p.esaurito);
+  const scadutiProd = attiviProd.filter(p=>p.dataScadenza < t);
+  const inScadenzaProd = attiviProd.filter(p=>p.dataScadenza >= t && (new Date(p.dataScadenza)-new Date(t))/86400000 <= 1);
+
+  $main.innerHTML = `
+    ${auditBannerHtml()}
+    <div class="card">
+      <h2>Riepilogo di oggi</h2>
+      <div class="grid2">
+        <div class="point-tile" style="cursor:default">
+          <div class="name">🌡️ Temperature</div>
+          <div class="chip ${missingPoints.length? 'missing':'ok'}">${missingPoints.length? missingPoints.length+" da registrare" : "Tutte registrate"}</div>
+          ${badToday.length? `<div class="chip bad">${badToday.length} fuori soglia</div>`:""}
+        </div>
+        <div class="point-tile" style="cursor:default">
+          <div class="name">🧽 Sanificazione giornaliera</div>
+          <div class="chip ${sanifToday.giornaliera.length? 'missing':'ok'}">${sanifToday.giornaliera.length? sanifToday.giornaliera.length+" da fare" : "Completata"}</div>
+        </div>
+        <div class="point-tile" style="cursor:default">
+          <div class="name">🚚 Controlli MOMA oggi</div>
+          <div class="chip ${logs.moma.some(m=>m.data===t)?'ok':'missing'}">${logs.moma.filter(m=>m.data===t).length} registrati</div>
+        </div>
+        <div class="point-tile" style="cursor:default">
+          <div class="name">⚠️ Non conformità aperte</div>
+          <div class="chip ${openNoco.length? 'bad':'ok'}">${openNoco.length}</div>
+        </div>
+        <div class="point-tile" style="cursor:pointer" onclick="activeTab='produzione';render()">
+          <div class="name">📦 Prodotti scaduti</div>
+          <div class="chip ${scadutiProd.length? 'bad':'ok'}">${scadutiProd.length}</div>
+        </div>
+        <div class="point-tile" style="cursor:pointer" onclick="activeTab='produzione';render()">
+          <div class="name">📦 In scadenza (oggi/domani)</div>
+          <div class="chip ${inScadenzaProd.length? 'missing':'ok'}">${inScadenzaProd.length}</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Accesso rapido</h2>
+      <div class="rowbtns">
+        <button class="btn" onclick="quickTemp()">📸 Registra temperatura</button>
+        <button class="btn secondary" onclick="activeTab='sanificazione';render()">🧽 Sanificazione</button>
+        <button class="btn secondary" onclick="activeTab='moma';render()">🚚 Nuova consegna</button>
+        <button class="btn danger" onclick="openNocoForm()">⚠️ Segnala non conformità</button>
+      </div>
+    </div>
+  `;
+}
+function quickTemp(){ activeTab="temperature"; render(); }
+
+// ---------- TEMPERATURE ----------
+function pointStatusToday(p){
+  const t = todayISO();
+  const rec = logs.temperature.filter(r=>r.pointId===p.id && r.data===t).sort((a,b)=>b.ora.localeCompare(a.ora))[0];
+  if(!rec) return {state:"missing", rec:null};
+  return {state: rec.conforme ? "ok":"bad", rec};
+}
+
+function renderTemperature(){
+  let tiles = config.points.map(p=>{
+    const st = pointStatusToday(p);
+    const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}° / ${p.max}°C`;
+    const valLbl = st.rec ? `${st.rec.valore}°C alle ${st.rec.ora}` : "Nessuna lettura oggi";
+    const chipCls = st.state==="ok"?"ok":st.state==="bad"?"bad":"missing";
+    const chipTxt = st.state==="ok"?"Conforme":st.state==="bad"?"Fuori soglia":"Da registrare";
+    const auditSt = pointAuditStatus(p.id);
+    const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
+    return `<div class="point-tile ${auditCls}" onclick="openPointDetail('${p.id}')" style="position:relative;">
+      <button class="iconbtn" style="position:absolute;top:8px;right:8px;font-size:15px;padding:6px 9px;" onclick="event.stopPropagation();openEditPoint('${p.id}')" title="Modifica o elimina">✏️</button>
+      <div class="name">${pointIcon(p.type)} ${p.name}</div>
+      <div class="range">Soglia: ${rangeLbl}</div>
+      <div class="muted">${valLbl}</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <div class="chip ${chipCls}">${chipTxt}</div>
+        ${timerFor('temp:'+p.id) ? `<span class="timer-badge" data-timer-key="temp:${p.id}">⏱️ ${fmtCountdown(timerFor('temp:'+p.id).endTime-Date.now())}</span>` : ""}
+        ${auditSt==='escalated' ? `<span class="timer-badge expired">🚨 CONTROLLO MANCANTE</span>` : auditSt==='notice' ? `<span class="timer-badge">⚠️ da verificare</span>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+  if(!config.points.length) tiles = `<div class="empty">Nessun punto di controllo configurato.</div>`;
+
+  $main.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h2>Punti di controllo</h2>${printBtn('temperature')}</div>
+      <div class="grid2">${tiles}</div>
+      <div class="rowbtns"><button class="btn secondary block" onclick="openAddPoint()">+ Aggiungi frigo / freezer / banco</button></div>
+    </div>
+  `;
+}
+function pointIcon(type){
+  return type==="freezer"?"🧊":type==="caldo"?"🔥":"❄️";
+}
+
+function openPointDetail(pointId){
+  const p = config.points.find(x=>x.id===pointId);
+  const history = logs.temperature.filter(r=>r.pointId===pointId).sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora)).slice(0,15);
+  const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `da ${p.min}°C a ${p.max}°C`;
+
+  openSheet(`${pointIcon(p.type)} ${p.name}`, `
+    <p class="muted">Soglia di conformità: <b>${rangeLbl}</b></p>
+    <div class="rowbtns">
+      <button class="btn block" onclick="openTempEntry('${pointId}','foto')">📸 Rileva da foto (lettura automatica)</button>
+      <button class="btn secondary block" onclick="openTempEntry('${pointId}','manuale')">✍️ Inserisci manualmente</button>
+    </div>
+    <h3>⏱️ Promemoria / Timer</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div data-timer-key="temp:${pointId}" class="timer-badge">${timerFor('temp:'+pointId)? '⏱️ '+fmtCountdown(timerFor('temp:'+pointId).endTime-Date.now()) : 'Nessun timer attivo'}</div>
+      <button class="iconbtn" onclick="openTimerForm('temperature','temp:${pointId}','${p.name.replace(/'/g,"\\'")}')">Imposta timer</button>
+    </div>
+    <h3 style="display:flex;justify-content:space-between;align-items:center;gap:8px;">Scheda mensile — ${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()} <button class="printbtn" onclick="printTempMese('${pointId}')" title="Stampa la scheda mensile">🖨️ Stampa</button></h3>
+    <div id="monthGridHolder"></div>
+    <h3>Ultime registrazioni</h3>
+    <div id="histHolder">
+      ${history.length? history.map(r=>`
+        <div class="logrow" onclick="openTempEntryDetail('${r.id}')" style="cursor:pointer;">
+          <div>
+            <div class="val">${r.valore}°C ${r.conforme? '✅':'🔴'}</div>
+            <div class="meta">${fmtDate(r.data)} · ${r.ora} · ${r.operatore||"—"} ${r.fonte==='foto'?'· 📸 foto':''}</div>
+          </div>
+          <span class="muted">✏️</span>
+        </div>`).join("") : `<div class="empty">Nessuna registrazione ancora.</div>`}
+    </div>
+  `, (body)=>{
+    document.getElementById("monthGridHolder").innerHTML = buildMonthGrid("temperature", pointId, p);
+  });
+}
+
+function openTempEntryDetail(id){
+  const r = logs.temperature.find(x=>x.id===id);
+  openSheet(`Registrazione — ${fmtDate(r.data)}`, `
+    <p class="muted">${r.pointName||''} · ${fmtDate(r.data)} · ${r.ora}${r.fonte==='foto'?' · 📸 rilevata da foto':''} · ${r.conforme? '✅ Conforme':'🔴 Fuori soglia'}</p>
+    ${r.photoKey? `<div id="tempDetailPhoto"><span class="spinner"></span> Carico foto...</div>` : `<p class="muted">Nessuna foto per questa registrazione (inserimento manuale).</p>`}
+    <label class="field">Valore (°C)</label><input type="number" step="0.1" id="teVal" value="${r.valore}">
+    <label class="field">Operatore</label><input type="text" id="teOp" value="${r.operatore||''}">
+    <div class="rowbtns">
+      <button class="btn block" onclick="editTempEntry('${id}')">Salva modifiche</button>
+      <button class="btn danger" onclick="deleteTempEntry('${id}')">Elimina registrazione</button>
+    </div>
+  `, async ()=>{
+    if(r.photoKey){
+      try{
+        const p = await DB.get(r.photoKey, true);
+        document.getElementById("tempDetailPhoto").innerHTML = p? `<img src="${p.value}" style="max-width:100%;border-radius:10px;">` : `<p class="muted">Foto non disponibile.</p>`;
+      }catch(e){
+        document.getElementById("tempDetailPhoto").innerHTML = `<p class="muted">Foto non disponibile.</p>`;
+      }
+    }
+  });
+}
+async function editTempEntry(id){
+  const r = logs.temperature.find(x=>x.id===id);
+  const p = config.points.find(x=>x.id===r.pointId);
+  const val = parseFloat(document.getElementById("teVal").value);
+  const op = document.getElementById("teOp").value.trim();
+  if(isNaN(val)){ toast("Inserisci un valore valido"); return; }
+  if(!op){ toast("Inserisci l'operatore"); return; }
+  r.valore = val;
+  r.operatore = op;
+  r.conforme = p.type==="freezer" ? (val<=p.max) : (val>=p.min && val<=p.max);
+  saveLog("temperature").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Registrazione aggiornata");
+  activeTab="temperature"; closeSheet();
+}
+async function deleteTempEntry(id){
+  const rec = logs.temperature.find(x=>x.id===id);
+  logs.temperature = logs.temperature.filter(x=>x.id!==id);
+  if(rec && rec.photoKey){ DB.delete(rec.photoKey, true).catch(()=>{}); }
+  saveLog("temperature").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Registrazione eliminata");
+  activeTab="temperature"; closeSheet();
+}
+
+function buildMonthGrid(kind, filterId, point){
+  const now = new Date();
+  const year = now.getFullYear(), month = now.getMonth();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const t = todayISO();
+  let rows = "";
+  for(let d=1; d<=daysInMonth; d++){
+    const iso = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let cellHtml, cls;
+    if(kind==="temperature"){
+      const recs = logs.temperature.filter(r=>r.pointId===filterId && r.data===iso);
+      if(recs.length){
+        const last = recs[recs.length-1];
+        cls = last.conforme?"ok":"bad";
+        cellHtml = `<span onclick="openTempEntryDetail('${last.id}')" style="cursor:pointer;text-decoration:underline;">${last.valore}°${last.photoKey?' 📷':''}</span>`;
+      } else { cls=""; cellHtml="—"; }
+    } else {
+      const rec = logs.sanificazione.find(r=>r.item===filterId.item && r.frequenza===filterId.freq && r.data===iso);
+      cls = rec?"ok":"";
+      cellHtml = rec? `<span onclick="openSanifDetail('${rec.id}')" style="cursor:pointer;text-decoration:underline;">✓ 📷</span>` : "—";
+    }
+    if(iso===t) cls += " today";
+    rows += `<tr><td>${d}</td><td class="${cls}">${cellHtml}</td></tr>`;
+  }
+  return `<div style="max-height:260px;overflow-y:auto;"><table class="month">
+    <tr><th>Giorno</th><th>Valore</th></tr>${rows}
+  </table></div>`;
+}
+
+function openTempEntry(pointId, mode){
+  const p = config.points.find(x=>x.id===pointId);
+  if(mode==="manuale"){
+    openSheet(`Registra temperatura — ${p.name}`, `
+      <label class="field">Valore (°C)</label>
+      <input type="number" step="0.1" id="tempVal" placeholder="es. 3.5">
+      <label class="field">Operatore</label>
+      <input type="text" id="tempOp" value="${lastOperator}" placeholder="Nome operatore">
+      <div class="rowbtns">
+        <button class="btn block" onclick="saveTempManual('${pointId}')">Salva registrazione</button>
+      </div>
+    `);
+  } else {
+    openSheet(`Rileva foto — ${p.name}`, `
+      <p class="muted">Fotografa il display del termometro. Claude leggerà automaticamente il valore.</p>
+      <div class="photo-zone" id="photoZone">
+        <input type="file" accept="image/*" capture="environment" id="photoInput" style="display:none">
+        <button class="btn secondary block" onclick="document.getElementById('photoInput').click()">📷 Scatta / carica foto</button>
+        <div id="photoPreviewArea"></div>
+      </div>
+      <div id="photoResultArea"></div>
+    `, (body)=>{
+      document.getElementById("photoInput").onchange = (e)=>handlePhoto(e, pointId, p);
+    });
+  }
+}
+
+async function saveTempManual(pointId){
+  const val = parseFloat(document.getElementById("tempVal").value);
+  const op = document.getElementById("tempOp").value.trim();
+  if(isNaN(val)){ toast("Inserisci un valore valido"); return; }
+  if(!op){ toast("Inserisci il nome dell'operatore"); return; }
+  await commitTempReading(pointId, val, op, "manuale");
+  closeSheet();
+}
+
+function handlePhoto(e, pointId, p){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    const base64 = reader.result.split(",")[1];
+    document.getElementById("photoPreviewArea").innerHTML = `<img src="${reader.result}"><div style="margin-top:10px;"><span class="spinner"></span> Lettura in corso...</div>`;
+    window._tempPhoto = await compressImage(reader.result, 480);
+    if(!canUseClaudeAI()){
+      try{
+        const text = await runOcr(reader.result, (pct)=>{
+          document.getElementById("photoPreviewArea").innerHTML = `<img src="${reader.result}"><div style="margin-top:10px;"><span class="spinner"></span> Lettura testo gratuita in corso... ${pct}%</div>`;
+        });
+        const guess = guessTemperatureFromText(text);
+        document.getElementById("photoPreviewArea").innerHTML = `<img src="${reader.result}"><p class="muted" style="margin-top:8px;font-size:12px;">📖 Lettura gratuita (Tesseract OCR) — controlla il valore, potrebbe non essere preciso.</p>`;
+        document.getElementById("photoResultArea").innerHTML = `
+          <label class="field">Valore (°C)</label><input type="number" step="0.1" id="tempVal" value="${guess!==null? guess : ''}">
+          <label class="field">Operatore</label><input type="text" id="tempOp" value="${lastOperator}">
+          ${text? `<label class="field">Testo letto dalla foto (verifica)</label><textarea readonly style="min-height:60px;font-size:11px;">${esc(text)}</textarea>`:''}
+          <div class="rowbtns"><button class="btn block" onclick="saveTempManual('${pointId}')">Salva</button></div>`;
+      }catch(err){
+        document.getElementById("photoPreviewArea").innerHTML = `<img src="${reader.result}"><p class="muted" style="margin-top:8px;font-size:12px;">⚠️ Lettura gratuita non riuscita: ${esc(err.message||'')}. La foto viene comunque allegata, inserisci il valore a mano.</p>`;
+        document.getElementById("photoResultArea").innerHTML = `
+          <label class="field">Valore (°C)</label><input type="number" step="0.1" id="tempVal">
+          <label class="field">Operatore</label><input type="text" id="tempOp" value="${lastOperator}">
+          <div class="rowbtns"><button class="btn block" onclick="saveTempManual('${pointId}')">Salva</button></div>`;
+      }
+      return;
+    }
+    try{
+      const result = await readTemperatureFromPhoto(base64, file.type);
+      renderPhotoResult(result, pointId, p, reader.result);
+    }catch(err){
+      document.getElementById("photoResultArea").innerHTML = `<p class="muted">⚠️ Non sono riuscito a leggere la foto automaticamente. Inserisci il valore manualmente qui sotto.</p>
+        <label class="field">Valore (°C)</label><input type="number" step="0.1" id="tempVal">
+        <label class="field">Operatore</label><input type="text" id="tempOp" value="${lastOperator}">
+        <div class="rowbtns"><button class="btn block" onclick="saveTempManual('${pointId}')">Salva</button></div>`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function readTemperatureFromPhoto(base64, mediaType){
+  const data = await aiRequest({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 300,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType||"image/jpeg", data: base64 } },
+          { type: "text", text: "Questa è una foto del display di un termometro o del pannello di un frigorifero/freezer/banco caldo di un ristorante. Leggi il valore numerico della temperatura mostrato sul display. Rispondi SOLO con un oggetto JSON, senza testo aggiuntivo, nel formato: {\"temperatura\": <numero o null se non leggibile>, \"confidenza\": \"alta\"|\"media\"|\"bassa\", \"nota\": \"<breve nota se utile>\"}" }
+        ]
+      }]
+  });
+  const textBlock = (data.content||[]).find(b=>b.type==="text");
+  if(!textBlock) throw new Error("no text");
+  const clean = textBlock.text.replace(/```json|```/g,"").trim();
+  return JSON.parse(clean);
+}
+
+function renderPhotoResult(result, pointId, p, imgDataUrl){
+  const val = result.temperatura;
+  document.getElementById("photoResultArea").innerHTML = `
+    <h3>Valore rilevato</h3>
+    ${val===null || val===undefined ? `<p class="muted">Non sono riuscito a leggere un valore chiaro dalla foto${result.nota? " — "+result.nota:""}. Correggi manualmente:</p>` :
+      `<p class="muted">Confidenza lettura: <b>${result.confidenza||"n/d"}</b>${result.nota? " — "+result.nota:""}</p>`}
+    <label class="field">Valore (°C) — modifica se necessario</label>
+    <input type="number" step="0.1" id="tempValConfirm" value="${val!==null && val!==undefined ? val : ''}">
+    <label class="field">Operatore</label>
+    <input type="text" id="tempOpConfirm" value="${lastOperator}" placeholder="Nome operatore">
+    <div class="rowbtns">
+      <button class="btn block" onclick="confirmPhotoReading('${pointId}')">✅ Conferma e salva</button>
+    </div>
+  `;
+}
+
+async function confirmPhotoReading(pointId){
+  const val = parseFloat(document.getElementById("tempValConfirm").value);
+  const op = document.getElementById("tempOpConfirm").value.trim();
+  if(isNaN(val)){ toast("Inserisci un valore valido"); return; }
+  if(!op){ toast("Inserisci il nome dell'operatore"); return; }
+  await commitTempReading(pointId, val, op, "foto");
+  closeSheet();
+}
+
+async function commitTempReading(pointId, val, op, fonte){
+  const p = config.points.find(x=>x.id===pointId);
+  const conforme = p.type==="freezer" ? (val<=p.max) : (val>=p.min && val<=p.max);
+  const rec = { id:uid(), pointId, pointName:p.name, data:todayISO(), ora:nowTime(), valore:val, operatore:op, conforme, fonte };
+  if(fonte==="foto" && window._tempPhoto){
+    rec.photoKey = "photo-temp-"+rec.id;
+    DB.set(rec.photoKey, window._tempPhoto, true).catch(()=>toast("⚠️ Errore di salvataggio foto"));
+    window._tempPhoto = null;
+  }
+  logs.temperature.push(rec);
+  saveLog("temperature").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  saveOperator(op).catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast(conforme? "Temperatura registrata ✅" : "Registrata — FUORI SOGLIA ⚠️");
+  if(!conforme){
+    openAzioniCorrettive(p, val, op, fonte, rec);
+  }
+}
+
+// ---------- AZIONI CORRETTIVE GUIDATE ----------
+function scostamentoInfo(p, val){
+  if(p.type==="hot"){
+    return {verso:"basso", delta:+(p.min - val).toFixed(1),
+      rischio: val < (p.min - 5) ? "alto" : "medio",
+      testo:`temperatura di mantenimento a caldo insufficiente (${val}°C contro il minimo di ${p.min}°C)`};
+  }
+  if(val > p.max){
+    const d = +(val - p.max).toFixed(1);
+    return {verso:"alto", delta:d, rischio: d > 4 ? "alto" : "medio",
+      testo:`temperatura troppo elevata (${val}°C contro il massimo di ${p.max}°C)`};
+  }
+  return {verso:"basso", delta:+(p.min - val).toFixed(1), rischio:"medio",
+    testo:`temperatura troppo bassa (${val}°C contro il minimo di ${p.min}°C)`};
+}
+function azioniProposte(p, info){
+  if(p.type==="hot"){
+    return ["Aumentata la temperatura del banco caldo e riverificata dopo 30 minuti",
+      "Prodotto rigenerato in forno fino al raggiungimento di almeno 75°C al cuore",
+      "Prodotto eliminato perché mantenuto sotto i 60°C per oltre 2 ore",
+      "Verificato il funzionamento delle resistenze / richiesta assistenza tecnica"];
+  }
+  if(info.verso==="alto"){
+    const base = ["Verificata la corretta chiusura della porta e lo stato delle guarnizioni",
+      "Abbassato il termostato e riverificata la temperatura dopo 30 minuti",
+      "Eseguito sbrinamento e pulizia del condensatore",
+      "Ridotto il carico di merce per consentire la corretta circolazione dell'aria",
+      "Alimenti trasferiti in altro punto di conservazione a temperatura conforme",
+      "Richiesto intervento del tecnico frigorista"];
+    if(info.rischio==="alto"){
+      base.splice(1, 0, "Alimenti deperibili eliminati perché esposti a temperatura non conforme");
+    }
+    return base;
+  }
+  return ["Alzato il termostato e riverificata la temperatura dopo 30 minuti",
+    "Verificato che gli alimenti non abbiano subito congelamento accidentale",
+    "Alimenti congelati accidentalmente eliminati",
+    "Richiesto intervento del tecnico frigorista"];
+}
+function openAzioniCorrettive(p, val, op, fonte, rec){
+  const info = scostamentoInfo(p, val);
+  const azioni = azioniProposte(p, info);
+  window._acSel = new Set();
+  const sogliaLbl = p.type==="freezer" ? `≤ ${p.max}°C` : p.type==="hot" ? `≥ ${p.min}°C` : `${p.min}°C / ${p.max}°C`;
+  openSheet("⚠️ Azione correttiva richiesta", `
+    <div class="card" style="padding:12px;border:2px solid var(--red);margin-bottom:12px;">
+      <div style="font-weight:800;font-size:15px;">${p.name} — ${val}°C</div>
+      <div class="muted" style="font-size:12px;margin-top:4px;">
+        Soglia di conformità: ${sogliaLbl} · scostamento di ${info.delta}°C ·
+        rischio ${info.rischio==='alto'? '<b style="color:var(--red);">ALTO</b>' : 'medio'}
+      </div>
+      ${info.rischio==='alto'? `<div class="muted" style="font-size:12px;margin-top:6px;">Scostamento rilevante: valuta l'eliminazione degli alimenti deperibili se l'esposizione si è protratta.</div>`:''}
+    </div>
+    <p class="muted">Seleziona le azioni correttive adottate. Verrà generato automaticamente il verbale di non conformità.</p>
+    <div id="acLista">
+      ${azioni.map((a,i)=>`
+        <label class="ac-opt" onclick="toggleAzione(${i},'${a.replace(/'/g,"\\'")}',this)">
+          <span class="ac-box">☐</span><span>${a}</span>
+        </label>`).join("")}
+    </div>
+    <label class="field">Altra azione / note</label>
+    <textarea id="acAltro" placeholder="Descrivi eventuali altre azioni adottate"></textarea>
+    <label class="field">Operatore che interviene</label>
+    <input type="text" id="acOp" value="${op}">
+    <label class="ac-opt" onclick="toggleRiverifica(this)" id="acRiverificaRow">
+      <span class="ac-box" id="acRivBox">☑</span><span>Programma la riverifica della temperatura tra 30 minuti</span>
+    </label>
+    <div class="rowbtns">
+      <button class="btn danger block" onclick="salvaAzioneCorrettiva('${p.id}', ${val}, '${rec.id}')">Registra azione e apri verbale</button>
+    </div>
+  `);
+  window._acRiverifica = true;
+}
+function toggleAzione(i, testo, el){
+  if(window._acSel.has(testo)){ window._acSel.delete(testo); el.classList.remove("sel"); el.querySelector(".ac-box").textContent="☐"; }
+  else { window._acSel.add(testo); el.classList.add("sel"); el.querySelector(".ac-box").textContent="☑"; }
+}
+function toggleRiverifica(el){
+  window._acRiverifica = !window._acRiverifica;
+  el.querySelector(".ac-box").textContent = window._acRiverifica ? "☑" : "☐";
+  el.classList.toggle("sel", window._acRiverifica);
+}
+async function salvaAzioneCorrettiva(pointId, val, recId){
+  const p = config.points.find(x=>x.id===pointId);
+  const info = scostamentoInfo(p, val);
+  const op = document.getElementById("acOp").value.trim();
+  const altro = document.getElementById("acAltro").value.trim();
+  const scelte = [...window._acSel];
+  if(!op){ toast("Indica l'operatore che interviene"); return; }
+  if(!scelte.length && !altro){ toast("Seleziona almeno un'azione correttiva"); return; }
+  const azioneTesto = [...scelte, altro].filter(Boolean).join("; ");
+  const sogliaLbl = p.type==="freezer" ? `≤ ${p.max}°C` : p.type==="hot" ? `≥ ${p.min}°C` : `${p.min}/${p.max}°C`;
+
+  config.nocoCounter = (config.nocoCounter||0) + 1;
+  saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  const noco = {
+    id: uid(), verbale: config.nocoCounter,
+    matrice: `Temperatura — ${p.name}`,
+    descrizione: `Rilevata ${info.testo}. Soglia di conformità: ${sogliaLbl}. Scostamento di ${info.delta}°C, rischio ${info.rischio}. Rilevazione del ${fmtDate(todayISO())} alle ${nowTime()}.`,
+    data: todayISO(), redattoDa: op, stato: "aperta",
+    azioneCorrettiva: azioneTesto, efficacia: "",
+    origine: "temperatura", temperaturaId: recId, pointId
+  };
+  logs.noco.push(noco);
+  saveLog("noco").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  if(window._acRiverifica){
+    startTimer("riverifica", pointId, `Riverifica ${p.name}`, 30).catch(()=>{});
+  }
+  closeSheet();
+  toast(`Verbale N. ${noco.verbale} creato — riverifica ${window._acRiverifica? 'programmata tra 30 min':'non programmata'}`);
+  activeTab = "noco"; render();
+}
+
+// ---------- SANIFICAZIONE ----------
+let sanifSubTab = "giornaliera";
+function renderSanificazione(){
+  const t = todayISO();
+  const items = config.sanifItems[sanifSubTab]||[];
+  $main.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h2>Sanificazione</h2>${printBtn('sanificazione')}</div>
+      <div class="rowbtns" style="margin-top:0;">
+        ${["giornaliera","settimanale","mensile"].map(f=>`
+          <button class="iconbtn" style="${sanifSubTab===f?'background:var(--green);color:#fff;':''}" onclick="sanifSubTab='${f}';render()">${f[0].toUpperCase()+f.slice(1)}</button>`).join("")}
+      </div>
+      <p class="muted" style="margin-top:10px;">Per confermare una sanificazione serve indicare l'operatore e allegare una foto. Tocca una voce completata per vederne i dettagli.</p>
+      ${items.length? items.map(item=>{
+        const rec = logs.sanificazione.find(r=>r.item===item && r.frequenza===sanifSubTab && r.data===t);
+        const timerKey = `sanif:${sanifSubTab}:${item}`;
+        const auditSt = sanifAuditStatus(sanifSubTab, item);
+        const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
+        return `<div class="checklist-item ${auditCls}" style="flex-wrap:wrap;">
+          <div class="lbl">${item} ${timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openEditSanifItem('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>
+            <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openTimerForm('sanificazione','${timerKey}','${item.replace(/'/g,"\\'")}')" title="Imposta timer">⏱️</button>
+            <button class="togglebtn ${rec?'done':''}" onclick="${rec? `openSanifDetail('${rec.id}')` : `openSanifConfirm('${item.replace(/'/g,"\\'")}')`}">${rec? '✓ '+rec.operatore : 'Segna fatto'}</button>
+          </div>
+        </div>`;
+      }).join("") : `<div class="empty">Nessuna voce configurata per questa frequenza.</div>`}
+      <div class="rowbtns"><button class="btn secondary block" onclick="openAddSanifItem('${sanifSubTab}')">+ Aggiungi punto di sanificazione (${sanifSubTab})</button></div>
+    </div>
+    ${items.length ? `<div class="card"><div class="card-head"><h2>Scheda mensile ${sanifSubTab} — ${MONTHS[new Date().getMonth()]}</h2><button class="printbtn" onclick="printSanifMese('${sanifSubTab}')" title="Stampa la scheda mensile">🖨️ Stampa</button></div>
+      ${items.map(item=>`<h3 style="display:flex;justify-content:space-between;align-items:center;gap:8px;">${item} <button class="printbtn" onclick="printSanifItemMese('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Stampa questa voce">🖨️ Stampa</button></h3>${buildMonthGrid("sanif", {item, freq:sanifSubTab})}`).join("")}
+    </div>` : ""}
+  `;
+}
+
+function compressImage(dataUrl, maxWidth){
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width*scale;
+      canvas.height = img.height*scale;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.55));
+    };
+    img.src = dataUrl;
+  });
+}
+
+function openSanifConfirm(item){
+  openSheet(`Conferma sanificazione`, `
+    <p class="muted"><b>${item}</b> — ${sanifSubTab}</p>
+    <label class="field">Operatore</label>
+    <input type="text" id="sanifOp" value="${lastOperator}" placeholder="Nome operatore">
+    <label class="field">Foto di conferma (obbligatoria)</label>
+    <div class="photo-zone" id="sanifPhotoZone">
+      <input type="file" accept="image/*" capture="environment" id="sanifPhotoInput" style="display:none">
+      <button class="btn secondary block" onclick="document.getElementById('sanifPhotoInput').click()">📷 Scatta / carica foto</button>
+      <div id="sanifPhotoPreview"></div>
+    </div>
+    <div class="rowbtns">
+      <button class="btn block" id="sanifConfirmBtn" disabled onclick="saveSanifConfirm('${item.replace(/'/g,"\\'")}')">✅ Conferma sanificazione</button>
+    </div>
+  `, (body)=>{
+    window._sanifPhoto = null;
+    document.getElementById("sanifPhotoInput").onchange = (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = async ()=>{
+        document.getElementById("sanifPhotoPreview").innerHTML = `<span class="spinner"></span> Comprimo la foto...`;
+        const compressed = await compressImage(reader.result, 480);
+        window._sanifPhoto = compressed;
+        document.getElementById("sanifPhotoPreview").innerHTML = `<img src="${compressed}">`;
+        document.getElementById("sanifConfirmBtn").disabled = false;
+      };
+      reader.readAsDataURL(file);
+    };
+  });
+}
+
+async function saveSanifConfirm(item){
+  const op = document.getElementById("sanifOp").value.trim();
+  if(!op){ toast("Inserisci il nome dell'operatore"); return; }
+  if(!window._sanifPhoto){ toast("Allega una foto di conferma"); return; }
+  const id = uid();
+  const photoKey = "photo-sanif-"+id;
+  const photoData = window._sanifPhoto;
+  logs.sanificazione.push({id, item, frequenza:sanifSubTab, data:todayISO(), ora:nowTime(), operatore:op, photoKey});
+  window._sanifPhoto = null;
+  activeTab="sanificazione"; closeSheet();
+  toast("Sanificazione confermata ✅");
+  DB.set(photoKey, photoData, true).catch(()=>toast("⚠️ Errore di salvataggio foto, controlla la connessione"));
+  saveLog("sanificazione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  saveOperator(op).catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+}
+
+async function openSanifDetail(id){
+  const rec = logs.sanificazione.find(r=>r.id===id);
+  openSheet(rec.item, `
+    <p class="muted">${rec.frequenza} · ${fmtDate(rec.data)} · ${rec.ora} · <b>${rec.operatore}</b></p>
+    <div id="sanifDetailPhoto"><span class="spinner"></span> Carico foto...</div>
+    <div class="rowbtns"><button class="btn danger" onclick="deleteSanifEntry('${id}')">Elimina registrazione</button></div>
+  `, async ()=>{
+    try{
+      const p = await DB.get(rec.photoKey, true);
+      document.getElementById("sanifDetailPhoto").innerHTML = p? `<img src="${p.value}" style="max-width:100%;border-radius:10px;">` : `<p class="muted">Foto non disponibile.</p>`;
+    }catch(e){
+      document.getElementById("sanifDetailPhoto").innerHTML = `<p class="muted">Foto non disponibile.</p>`;
+    }
+  });
+}
+
+async function deleteSanifEntry(id){
+  const rec = logs.sanificazione.find(r=>r.id===id);
+  logs.sanificazione = logs.sanificazione.filter(r=>r.id!==id);
+  activeTab="sanificazione"; closeSheet();
+  toast("Registrazione eliminata");
+  if(rec && rec.photoKey){
+    DB.delete(rec.photoKey, true).catch(()=>{});
+  }
+  saveLog("sanificazione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+}
+
+// ---------- MOMA ----------
+function renderMoma(){
+  const history = [...logs.moma].sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora)).slice(0,20);
+  $main.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h2>Controllo matrici alimentari in ingresso (MOMA)</h2>${printBtn('moma')}</div>
+      <p class="muted">Registra ogni consegna: fornitore, documento di trasporto e verifica dei parametri di conformità.</p>
+      <button class="btn block" onclick="openMomaForm()">+ Nuova consegna</button>
+    </div>
+    <div class="card">
+      <h2>Ultime consegne</h2>
+      ${history.length? history.map(m=>`
+        <div class="logrow" onclick="openMomaDetail('${m.id}')" style="cursor:pointer;">
+          <div>
+            <div class="val">${m.fornitore} ${allMomaConforme(m)? '✅':'🔴'}</div>
+            <div class="meta">${fmtDate(m.data)} · DDT ${m.ddt||'—'} · ${m.operatore}</div>
+          </div>
+          <span class="muted">✏️</span>
+        </div>`).join("") : `<div class="empty">Nessuna consegna registrata ancora.</div>`}
+    </div>
+  `;
+}
+function openMomaDetail(id){
+  const m = logs.moma.find(x=>x.id===id);
+  openSheet(`Consegna — ${m.fornitore}`, `
+    ${m.photoKey? `<div id="momaDetailPhoto"><span class="spinner"></span> Carico foto bolla...</div>` : ``}
+    <label class="field">Fornitore</label><input type="text" id="mdFornitore" value="${m.fornitore}">
+    <label class="field">N. documento di trasporto</label><input type="text" id="mdDdt" value="${m.ddt||''}">
+    <h3>Verifica parametri</h3>
+    <div id="mdChecks">
+      ${MOMA_CHECKS.map(c=>`
+        <div style="margin-bottom:10px;">
+          <div class="lbl" style="font-weight:700;font-size:13px;margin-bottom:6px;">${c.label}</div>
+          <div class="conforme-toggle" data-key="${c.key}">
+            <button type="button" class="${m.checks[c.key]==='conforme'?'sel-ok':''}" onclick="setMdCheck('${c.key}','conforme',this)">Conforme</button>
+            <button type="button" class="${m.checks[c.key]==='non_conforme'?'sel-bad':''}" onclick="setMdCheck('${c.key}','non_conforme',this)">Non conforme</button>
+          </div>
+        </div>`).join("")}
+    </div>
+    <label class="field">Note</label><textarea id="mdNote">${m.note||''}</textarea>
+    <label class="field">Operatore</label><input type="text" id="mdOp" value="${m.operatore}">
+    <div class="rowbtns">
+      <button class="btn block" onclick="editMoma('${id}')">Salva modifiche</button>
+      <button class="btn danger" onclick="deleteMoma('${id}')">Elimina consegna</button>
+    </div>
+  `, async ()=>{
+    if(m.photoKey){
+      try{
+        const p = await DB.get(m.photoKey, true);
+        document.getElementById("momaDetailPhoto").innerHTML = p? `<img src="${p.value}" style="max-width:100%;border-radius:10px;margin-bottom:8px;">` : `<p class="muted">Foto bolla non disponibile.</p>`;
+      }catch(e){
+        document.getElementById("momaDetailPhoto").innerHTML = `<p class="muted">Foto bolla non disponibile.</p>`;
+      }
+    }
+  });
+  window._mdChecks = {...m.checks};
+}
+function setMdCheck(key, val, btn){
+  window._mdChecks[key] = val;
+  const group = btn.parentElement;
+  [...group.children].forEach(b=>b.classList.remove("sel-ok","sel-bad"));
+  btn.classList.add(val==="conforme"?"sel-ok":"sel-bad");
+}
+async function editMoma(id){
+  const m = logs.moma.find(x=>x.id===id);
+  const fornitore = document.getElementById("mdFornitore").value.trim();
+  const op = document.getElementById("mdOp").value.trim();
+  if(!fornitore){ toast("Inserisci il fornitore"); return; }
+  if(!op){ toast("Inserisci l'operatore"); return; }
+  m.fornitore = fornitore;
+  m.ddt = document.getElementById("mdDdt").value.trim();
+  m.note = document.getElementById("mdNote").value.trim();
+  m.operatore = op;
+  m.checks = window._mdChecks;
+  saveLog("moma").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Consegna aggiornata");
+  activeTab="moma"; closeSheet();
+}
+async function deleteMoma(id){
+  const rec = logs.moma.find(x=>x.id===id);
+  logs.moma = logs.moma.filter(x=>x.id!==id);
+  if(rec && rec.photoKey){ DB.delete(rec.photoKey, true).catch(()=>{}); }
+  saveLog("moma").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Consegna eliminata");
+  activeTab="moma"; closeSheet();
+}
+function allMomaConforme(m){
+  return ["trasporto","matrici","temperatura","scadenza","rintracciabilita","etichettatura"].every(k=>m.checks[k]==="conforme");
+}
+const MOMA_CHECKS = [
+  {key:"trasporto", label:"Igiene del trasporto"},
+  {key:"matrici", label:"Igiene matrici alimentari"},
+  {key:"temperatura", label:"Temperatura alla consegna"},
+  {key:"scadenza", label:"Scadenza o TMC"},
+  {key:"rintracciabilita", label:"Rintracciabilità"},
+  {key:"etichettatura", label:"Etichettatura"},
+];
+function openMomaForm(){
+  openSheet("Nuova consegna — MOMA", `
+    <div class="photo-zone" id="momaBollaZone">
+      <input type="file" accept="image/*" capture="environment" id="momaBollaInput" style="display:none">
+      <button class="btn yellow block" onclick="document.getElementById('momaBollaInput').click()">📸 Compila da foto della bolla</button>
+      <div id="momaBollaResult"></div>
+    </div>
+    <label class="field">Fornitore</label><input type="text" id="momaFornitore">
+    <label class="field">N. documento di trasporto</label><input type="text" id="momaDdt">
+    <h3>Verifica parametri</h3>
+    <div id="momaChecks">
+      ${MOMA_CHECKS.map(c=>`
+        <div style="margin-bottom:10px;">
+          <div class="lbl" style="font-weight:700;font-size:13px;margin-bottom:6px;">${c.label}</div>
+          <div class="conforme-toggle" data-key="${c.key}">
+            <button type="button" onclick="setMomaCheck('${c.key}','conforme',this)">Conforme</button>
+            <button type="button" onclick="setMomaCheck('${c.key}','non_conforme',this)">Non conforme</button>
+          </div>
+        </div>`).join("")}
+    </div>
+    <div id="momaProdottiHolder"></div>
+    <label class="field">Note</label><textarea id="momaNote"></textarea>
+    <label class="field">Operatore</label><input type="text" id="momaOp" value="${lastOperator}">
+    <div class="rowbtns"><button class="btn block" onclick="saveMoma()">Salva controllo</button></div>
+  `, (body)=>{
+    document.getElementById("momaBollaInput").onchange = handleBollaPhoto;
+  });
+  window._momaChecks = {};
+  window._bollaProdotti = [];
+  window._bollaPhoto = null;
+  window._bollaDataDoc = null;
+}
+
+function handleBollaPhoto(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    document.getElementById("momaBollaResult").innerHTML = `<img src="${reader.result}"><div style="margin-top:10px;"><span class="spinner"></span> Lettura bolla in corso...</div>`;
+    window._bollaPhoto = await compressImage(reader.result, 700);
+    const base64 = reader.result.split(",")[1];
+    if(!canUseClaudeAI()){
+      try{
+        const text = await runOcr(reader.result, (pct)=>{
+          document.getElementById("momaBollaResult").innerHTML = `<img src="${reader.result}"><div style="margin-top:10px;"><span class="spinner"></span> Lettura testo gratuita in corso... ${pct}%</div>`;
+        });
+        const ddtMatch = text.match(/(?:fattura|documento|ddt|bolla)\s*n[ro.]*\s*[:.]?\s*(\d+)/i);
+        if(ddtMatch) document.getElementById("momaDdt").value = ddtMatch[1];
+        const noteEl = document.getElementById("momaNote");
+        if(text) noteEl.value = (noteEl.value ? noteEl.value+"\n":"") + "Testo letto dalla foto (verifica manualmente):\n" + text;
+        document.getElementById("momaBollaResult").innerHTML = `<img src="${reader.result}"><p class="muted" style="margin-top:8px;font-size:12px;">📖 Lettura gratuita (Tesseract OCR) — ho incollato il testo letto nelle Note qui sotto: copia da lì fornitore, numero e prodotti nei campi giusti. Non è preciso come la lettura AI, controlla con attenzione.</p>`;
+        window._bollaProdotti = [];
+        renderBollaProdottiEditor();
+      }catch(err){
+        document.getElementById("momaBollaResult").innerHTML = `<img src="${reader.result}"><p class="muted" style="margin-top:8px;">⚠️ Lettura gratuita non riuscita: ${esc(err.message||'')}. La foto viene comunque allegata, compila i campi manualmente.</p>`;
+      }
+      return;
+    }
+    try{
+      const result = await readBollaFromPhoto(base64, file.type);
+      if(result.fornitore) document.getElementById("momaFornitore").value = result.fornitore;
+      if(result.numero_ddt) document.getElementById("momaDdt").value = result.numero_ddt;
+      window._bollaDataDoc = result.data_documento || null;
+      if(result.data_documento){
+        const noteEl = document.getElementById("momaNote");
+        noteEl.value = (noteEl.value ? noteEl.value+" " : "") + `Data documento: ${result.data_documento}.`;
+      }
+      window._bollaProdotti = (result.prodotti||[]).map(p=>({nome:p.nome||"", lotto:p.lotto||"", quantita:p.quantita||""}));
+      document.getElementById("momaBollaResult").innerHTML = `<img src="${reader.result}"><p class="muted" style="margin-top:8px;">✅ Dati letti dalla bolla — controlla e correggi i campi qui sotto se necessario.${result.nota? ' '+result.nota:''}</p>`;
+      renderBollaProdottiEditor();
+    }catch(err){
+      document.getElementById("momaBollaResult").innerHTML = `<img src="${reader.result}"><p class="muted" style="margin-top:8px;">⚠️ Non sono riuscito a leggere la bolla automaticamente. Compila i campi manualmente.</p>`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderBollaProdottiEditor(){
+  const holder = document.getElementById("momaProdottiHolder");
+  if(!holder) return;
+  const rows = window._bollaProdotti||[];
+  if(!rows.length){ holder.innerHTML = ""; return; }
+  holder.innerHTML = `
+    <h3>Prodotti e lotti rilevati</h3>
+    <p class="muted">Verrà creata automaticamente una scheda di produzione (P1) per ciascun prodotto, con tracciabilità dal lotto e scadenza a 7 giorni dalla consegna. Correggi eventuali errori prima di salvare.</p>
+    <div id="momaProdottiRows">
+      ${rows.map((r,i)=>`
+        <div class="card" style="padding:10px;margin-bottom:8px;">
+          <label class="field" style="margin-top:0;">Prodotto</label>
+          <input type="text" value="${r.nome}" oninput="window._bollaProdotti[${i}].nome=this.value">
+          <div class="grid2" style="margin-top:8px;">
+            <div><label class="field">Lotto</label><input type="text" value="${r.lotto}" oninput="window._bollaProdotti[${i}].lotto=this.value"></div>
+            <div><label class="field">Quantità</label><input type="text" value="${r.quantita}" oninput="window._bollaProdotti[${i}].quantita=this.value"></div>
+          </div>
+          <button class="iconbtn" style="margin-top:8px;" onclick="removeBollaProdotto(${i})">Rimuovi riga</button>
+        </div>
+      `).join("")}
+    </div>
+    <button class="iconbtn" onclick="addBollaProdottoRow()">+ Aggiungi prodotto</button>
+  `;
+}
+function addBollaProdottoRow(){
+  window._bollaProdotti = window._bollaProdotti||[];
+  window._bollaProdotti.push({nome:"", lotto:"", quantita:""});
+  renderBollaProdottiEditor();
+}
+function removeBollaProdotto(i){
+  window._bollaProdotti.splice(i,1);
+  renderBollaProdottiEditor();
+}
+
+async function readRecipeFromPhoto(base64, mediaType){
+  const data = await aiRequest({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 1500,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType||"image/jpeg", data: base64 } },
+          { type: "text", text: "Questa è la foto di una ricetta scritta o stampata (ricettario, appunti dello chef, scheda tecnica) di un piatto o preparazione di un ristorante. Trascrivi integralmente il contenuto. Rispondi SOLO con un oggetto JSON, senza testo aggiuntivo, nel formato: {\"nome\": \"<nome del piatto/preparazione>\", \"ingredienti\": [\"<nome ingrediente 1>\", \"<nome ingrediente 2>\"], \"procedimento\": \"<trascrizione integrale e completa del procedimento/istruzioni così come scritto, comprese le quantità, mantenendo l'ordine originale>\", \"giorni_conservazione\": <numero di giorni di conservazione del preparato se indicato nella ricetta, altrimenti null>, \"nota\": \"<eventuale nota se alcune parti non sono leggibili>\"}. Per 'ingredienti' usa nomi puliti e generici (es. 'Farina 00', 'Pomodoro San Marzano') senza quantità, adatti a essere confrontati con i nomi dei prodotti nelle bolle di consegna. Nel campo 'procedimento' riporta invece il testo integrale così come scritto, comprese le quantità e i passaggi." }
+        ]
+      }]
+  });
+  const textBlock = (data.content||[]).find(b=>b.type==="text");
+  if(!textBlock) throw new Error("no text");
+  const clean = textBlock.text.replace(/```json|```/g,"").trim();
+  return JSON.parse(clean);
+}
+function handleRecipePhoto(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    document.getElementById("rcPhotoResult").innerHTML = `<img src="${reader.result}"><div style="margin-top:10px;"><span class="spinner"></span> Trascrizione in corso...</div>`;
+    window._recipePhoto = await compressImage(reader.result, 700);
+    const base64 = reader.result.split(",")[1];
+    if(!canUseClaudeAI()){
+      try{
+        const text = await runOcr(reader.result, (pct)=>{
+          document.getElementById("rcPhotoResult").innerHTML = `<img src="${reader.result}"><div style="margin-top:10px;"><span class="spinner"></span> Lettura testo gratuita in corso... ${pct}%</div>`;
+        });
+        const righe = text.split("\n").map(r=>r.trim()).filter(Boolean);
+        if(righe.length && !document.getElementById("rcNome").value.trim()) document.getElementById("rcNome").value = righe[0];
+        document.getElementById("rcProcedimento").value = text;
+        document.getElementById("rcPhotoResult").innerHTML = `<img src="${reader.result}"><p class="muted" style="margin-top:8px;font-size:12px;">📖 Lettura gratuita (Tesseract OCR) — ho incollato il testo integrale nel campo Procedimento. Controlla il nome e completa tu la lista ingredienti (necessaria per il tracciamento lotti).</p>`;
+      }catch(err){
+        document.getElementById("rcPhotoResult").innerHTML = `<img src="${reader.result}"><p class="muted" style="margin-top:8px;">⚠️ Lettura gratuita non riuscita: ${esc(err.message||'')}. Compila i campi manualmente.</p>`;
+      }
+      return;
+    }
+    try{
+      const result = await readRecipeFromPhoto(base64, file.type);
+      if(result.nome) document.getElementById("rcNome").value = result.nome;
+      if(result.ingredienti && result.ingredienti.length) document.getElementById("rcIngredienti").value = result.ingredienti.join("\n");
+      if(result.procedimento) document.getElementById("rcProcedimento").value = result.procedimento;
+      if(result.giorni_conservazione!==null && result.giorni_conservazione!==undefined) document.getElementById("rcGiorni").value = result.giorni_conservazione;
+      document.getElementById("rcPhotoResult").innerHTML = `<img src="${reader.result}"><p class="muted" style="margin-top:8px;">✅ Ricetta trascritta — controlla e correggi i campi qui sotto se necessario.${result.nota? ' '+result.nota:''}</p>`;
+    }catch(err){
+      document.getElementById("rcPhotoResult").innerHTML = `<img src="${reader.result}"><p class="muted" style="margin-top:8px;">⚠️ Non sono riuscito a trascrivere la ricetta automaticamente. Compila i campi manualmente.</p>`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+async function readBollaFromPhoto(base64, mediaType){
+  const data = await aiRequest({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 800,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType||"image/jpeg", data: base64 } },
+          { type: "text", text: "Questa è la foto di un documento di trasporto (bolla/DDT) allegato a una consegna di merce alimentare per un ristorante. Estrai i dati principali. Rispondi SOLO con un oggetto JSON, senza testo aggiuntivo, nel formato: {\"fornitore\": \"<ragione sociale del fornitore mittente, o null>\", \"numero_ddt\": \"<numero del documento di trasporto, o null>\", \"data_documento\": \"<data del documento in formato gg/mm/aaaa, o null>\", \"prodotti\": [{\"nome\": \"<nome prodotto/articolo>\", \"lotto\": \"<numero di lotto se indicato, altrimenti null>\", \"quantita\": \"<quantità con unità di misura, es. '5 kg', o null>\"}], \"nota\": \"<eventuale nota se alcuni dati non sono leggibili>\"}. Includi in 'prodotti' una riga per ogni articolo elencato nel documento, anche se il lotto non è indicato." }
+        ]
+      }]
+  });
+  const textBlock = (data.content||[]).find(b=>b.type==="text");
+  if(!textBlock) throw new Error("no text");
+  const clean = textBlock.text.replace(/```json|```/g,"").trim();
+  return JSON.parse(clean);
+}
+function setMomaCheck(key, val, btn){
+  window._momaChecks[key] = val;
+  const group = btn.parentElement;
+  [...group.children].forEach(b=>b.classList.remove("sel-ok","sel-bad"));
+  btn.classList.add(val==="conforme"?"sel-ok":"sel-bad");
+}
+async function saveMoma(){
+  const fornitore = document.getElementById("momaFornitore").value.trim();
+  const ddt = document.getElementById("momaDdt").value.trim();
+  const note = document.getElementById("momaNote").value.trim();
+  const op = document.getElementById("momaOp").value.trim();
+  const checks = window._momaChecks||{};
+  if(!fornitore){ toast("Inserisci il fornitore"); return; }
+  if(!op){ toast("Inserisci l'operatore"); return; }
+  if(Object.keys(checks).length < MOMA_CHECKS.length){ toast("Completa tutte le verifiche"); return; }
+  const rec = {id:uid(), data:todayISO(), ora:nowTime(), fornitore, ddt, checks, note, operatore:op};
+  if(window._bollaPhoto){
+    rec.photoKey = "photo-moma-"+rec.id;
+    DB.set(rec.photoKey, window._bollaPhoto, true).catch(()=>toast("⚠️ Errore di salvataggio foto bolla"));
+    window._bollaPhoto = null;
+  }
+  logs.moma.push(rec);
+  saveLog("moma").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  saveOperator(op).catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+
+  const prodotti = (window._bollaProdotti||[]).filter(p=>p.nome && p.nome.trim());
+  if(prodotti.length){
+    const consegna = todayISO();
+    const scadenza = addDaysISO(consegna, 7);
+    // Data di emissione della bolla (gg/mm/aaaa dalla lettura, altrimenti data consegna)
+    let dataBolla = consegna, dataBollaLbl = fmtDate(consegna);
+    if(window._bollaDataDoc){
+      const m = String(window._bollaDataDoc).match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+      if(m){
+        const yy = m[3].length===2 ? "20"+m[3] : m[3];
+        dataBolla = `${yy}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+        dataBollaLbl = `${m[1].padStart(2,'0')}/${m[2].padStart(2,'0')}/${yy}`;
+      }
+    }
+    const sett = isoWeekOfYear(dataBolla);
+    prodotti.forEach(p=>{
+      const lottoFinale = (p.lotto && p.lotto.trim())
+        ? p.lotto.trim()
+        : `DDT ${ddt||'s.n.'} del ${dataBollaLbl} · sett. ${sett}`;
+      logs.produzione.push({
+        id: uid(),
+        prodotto: p.nome.trim(),
+        lotto: lottoFinale,
+        lottoStimato: !(p.lotto && p.lotto.trim()),
+        quantita: p.quantita ? p.quantita.trim() : "",
+        fornitore, ddt,
+        dataConsegna: consegna,
+        dataInizioProduzione: consegna,
+        dataScadenza: scadenza,
+        note: `Tracciabilità: consegna del ${fmtDate(consegna)} da ${fornitore}, DDT ${ddt||'—'}, lotto ${lottoFinale}${(p.lotto && p.lotto.trim())? '' : " (lotto non presente in bolla — tracciato con data emissione bolla e settimana dell'anno)"}.`,
+        momaId: rec.id,
+        esaurito: false
+      });
+    });
+    saveLog("produzione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  }
+
+  toast(allMomaConforme(rec)? "Consegna registrata ✅" : "Registrata — presenti non conformità ⚠️");
+  if(prodotti.length) toast(`${prodotti.length} scheda/e di produzione create con scadenza 7gg`);
+  if(!allMomaConforme(rec)){
+    const badItems = MOMA_CHECKS.filter(c=>checks[c.key]==="non_conforme").map(c=>c.label).join(", ");
+    prefillNoco(`Consegna ${fornitore}`, `Riscontrata non conformità in fase di ricevimento merce (${badItems}). DDT: ${ddt||'—'}. ${note||''}`, op);
+  }
+  closeSheet();
+}
+function addDaysISO(iso, days){
+  const d = new Date(iso+"T00:00:00");
+  d.setDate(d.getDate()+days);
+  return toLocalISODate(d);
+}
+
+// ---------- PRODUZIONE (P1 - lotti e tracciabilità) ----------
+function renderProduzione(){
+  const t = todayISO();
+  const sorted = [...logs.produzione].filter(p=>!p.esaurito).sort((a,b)=>a.dataScadenza.localeCompare(b.dataScadenza));
+  const esauriti = [...logs.produzione].filter(p=>p.esaurito).sort((a,b)=>b.dataConsegna.localeCompare(a.dataConsegna)).slice(0,15);
+
+  function statusOf(p){
+    if(p.dataScadenza < t) return "bad";
+    const d1 = new Date(p.dataScadenza), d0 = new Date(t);
+    const diffDays = Math.round((d1-d0)/86400000);
+    if(diffDays <= 1) return "missing";
+    return "ok";
+  }
+  function statusLabel(p){
+    const s = statusOf(p);
+    if(s==="bad") return "SCADUTO";
+    if(s==="missing") return "In scadenza";
+    return "Valido";
+  }
+
+  $main.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h2>Registro produzione e tracciabilità lotti (P1)</h2>${printBtn('produzione')}</div>
+      <p class="muted">Le schede vengono create automaticamente leggendo la bolla in "Matrici in ingresso". Scadenza calcolata a 7 giorni dalla consegna — modificabile per ogni prodotto.</p>
+      <button class="btn block" onclick="openProduzioneForm()">+ Aggiungi prodotto manualmente</button>
+    </div>
+    <div class="card">
+      <h2>Prodotti in produzione (${sorted.length})</h2>
+      ${sorted.length? sorted.map(p=>`
+        <div class="logrow" onclick="openProduzioneDetail('${p.id}')" style="cursor:pointer;">
+          <div>
+            <div class="val">${p.semilavorato? '🏷️ ':''}${p.prodotto}</div>
+            <div class="meta">Lotto: ${p.lotto||'—'} · ${p.fornitore} · scade il ${fmtDate(p.dataScadenza)}</div>
+          </div>
+          <span class="chip ${statusOf(p)}">${statusLabel(p)}</span>
+        </div>
+      `).join("") : `<div class="empty">Nessun prodotto in produzione al momento.</div>`}
+    </div>
+    ${esauriti.length? `<div class="card">
+      <h2>Storico esauriti</h2>
+      ${esauriti.map(p=>`
+        <div class="logrow" onclick="openProduzioneDetail('${p.id}')" style="cursor:pointer;">
+          <div><div class="val">${p.prodotto}</div>
+          <div class="meta">Lotto: ${p.lotto||'—'} · consegna ${fmtDate(p.dataConsegna)}</div></div>
+        </div>
+      `).join("")}
+    </div>` : ""}
+  `;
+}
+
+function openProduzioneForm(){
+  openSheet("Nuovo prodotto in produzione", `
+    <label class="field">Prodotto</label><input type="text" id="pzNome">
+    <label class="field">Lotto</label><input type="text" id="pzLotto">
+    <label class="field">Fornitore</label><input type="text" id="pzFornitore">
+    <label class="field">N. DDT</label><input type="text" id="pzDdt">
+    <label class="field">Quantità</label><input type="text" id="pzQuantita">
+    <label class="field">Data consegna / inizio produzione</label><input type="date" id="pzData" value="${todayISO()}">
+    <label class="field">Data scadenza</label><input type="date" id="pzScadenza" value="${addDaysISO(todayISO(),7)}">
+    <label class="field">Note</label><textarea id="pzNote"></textarea>
+    <div class="rowbtns"><button class="btn block" onclick="saveProduzioneManuale()">Salva</button></div>
+  `, ()=>{
+    document.getElementById("pzData").onchange = (e)=>{
+      document.getElementById("pzScadenza").value = addDaysISO(e.target.value, 7);
+    };
+  });
+}
+async function saveProduzioneManuale(){
+  const prodotto = document.getElementById("pzNome").value.trim();
+  if(!prodotto){ toast("Inserisci il nome del prodotto"); return; }
+  logs.produzione.push({
+    id: uid(),
+    prodotto,
+    lotto: document.getElementById("pzLotto").value.trim(),
+    fornitore: document.getElementById("pzFornitore").value.trim(),
+    ddt: document.getElementById("pzDdt").value.trim(),
+    quantita: document.getElementById("pzQuantita").value.trim(),
+    dataConsegna: document.getElementById("pzData").value,
+    dataInizioProduzione: document.getElementById("pzData").value,
+    dataScadenza: document.getElementById("pzScadenza").value,
+    note: document.getElementById("pzNote").value.trim(),
+    momaId: null,
+    esaurito: false
+  });
+  saveLog("produzione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Prodotto aggiunto al registro");
+  activeTab="produzione"; closeSheet();
+}
+
+function openProduzioneDetail(id){
+  const p = logs.produzione.find(x=>x.id===id);
+  openSheet(p.prodotto, `
+    ${p.semilavorato? `<div class="card" style="padding:11px;background:var(--yellow-pale);border:none;margin-bottom:10px;">
+      <div style="font-weight:800;font-size:13px;">🏷️ Preparato internamente</div>
+      <div class="muted" style="font-size:12px;margin-top:4px;">Ottenuto da ${(p.origineLotti||[]).length} ingrediente/i tracciati.</div>
+      <div class="rowbtns" style="margin-top:8px;">
+        <button class="printbtn" onclick="printEtichetta('${id}')">🏷️ Etichetta</button>
+        <button class="printbtn" onclick="printFiliera('${id}')">🔗 Catena di tracciabilità</button>
+      </div>
+    </div>`:""}
+    <label class="field">Prodotto</label><input type="text" id="pdNome" value="${p.prodotto}">
+    <label class="field">Lotto</label><input type="text" id="pdLotto" value="${p.lotto||''}">
+    <div class="grid2">
+      <div><label class="field">Fornitore</label><input type="text" id="pdFornitore" value="${p.fornitore||''}"></div>
+      <div><label class="field">N. DDT</label><input type="text" id="pdDdt" value="${p.ddt||''}"></div>
+    </div>
+    <label class="field">Quantità</label><input type="text" id="pdQuantita" value="${p.quantita||''}">
+    <div class="grid2">
+      <div><label class="field">Data consegna</label><input type="date" id="pdConsegna" value="${p.dataConsegna}"></div>
+      <div><label class="field">Data scadenza</label><input type="date" id="pdScadenza" value="${p.dataScadenza}"></div>
+    </div>
+    <label class="field">Note</label><textarea id="pdNote">${p.note||''}</textarea>
+    <label class="field">Data esaurimento prodotto</label>
+    <input type="date" id="pzEsaurimento" value="${p.dataEsaurimento||''}">
+    <div class="rowbtns">
+      <button class="btn block" onclick="editProduzione('${id}')">Salva modifiche</button>
+      <button class="btn secondary" onclick="markProduzioneEsaurito('${id}')">${p.esaurito? 'Aggiorna esaurimento':'Segna come esaurito'}</button>
+      <button class="btn danger" onclick="deleteProduzione('${id}')">Elimina scheda</button>
+    </div>
+  `);
+}
+async function editProduzione(id){
+  const p = logs.produzione.find(x=>x.id===id);
+  const nome = document.getElementById("pdNome").value.trim();
+  if(!nome){ toast("Inserisci il nome del prodotto"); return; }
+  p.prodotto = nome;
+  p.lotto = document.getElementById("pdLotto").value.trim();
+  p.fornitore = document.getElementById("pdFornitore").value.trim();
+  p.ddt = document.getElementById("pdDdt").value.trim();
+  p.quantita = document.getElementById("pdQuantita").value.trim();
+  p.dataConsegna = document.getElementById("pdConsegna").value;
+  p.dataScadenza = document.getElementById("pdScadenza").value;
+  p.note = document.getElementById("pdNote").value.trim();
+  saveLog("produzione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Scheda aggiornata");
+  activeTab="produzione"; closeSheet();
+}
+async function markProduzioneEsaurito(id){
+  const p = logs.produzione.find(x=>x.id===id);
+  p.dataEsaurimento = document.getElementById("pzEsaurimento").value || todayISO();
+  p.esaurito = true;
+  saveLog("produzione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Aggiornato");
+  activeTab="produzione"; closeSheet();
+}
+async function deleteProduzione(id){
+  logs.produzione = logs.produzione.filter(x=>x.id!==id);
+  saveLog("produzione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Scheda eliminata");
+  activeTab="produzione"; closeSheet();
+}
+
+// ---------- RICETTE / COMPOSIZIONE PRODOTTI ----------
+const MATCH_STOPWORDS = new Set(["kg","g","gr","grammi","l","lt","litri","ml","pz","pezzi","conf","confezione","confezioni","da","di","del","della","dei","delle","tipo","circa","cad","cadauno","x"]);
+function normalizeTokens(s){
+  return (s||"")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // rimuove accenti
+    .replace(/['".,;:()]/g," ")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+function meaningfulTokens(s){
+  return normalizeTokens(s).filter(t=>!MATCH_STOPWORDS.has(t) && !/^\d+([.,]\d+)?$/.test(t));
+}
+function tokenMatchScore(ingTokens, prodTokens){
+  if(!ingTokens.length) return 0;
+  let matched = 0;
+  ingTokens.forEach(tok=>{
+    if(prodTokens.includes(tok) || prodTokens.some(p=> (p.length>=4 && tok.length>=4) && (p.startsWith(tok)||tok.startsWith(p)) )) matched++;
+  });
+  return matched/ingTokens.length;
+}
+function findLottoForIngredient(nomeIngrediente){
+  const c = findLottiForIngredient(nomeIngrediente);
+  return c.length ? c[0] : null;
+}
+function findLottiForIngredient(nomeIngrediente){
+  // Restituisce TUTTI i prodotti attivi che corrispondono (es. stessa passata da più fornitori)
+  const ingTokens = meaningfulTokens(nomeIngrediente);
+  if(!ingTokens.length) return [];
+  const matches = [];
+  logs.produzione.filter(p=>!p.esaurito).forEach(p=>{
+    const score = tokenMatchScore(ingTokens, meaningfulTokens(p.prodotto));
+    if(score >= 0.6) matches.push({p, score});
+  });
+  matches.sort((a,b)=> b.score - a.score || (b.p.dataConsegna||"").localeCompare(a.p.dataConsegna||""));
+  return matches.map(m=>m.p);
+}
+function renderRicette(){
+  $main.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h2>Ricette base</h2>${printBtn('ricette')}</div>
+      <p class="muted">Definisci gli ingredienti di ogni ricetta. Quando componi un piatto, l'app recupera automaticamente il lotto più recente di ogni ingrediente dalle schede di Produzione (alimentate dalle bolle MOMA).</p>
+      <input type="text" id="ricetteBaseSearchInput" placeholder="🔎 Cerca una ricetta per nome o ingrediente..." oninput="renderRicetteBaseList(this.value)" style="margin-bottom:10px;">
+      <div id="ricetteBaseListEl">${ricetteBaseListHtml("")}</div>
+      <div class="rowbtns"><button class="btn secondary block" onclick="openAddRecipe()">+ Aggiungi ricetta</button></div>
+      <div class="rowbtns"><button class="iconbtn block" onclick="importRicetteBase()">📥 Importa le 17 ricette base (food cost)</button></div>
+    </div>
+    <div class="card">
+      <h2>🔎 Cerca composizioni</h2>
+      <input type="text" id="ricetteSearchInput" placeholder="Cerca per nome piatto, operatore o lotto..." oninput="renderComposizioniList(this.value)">
+    </div>
+    <div class="card">
+      <h2>Composizioni registrate</h2>
+      <div id="composizioniListEl">${composizioniListHtml("")}</div>
+    </div>
+  `;
+}
+function ricetteBaseListHtml(query){
+  const recipes = config.recipes||[];
+  const q = (query||"").trim().toLowerCase();
+  const filtered = q? recipes.filter(r=>
+    r.nome.toLowerCase().includes(q) || r.ingredienti.some(i=>i.toLowerCase().includes(q))
+  ) : recipes;
+  if(!filtered.length){
+    return q? `<div class="empty">Nessuna ricetta trovata per "${esc(query)}".</div>` : `<div class="empty">Nessuna ricetta configurata.</div>`;
+  }
+  return filtered.map(r=>`
+    <div class="point-tile" style="cursor:default;">
+      <div class="name">🍽️ ${r.nome} ${r.photoKey? '📷':''}</div>
+      <div class="muted">${r.ingredienti.length} ingredienti: ${r.ingredienti.join(', ')}</div>
+      ${r.procedimento? `<div class="muted" style="margin-top:4px;">📝 Procedimento trascritto disponibile</div>`:''}
+      <div class="rowbtns" style="margin-top:8px;">
+        <button class="btn" onclick="openComponiForm('${r.id}')">Componi ora</button>
+        <button class="iconbtn" onclick="openEditRecipe('${r.id}')">✏️ Modifica</button>
+      </div>
+    </div>
+  `).join("");
+}
+function renderRicetteBaseList(query){
+  const el = document.getElementById("ricetteBaseListEl");
+  if(el) el.innerHTML = ricetteBaseListHtml(query);
+}
+function composizioniListHtml(query){
+  const q = (query||"").trim().toLowerCase();
+  let list = [...logs.composizioni].sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora));
+  if(q){
+    list = list.filter(c=>
+      (c.ricettaNome||"").toLowerCase().includes(q) ||
+      (c.operatore||"").toLowerCase().includes(q) ||
+      (c.lottoProdotto||"").toLowerCase().includes(q)
+    );
+  } else {
+    list = list.slice(0,15);
+  }
+  if(!list.length) return `<div class="empty">${q? "Nessuna composizione trovata per \""+esc(query)+"\".":"Nessuna composizione registrata ancora."}</div>`;
+  return list.map(c=>`
+    <div class="logrow" onclick="openComposizioneDetail('${c.id}')" style="cursor:pointer;">
+      <div>
+        <div class="val">${c.ricettaNome} ${c.ingredientiUsati.some(i=>!i.lotto)? '⚠️':'✅'}${c.photoKey? ' 📷':''}${c.abbattuto? ' ❄️':''}</div>
+        <div class="meta">${fmtDate(c.data)} · ${c.ora} · ${c.operatore}</div>
+      </div>
+      <span class="muted">✏️</span>
+    </div>
+  `).join("");
+}
+function renderComposizioniList(query){
+  const el = document.getElementById("composizioniListEl");
+  if(el) el.innerHTML = composizioniListHtml(query);
+}
+// ---------- IMPORTAZIONE RICETTE BASE (dal food cost / economo) ----------
+const RICETTE_BASE_IMPORT = [
+  { nome:"Japaniello Fritto", giorniConservazione:1,
+    ingredienti:["Pasta bucatino","Piselli","Carne macinata","Panko","Riso Vignola","Provola","Patate","Salame Napoli","Sale e pepe"],
+    procedimento:"Pasta bucatino: 40 g\nPiselli: 5 g\nCarne macinata: 10 g\nPanko: 10 g\nRiso Vignola: 40 g\nProvola: 10 g\nPatate: 40 g\nSalame Napoli: 10 g\nSale e pepe: q.b." },
+  { nome:"Stick", giorniConservazione:1,
+    ingredienti:["Patate frittura Crisps4All","Olio semi girasole"],
+    procedimento:"Patate frittura Crisps4All: 300 g\nOlio semi girasole: 15 g" },
+  { nome:"Stick Wurstel Cheddar", giorniConservazione:1,
+    ingredienti:["Patate frittura Crisps4All","Olio semi girasole","Wurstel AIA","Panna Gran Cucina","Fettine Cheddar Welcome"],
+    procedimento:"Base Stick (Patate frittura Crisps4All 300 g + Olio semi girasole 15 g): 315 g\nWurstel AIA: 75 g\nFonduta cheddar (Panna Gran Cucina + Fettine Cheddar Welcome): 100 g" },
+  { nome:"Stick Polpette Formaggio", giorniConservazione:1,
+    ingredienti:["Patate frittura Crisps4All","Olio semi girasole","Carne macinata","Panna Gran Cucina","Fettine Classiche Welcome"],
+    procedimento:"Base Stick (Patate frittura Crisps4All 300 g + Olio semi girasole 15 g): 315 g\nCarne macinata: 70 g\nFonduta classica (Panna Gran Cucina + Fettine Classiche Welcome): 100 g" },
+  { nome:"Selezione Salumi e Formaggi X4", giorniConservazione:1,
+    ingredienti:["Salame Napoli","Coppa di testa","Mortadella","Prosciutto di Parma","Primo sale","Pancetta arrotolata","Capocollo","Misticanza"],
+    procedimento:"Salame Napoli: 50 g\nCoppa di testa: 70 g\nMortadella: 70 g\nProsciutto di Parma: 70 g\nPrimo sale: 100 g\nPancetta arrotolata: 60 g\nCapocollo: 60 g\nMisticanza: 30 g" },
+  { nome:"Bruschette al Pomodoro", giorniConservazione:1,
+    ingredienti:["Pane tipo 00","Pomodori datterini","Pomodorini ciliegine","Olio oliva"],
+    procedimento:"Pane tipo 00: 130 g\nPomodori datterini: 60 g\nPomodorini ciliegine: 10 g\nOlio oliva: 5 g" },
+  { nome:"Bandidos Sweet Chili", giorniConservazione:1,
+    ingredienti:["Bandidos","Salsa sweet chili"],
+    procedimento:"Bandidos: 100 g\nSalsa sweet chili: 50 g" },
+  { nome:"Arrosticini di Pecora", giorniConservazione:1,
+    ingredienti:["Arrosticini ovino"],
+    procedimento:"Arrosticini ovino: 200 g" },
+  { nome:"Fiore di Zucca", giorniConservazione:1,
+    ingredienti:["Fiori di zucca","Ricotta Pannarella","Fior di latte","Prosciutto cotto"],
+    procedimento:"Fiori di zucca: 3 pz\nRicotta Pannarella: 100 g\nFior di latte: 30 g\nProsciutto cotto: 30 g" },
+  { nome:"Polpettine con Fonduta", giorniConservazione:1,
+    ingredienti:["Patate frittura Crisps4All","Olio semi girasole","Carne macinata","Panna Gran Cucina","Fettine Classiche Welcome"],
+    procedimento:"Base Stick (Patate frittura Crisps4All 300 g + Olio semi girasole 15 g): 315 g\nCarne macinata: 70 g\nFonduta classica (Panna Gran Cucina + Fettine Classiche Welcome): 100 g" },
+  { nome:"Pita e Tzatziki", giorniConservazione:1,
+    ingredienti:["Pita greca","Tzatziki","Olive verdi","Origano","Olio oliva"],
+    procedimento:"Pita greca: 2 pz\nTzatziki: 70 g\nOlive verdi: 20 g\nOrigano: 5 g\nOlio oliva: 5 g" },
+  { nome:"Involtini Primavera", giorniConservazione:1,
+    ingredienti:["Involtini primavera","Misticanza","Salsa agrodolce"],
+    procedimento:"Involtini primavera: 250 g\nMisticanza: 30 g\nSalsa agrodolce: 50 g" },
+  { nome:"Patata Bravas", giorniConservazione:1,
+    ingredienti:["Patatas bravas","Paprika dolce","Salsa algerina"],
+    procedimento:"Patatas bravas: 300 g\nPaprika dolce: 5 g\nSalsa algerina: 60 g" },
+  { nome:"Nachos e Guacamole", giorniConservazione:1,
+    ingredienti:["Tortilla chips","Guacamole","Panna Gran Cucina","Fettine Cheddar Welcome","Fagioli"],
+    procedimento:"Tortilla chips: 150 g\nGuacamole: 70 g\nFonduta cheddar (Panna Gran Cucina + Fettine Cheddar Welcome): 60 g\nFagioli: 50 g" },
+  { nome:"Mais Prosciutto e Formaggio", giorniConservazione:1,
+    ingredienti:["Mais Bonduelle","Fettine Classiche Welcome","Prosciutto cotto"],
+    procedimento:"Mais Bonduelle: 300 g\nFettine Classiche Welcome: 60 g\nProsciutto cotto: 50 g" },
+  { nome:"Double Stick", giorniConservazione:1,
+    ingredienti:["Double Stick"],
+    procedimento:"Double Stick: 160 g (stima 40 g/pz x 4 pz)" },
+  { nome:"Bocconcini di Pollo", giorniConservazione:1,
+    ingredienti:["Nugget Pastel"],
+    procedimento:"Nugget Pastel: 220 g (stima 22 g/pz x 10 pz)" }
+];
+async function importRicetteBase(){
+  if(!config.recipes) config.recipes = [];
+  const esistenti = new Set(config.recipes.map(r=>r.nome.trim().toLowerCase()));
+  const nuove = RICETTE_BASE_IMPORT.filter(r=>!esistenti.has(r.nome.trim().toLowerCase()));
+  if(!nuove.length){ toast("Tutte le ricette base sono già presenti"); return; }
+  if(!confirm(`Importare ${nuove.length} ricette base dal food cost (quelle già presenti verranno saltate)?`)) return;
+  nuove.forEach(r=>{
+    config.recipes.push({ id:uid(), nome:r.nome, ingredienti:[...r.ingredienti], giorniConservazione:r.giorniConservazione, procedimento:r.procedimento });
+  });
+  activeTab="ricette"; render();
+  toast(`✅ Importate ${nuove.length} ricette — controlla i giorni di conservazione di ciascuna`);
+  saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+}
+function openAddRecipe(){
+  openSheet("Nuova ricetta", `
+    <label class="field">Foto della ricetta (facoltativa)</label>
+    <div class="photo-zone" id="rcPhotoZone">
+      <input type="file" accept="image/*" capture="environment" id="rcPhotoInput" style="display:none">
+      <button class="btn secondary block" onclick="document.getElementById('rcPhotoInput').click()">📷 Fotografa la ricetta scritta</button>
+      <p class="muted" style="font-size:12px;margin-top:8px;margin-bottom:0;">Claude leggerà la foto e compilerà i campi qui sotto — controllali prima di salvare.</p>
+      <div id="rcPhotoResult"></div>
+    </div>
+    <label class="field">Nome piatto/prodotto</label><input type="text" id="rcNome">
+    <label class="field">Ingredienti (uno per riga, con lo stesso nome usato nelle bolle/Produzione)</label>
+    <textarea id="rcIngredienti" style="min-height:110px;" placeholder="Farina 00&#10;Pomodoro San Marzano&#10;Mozzarella fior di latte"></textarea>
+    <label class="field">Procedimento (trascrizione integrale, facoltativo)</label>
+    <textarea id="rcProcedimento" style="min-height:110px;" placeholder="Quantità, passaggi e note così come scritti nella ricetta originale"></textarea>
+    <label class="field">Giorni di conservazione del preparato</label>
+    <input type="number" id="rcGiorni" value="3" min="0" max="90">
+    <p class="muted" style="font-size:12px;">Determina la scadenza del semilavorato che verrà creato a ogni preparazione.</p>
+    <label class="field">Giorni di conservazione se abbattuto (facoltativo)</label>
+    <input type="number" id="rcGiorniAbbattuto" placeholder="lascia vuoto se uguale" min="0" max="365">
+    <p class="muted" style="font-size:12px;">Se impostato, verrà usato al posto del valore sopra quando la preparazione viene segnata come abbattuta.</p>
+    <div class="rowbtns"><button class="btn block" onclick="saveNewRecipe()">Salva ricetta</button></div>
+  `, ()=>{
+    window._recipePhoto = null;
+    document.getElementById("rcPhotoInput").onchange = handleRecipePhoto;
+  });
+}
+async function saveNewRecipe(){
+  const nome = document.getElementById("rcNome").value.trim();
+  const ingredienti = document.getElementById("rcIngredienti").value.split("\n").map(s=>s.trim()).filter(Boolean);
+  const procedimento = document.getElementById("rcProcedimento").value.trim();
+  const giorni = parseInt(document.getElementById("rcGiorni").value) || 0;
+  const giorniAbbattutoRaw = document.getElementById("rcGiorniAbbattuto").value;
+  const giorniAbbattuto = giorniAbbattutoRaw!==""? (parseInt(giorniAbbattutoRaw)||0) : undefined;
+  if(!nome){ toast("Inserisci il nome del piatto"); return; }
+  if(!ingredienti.length){ toast("Inserisci almeno un ingrediente"); return; }
+  if(!config.recipes) config.recipes = [];
+  const rec = {id:uid(), nome, ingredienti, giorniConservazione:giorni, procedimento};
+  if(giorniAbbattuto!==undefined) rec.giorniConservazioneAbbattuto = giorniAbbattuto;
+  if(window._recipePhoto){
+    rec.photoKey = "photo-ricetta-"+rec.id;
+    DB.set(rec.photoKey, window._recipePhoto, true).catch(()=>toast("⚠️ Errore di salvataggio foto"));
+    window._recipePhoto = null;
+  }
+  config.recipes.push(rec);
+  activeTab="ricette"; closeSheet();
+  toast("Ricetta salvata");
+  saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+}
+function openEditRecipe(id){
+  const r = config.recipes.find(x=>x.id===id);
+  openSheet(`Modifica — ${r.nome}`, `
+    ${r.photoKey? `<div id="rcEditPhoto" style="margin-bottom:12px;"><span class="spinner"></span> Carico foto...</div>` : ""}
+    <label class="field">Foto della ricetta ${r.photoKey? '(sostituisci, facoltativo)':'(facoltativa)'}</label>
+    <div class="photo-zone" id="rcPhotoZone">
+      <input type="file" accept="image/*" capture="environment" id="rcPhotoInput" style="display:none">
+      <button class="btn secondary block" onclick="document.getElementById('rcPhotoInput').click()">📷 ${r.photoKey?'Rifotografa e ritrascrivi':'Fotografa la ricetta scritta'}</button>
+      <div id="rcPhotoResult"></div>
+    </div>
+    <label class="field">Nome piatto/prodotto</label><input type="text" id="rcNome" value="${r.nome}">
+    <label class="field">Ingredienti (uno per riga)</label>
+    <textarea id="rcIngredienti" style="min-height:110px;">${r.ingredienti.join("\n")}</textarea>
+    <label class="field">Procedimento (trascrizione integrale, facoltativo)</label>
+    <textarea id="rcProcedimento" style="min-height:110px;">${r.procedimento||""}</textarea>
+    <label class="field">Giorni di conservazione del preparato</label>
+    <input type="number" id="rcGiorni" value="${r.giorniConservazione!==undefined? r.giorniConservazione : 3}" min="0" max="90">
+    <label class="field">Giorni di conservazione se abbattuto (facoltativo)</label>
+    <input type="number" id="rcGiorniAbbattuto" value="${r.giorniConservazioneAbbattuto!==undefined? r.giorniConservazioneAbbattuto : ''}" placeholder="lascia vuoto se uguale" min="0" max="365">
+    <p class="muted" style="font-size:12px;">Se impostato, verrà usato al posto del valore sopra quando la preparazione viene segnata come abbattuta.</p>
+    <div class="rowbtns">
+      <button class="btn block" onclick="editRecipe('${id}')">Salva modifiche</button>
+      <button class="btn danger" onclick="deleteRecipe('${id}')">Elimina ricetta</button>
+    </div>
+  `, async ()=>{
+    window._recipePhoto = null;
+    document.getElementById("rcPhotoInput").onchange = handleRecipePhoto;
+    if(r.photoKey){
+      try{
+        const p = await DB.get(r.photoKey, true);
+        document.getElementById("rcEditPhoto").innerHTML = p? `<img src="${p.value}" style="max-width:100%;border-radius:10px;">` : `<p class="muted">Foto non disponibile.</p>`;
+      }catch(e){
+        document.getElementById("rcEditPhoto").innerHTML = `<p class="muted">Foto non disponibile.</p>`;
+      }
+    }
+  });
+}
+async function editRecipe(id){
+  const r = config.recipes.find(x=>x.id===id);
+  const nome = document.getElementById("rcNome").value.trim();
+  const ingredienti = document.getElementById("rcIngredienti").value.split("\n").map(s=>s.trim()).filter(Boolean);
+  if(!nome){ toast("Inserisci il nome del piatto"); return; }
+  if(!ingredienti.length){ toast("Inserisci almeno un ingrediente"); return; }
+  r.nome = nome; r.ingredienti = ingredienti;
+  r.procedimento = document.getElementById("rcProcedimento").value.trim();
+  r.giorniConservazione = parseInt(document.getElementById("rcGiorni").value) || 0;
+  const giorniAbbattutoRaw = document.getElementById("rcGiorniAbbattuto").value;
+  if(giorniAbbattutoRaw!==""){ r.giorniConservazioneAbbattuto = parseInt(giorniAbbattutoRaw)||0; }
+  else { delete r.giorniConservazioneAbbattuto; }
+  if(window._recipePhoto){
+    r.photoKey = r.photoKey || ("photo-ricetta-"+r.id);
+    DB.set(r.photoKey, window._recipePhoto, true).catch(()=>toast("⚠️ Errore di salvataggio foto"));
+    window._recipePhoto = null;
+  }
+  activeTab="ricette"; closeSheet();
+  toast("Ricetta aggiornata");
+  saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+}
+async function deleteRecipe(id){
+  const r = config.recipes.find(x=>x.id===id);
+  if(r && r.photoKey){ DB.delete(r.photoKey, true).catch(()=>{}); }
+  config.recipes = config.recipes.filter(x=>x.id!==id);
+  activeTab="ricette"; closeSheet();
+  toast("Ricetta eliminata");
+  saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+}
+function openComponiForm(recipeId){
+  const r = config.recipes.find(x=>x.id===recipeId);
+  window._componiIngredienti = r.ingredienti.map(nome=>{
+    const candidati = findLottiForIngredient(nome);
+    if(candidati.length === 1){
+      const f = candidati[0];
+      return {ingrediente:nome, prodottoTrovato:f.prodotto, lotto:f.lotto, fornitore:f.fornitore, ddt:f.ddt, dataConsegna:f.dataConsegna, produzioneId:f.id, semilavorato:!!f.semilavorato, candidati:[]};
+    }
+    if(candidati.length > 1){
+      // Più fornitori/lotti dello stesso ingrediente: l'operatore deve scegliere
+      return {ingrediente:nome, prodottoTrovato:"", lotto:"", fornitore:"", ddt:"", dataConsegna:"", produzioneId:null,
+        candidati: candidati.map(c=>({id:c.id, prodotto:c.prodotto, lotto:c.lotto, fornitore:c.fornitore, ddt:c.ddt, dataConsegna:c.dataConsegna, semilavorato:!!c.semilavorato}))};
+    }
+    return {ingrediente:nome, prodottoTrovato:"", lotto:"", fornitore:"", ddt:"", dataConsegna:"", produzioneId:null, candidati:[]};
+  });
+  const giorniR = r.giorniConservazione!==undefined ? r.giorniConservazione : 3;
+  const giorniRAbbattuto = r.giorniConservazioneAbbattuto!==undefined ? r.giorniConservazioneAbbattuto : giorniR;
+  window._componiAbbattuto = { attivo:false, tipo:"positivo", temperatura:"", durata:"" };
+  const progrPrev = logs.produzione.filter(p=>p.semilavorato && p.ricettaId===recipeId && p.dataConsegna===todayISO()).length + 1;
+  window._componiScadenzaParams = { recipeId, progrPrev, giorniR, giorniRAbbattuto };
+  // Lotti precedenti della STESSA ricetta ancora segnati come attivi (non esauriti)
+  const lottiPrecedenti = logs.produzione.filter(p=>p.semilavorato && p.ricettaId===recipeId && !p.esaurito);
+  window._componiEsaurisciVecchi = {};
+  lottiPrecedenti.forEach(p=>{ window._componiEsaurisciVecchi[p.id] = true; }); // preselezionati: di solito si fa un nuovo lotto perché il vecchio è finito
+  openSheet(`Componi — ${r.nome}`, `
+    <p class="muted">Lotti recuperati automaticamente dalle schede di Produzione. Controlla e correggi le righe senza lotto (⚠️) e scegli dove ci sono più fornitori (❓).</p>
+    <div id="componiRows"></div>
+    <div id="componiScadenzaCard"></div>
+    ${lottiPrecedenti.length? `<div class="card" style="padding:11px;background:var(--amber-pale);border:none;">
+      <div style="font-weight:800;font-size:13px;">⚠️ ${lottiPrecedenti.length} lotto/i precedente/i di "${r.nome}" ancora attivo/i</div>
+      <p class="muted" style="font-size:12px;margin-top:4px;">Se il lotto vecchio è finito, lascia la spunta per segnarlo esaurito insieme a questa registrazione. Togli la spunta se ne avete ancora in frigo.</p>
+      ${lottiPrecedenti.map(p=>`
+        <label class="ac-opt sel" id="componiEsaurisciRow-${p.id}" onclick="toggleComponiEsaurisciVecchio('${p.id}', this)" style="margin-top:8px;">
+          <span class="ac-box">☑</span><span>${p.lotto} <span class="muted">(${fmtDate(p.dataConsegna)} · scad. ${fmtDate(p.dataScadenza)})</span></span>
+        </label>
+      `).join("")}
+    </div>`:""}
+    <div class="card" style="padding:11px;">
+      <label class="ac-opt" id="componiAbbattutoRow" onclick="toggleComponiAbbattuto(this)">
+        <span class="ac-box">☐</span><span>❄️ Prodotto abbattuto</span>
+      </label>
+      <div id="componiAbbattutoFields" style="display:none;margin-top:10px;">
+        <label class="field" style="margin-top:0;">Tipo abbattimento</label>
+        <select id="componiAbbTipo" onchange="window._componiAbbattuto.tipo=this.value">
+          <option value="positivo">Positivo (nucleo ≤ +3°C)</option>
+          <option value="negativo">Negativo/surgelazione (nucleo ≤ -18°C)</option>
+        </select>
+        <div class="grid2" style="margin-top:8px;">
+          <div><label class="field" style="margin-top:0;">Temperatura raggiunta (°C)</label><input type="number" step="0.1" id="componiAbbTemp" oninput="window._componiAbbattuto.temperatura=this.value"></div>
+          <div><label class="field" style="margin-top:0;">Durata (minuti)</label><input type="number" id="componiAbbDurata" oninput="window._componiAbbattuto.durata=this.value"></div>
+        </div>
+        <p class="muted" style="font-size:12px;margin-top:8px;">Riferimento: positivo ≤ +3°C entro 90 min · negativo ≤ -18°C entro 240 min. Fuori da questi valori la preparazione viene comunque salvata, ma segnalata come da verificare.</p>
+      </div>
+    </div>
+    <label class="field">Quantità preparata</label>
+    <input type="text" id="componiQta" placeholder="es. 5 kg, 20 porzioni">
+    <label class="field">Operatore</label>
+    <input type="text" id="componiOp" value="${lastOperator}">
+    <label class="field">Note</label>
+    <textarea id="componiNote"></textarea>
+    <label class="field">Foto del preparato (facoltativa)</label>
+    <div class="photo-zone" id="componiPhotoZone">
+      <input type="file" accept="image/*" capture="environment" id="componiPhotoInput" style="display:none">
+      <button class="btn secondary block" onclick="document.getElementById('componiPhotoInput').click()">📷 Scatta / carica foto</button>
+      <div id="componiPhotoPreview"></div>
+    </div>
+    <div class="rowbtns"><button class="btn block" onclick="saveComposizione('${recipeId}')">✅ Registra preparazione</button></div>
+  `, ()=>{
+    renderComponiRows();
+    renderComponiScadenzaCard(recipeId, progrPrev, giorniR, giorniRAbbattuto);
+    window._composizionePhoto = null;
+    document.getElementById("componiPhotoInput").onchange = (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = async ()=>{
+        document.getElementById("componiPhotoPreview").innerHTML = `<span class="spinner"></span> Comprimo la foto...`;
+        const compressed = await compressImage(reader.result, 480);
+        window._composizionePhoto = compressed;
+        document.getElementById("componiPhotoPreview").innerHTML = `<img src="${compressed}">`;
+      };
+      reader.readAsDataURL(file);
+    };
+  });
+}
+function renderComponiScadenzaCard(recipeId, progrPrev, giorniR, giorniRAbbattuto){
+  const el = document.getElementById("componiScadenzaCard");
+  if(!el) return;
+  const r = config.recipes.find(x=>x.id===recipeId);
+  const abb = window._componiAbbattuto||{};
+  const giorniEffettivi = abb.attivo ? giorniRAbbattuto : giorniR;
+  el.innerHTML = `
+    <div class="card" style="padding:11px;background:var(--green-pale);border:none;">
+      <div style="font-weight:800;font-size:13px;">🏷️ Lotto interno che verrà creato</div>
+      <div class="muted" style="font-size:12px;margin-top:4px;">PROD ${fmtDate(todayISO())} · ${r.nome} · sett. ${isoWeekOfYear(todayISO())} · L${String(progrPrev).padStart(2,'0')}</div>
+      <div class="muted" style="font-size:12px;">Scadenza: ${fmtDate(addDaysISO(todayISO(), giorniEffettivi))} (${giorniEffettivi} giorni${abb.attivo? ' · da abbattuto':''})</div>
+      ${progrPrev>1? `<div class="muted" style="font-size:12px;margin-top:4px;">È la ${progrPrev}ª preparazione di oggi per questa ricetta.</div>`:""}
+    </div>
+  `;
+}
+function toggleComponiEsaurisciVecchio(prodId, el){
+  window._componiEsaurisciVecchi[prodId] = !window._componiEsaurisciVecchi[prodId];
+  el.querySelector(".ac-box").textContent = window._componiEsaurisciVecchi[prodId] ? "☑" : "☐";
+  el.classList.toggle("sel", window._componiEsaurisciVecchi[prodId]);
+}
+function toggleComponiAbbattuto(el){
+  window._componiAbbattuto.attivo = !window._componiAbbattuto.attivo;
+  el.querySelector(".ac-box").textContent = window._componiAbbattuto.attivo ? "☑" : "☐";
+  el.classList.toggle("sel", window._componiAbbattuto.attivo);
+  document.getElementById("componiAbbattutoFields").style.display = window._componiAbbattuto.attivo ? "block" : "none";
+  const p = window._componiScadenzaParams;
+  if(p) renderComponiScadenzaCard(p.recipeId, p.progrPrev, p.giorniR, p.giorniRAbbattuto);
+}
+function renderComponiRows(){
+  const holder = document.getElementById("componiRows");
+  if(!holder) return;
+  holder.innerHTML = window._componiIngredienti.map((row,i)=>{
+    const esaurisciBox = row.produzioneId ? `
+      <label class="ac-opt ${row.esaurisci?'sel':''}" style="margin-top:7px;padding:7px 9px;font-size:12px;" onclick="toggleEsaurisci(${i},this)">
+        <span class="ac-box">${row.esaurisci?'☑':'☐'}</span><span>Lotto terminato con questa preparazione</span>
+      </label>` : "";
+    if(row.candidati && row.candidati.length){
+      return `<div class="card" style="padding:10px;margin-bottom:8px;border:2px solid var(--amber);">
+        <div style="font-weight:800;font-size:13px;">${row.ingrediente} — ❓ più lotti disponibili: quale usi?</div>
+        <label class="field">Scegli il lotto da utilizzare</label>
+        <select onchange="selectCandidatoLotto(${i}, this.value)">
+          <option value="">— Seleziona lotto / fornitore —</option>
+          ${row.candidati.map(c=>`<option value="${c.id}" ${row.produzioneId===c.id?'selected':''}>${c.semilavorato?'🏷️ ':''}${c.prodotto} · lotto ${c.lotto||'—'} · ${c.fornitore||'fornitore n/d'} · ${c.dataConsegna? fmtDate(c.dataConsegna):'—'}</option>`).join("")}
+        </select>
+        ${row.produzioneId? `<div class="muted" style="font-size:12px;margin-top:6px;">✅ Selezionato: lotto ${row.lotto} da ${row.fornitore}</div>`:''}
+        ${esaurisciBox}
+      </div>`;
+    }
+    return `<div class="card" style="padding:10px;margin-bottom:8px;${row.lotto? '':'border:2px solid var(--amber);'}">
+      <div style="font-weight:800;font-size:13px;">${row.ingrediente} ${row.lotto? (row.semilavorato? '🏷️ semilavorato interno':'✅'):'⚠️ lotto non trovato'}</div>
+      ${row.lotto ? `<div class="muted" style="font-size:12px;">Trovato: ${row.prodottoTrovato} · ${row.semilavorato? 'preparato il':'consegna'} ${fmtDate(row.dataConsegna)} da ${row.fornitore}</div>` : ''}
+      <div class="grid2" style="margin-top:6px;">
+        <div><label class="field" style="margin-top:4px;">Lotto</label><input type="text" value="${row.lotto}" oninput="window._componiIngredienti[${i}].lotto=this.value"></div>
+        <div><label class="field" style="margin-top:4px;">Fornitore</label><input type="text" value="${row.fornitore}" oninput="window._componiIngredienti[${i}].fornitore=this.value"></div>
+      </div>
+      ${esaurisciBox}
+    </div>`;
+  }).join("");
+}
+function toggleEsaurisci(i, el){
+  const row = window._componiIngredienti[i];
+  row.esaurisci = !row.esaurisci;
+  el.querySelector(".ac-box").textContent = row.esaurisci ? "☑" : "☐";
+  el.classList.toggle("sel", row.esaurisci);
+}
+function selectCandidatoLotto(i, prodId){
+  const row = window._componiIngredienti[i];
+  const c = (row.candidati||[]).find(x=>x.id===prodId);
+  if(!c){ row.produzioneId=null; row.lotto=""; row.fornitore=""; row.prodottoTrovato=""; row.ddt=""; row.dataConsegna=""; renderComponiRows(); return; }
+  row.produzioneId = c.id;
+  row.prodottoTrovato = c.prodotto;
+  row.lotto = c.lotto || "";
+  row.fornitore = c.fornitore || "";
+  row.ddt = c.ddt || "";
+  row.dataConsegna = c.dataConsegna || "";
+  row.semilavorato = !!c.semilavorato;
+  renderComponiRows();
+}
+async function saveComposizione(recipeId){
+  const r = config.recipes.find(x=>x.id===recipeId);
+  const op = document.getElementById("componiOp").value.trim();
+  const note = document.getElementById("componiNote").value.trim();
+  if(!op){ toast("Inserisci l'operatore"); return; }
+  const daScegliere = window._componiIngredienti.filter(x=>x.candidati && x.candidati.length && !x.produzioneId);
+  if(daScegliere.length){ toast(`❓ Scegli il lotto per: ${daScegliere.map(x=>x.ingrediente).join(", ")}`); return; }
+  const abb = window._componiAbbattuto || {attivo:false};
+  let abbattimento = null;
+  if(abb.attivo){
+    const temp = abb.temperatura!==""? parseFloat(abb.temperatura) : null;
+    const durata = abb.durata!==""? parseInt(abb.durata) : null;
+    const sogliaTemp = abb.tipo==="negativo" ? -18 : 3;
+    const sogliaDurata = abb.tipo==="negativo" ? 240 : 90;
+    const tempOk = temp!==null && (abb.tipo==="negativo"? temp<=sogliaTemp : temp<=sogliaTemp);
+    const durataOk = durata!==null && durata<=sogliaDurata;
+    abbattimento = { tipo: abb.tipo, temperatura: temp, durataMinuti: durata, conforme: !!(tempOk && durataOk) };
+  }
+  const rec = {
+    id: uid(), ricettaId: recipeId, ricettaNome: r.nome,
+    data: todayISO(), ora: nowTime(), operatore: op, note,
+    abbattuto: !!abb.attivo, abbattimento,
+    ingredientiUsati: window._componiIngredienti.map(x=>({...x}))
+  };
+  // Lotto interno del preparato + scheda P1 (tracciabilità a cascata)
+  const giorniBase = r.giorniConservazione!==undefined ? r.giorniConservazione : 3;
+  const giorniAbbattuto = r.giorniConservazioneAbbattuto!==undefined ? r.giorniConservazioneAbbattuto : giorniBase;
+  const giorni = abb.attivo ? giorniAbbattuto : giorniBase;
+  const oggi = todayISO();
+  const progr = logs.produzione.filter(p=>p.semilavorato && p.ricettaId===recipeId && p.dataConsegna===oggi).length + 1;
+  const lottoInterno = `PROD ${fmtDate(oggi)} · ${r.nome} · sett. ${isoWeekOfYear(oggi)} · L${String(progr).padStart(2,'0')}`;
+  const qta = (document.getElementById("componiQta")||{}).value || "";
+  const semilavorato = {
+    id: uid(),
+    prodotto: r.nome,
+    lotto: lottoInterno,
+    lottoStimato: false,
+    semilavorato: true,
+    composizioneId: rec.id,
+    ricettaId: recipeId,
+    quantita: qta.trim(),
+    fornitore: "Produzione interna",
+    ddt: "",
+    dataConsegna: oggi,
+    dataInizioProduzione: oggi,
+    dataScadenza: addDaysISO(oggi, giorni),
+    operatore: op,
+    abbattuto: !!abb.attivo,
+    abbattimento,
+    origineLotti: rec.ingredientiUsati.map(i=>({
+      ingrediente: i.ingrediente,
+      lotto: i.lotto,
+      fornitore: i.fornitore,
+      produzioneId: i.produzioneId||null
+    })),
+    note: `Preparato internamente il ${fmtDate(oggi)} da ${op}. Conservazione ${giorni} giorni${abb.attivo? ' (prodotto abbattuto — '+(abb.tipo==="negativo"?"negativo":"positivo")+(abbattimento.temperatura!==null? ', '+abbattimento.temperatura+'°C':'')+(abbattimento.durataMinuti!==null? ' in '+abbattimento.durataMinuti+' min':'')+')' : ''}. Ingredienti: ${rec.ingredientiUsati.map(i=>`${i.ingrediente} (lotto ${i.lotto||'n/d'})`).join("; ")}.`,
+    esaurito: false
+  };
+  rec.semilavoratoId = semilavorato.id;
+  rec.lottoProdotto = lottoInterno;
+  if(window._composizionePhoto){
+    rec.photoKey = "photo-composizione-"+rec.id;
+    DB.set(rec.photoKey, window._composizionePhoto, true).catch(()=>toast("⚠️ Errore di salvataggio foto"));
+    window._composizionePhoto = null;
+  }
+  logs.produzione.push(semilavorato);
+  saveLog("produzione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+
+  // Lotti di partenza segnati come esauriti, se richiesto dall'operatore
+  const daEsaurire = rec.ingredientiUsati.filter(i=>i.esaurisci && i.produzioneId);
+  if(daEsaurire.length){
+    daEsaurire.forEach(i=>{
+      const src = logs.produzione.find(p=>p.id===i.produzioneId);
+      if(src){ src.esaurito = true; src.dataEsaurimento = oggi; }
+    });
+    saveLog("produzione").catch(()=>{});
+  }
+
+  // Lotti PRECEDENTI della stessa ricetta selezionati come esauriti dall'operatore
+  const idVecchiEsauriti = Object.keys(window._componiEsaurisciVecchi||{}).filter(id=>window._componiEsaurisciVecchi[id]);
+  let numVecchiEsauriti = 0;
+  if(idVecchiEsauriti.length){
+    idVecchiEsauriti.forEach(id=>{
+      const vecchio = logs.produzione.find(p=>p.id===id);
+      if(vecchio && !vecchio.esaurito){ vecchio.esaurito = true; vecchio.dataEsaurimento = oggi; numVecchiEsauriti++; }
+    });
+    if(numVecchiEsauriti) saveLog("produzione").catch(()=>{});
+  }
+  window._componiEsaurisciVecchi = {};
+
+  logs.composizioni.push(rec);
+  activeTab="ricette"; closeSheet();
+  const mancanti = rec.ingredientiUsati.filter(i=>!i.lotto).length;
+  const avvisoAbb = abbattimento && !abbattimento.conforme ? " ⚠️ valori di abbattimento fuori soglia, da verificare" : "";
+  const avvisoEsauriti = numVecchiEsauriti? ` · ${numVecchiEsauriti} lotto/i precedente/i segnato/i esaurito/i` : "";
+  toast((mancanti? `Preparato registrato — ${mancanti} lotto/i inseriti a mano` : `Preparato registrato ✅ lotto interno creato`) + avvisoAbb + avvisoEsauriti);
+  saveLog("composizioni").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  await saveOperator(op);
+}
+function openComposizioneDetail(id){
+  const c = logs.composizioni.find(x=>x.id===id);
+  openSheet(c.ricettaNome, `
+    <p class="muted">${fmtDate(c.data)} · ${c.ora} · ${c.operatore}</p>
+    ${c.lottoProdotto? `<div class="card" style="padding:11px;background:var(--green-pale);border:none;margin-bottom:10px;">
+      <div style="font-weight:800;font-size:13px;">🏷️ Lotto interno prodotto</div>
+      <div class="muted" style="font-size:12px;margin-top:4px;">${c.lottoProdotto}</div>
+      ${c.semilavoratoId && logs.produzione.some(p=>p.id===c.semilavoratoId)? `<div class="rowbtns" style="margin-top:8px;">
+        <button class="printbtn" onclick="printEtichetta('${c.semilavoratoId}')">🏷️ Etichetta</button>
+        <button class="printbtn" onclick="printFiliera('${c.semilavoratoId}')">🔗 Catena</button>
+      </div>`:""}
+    </div>`:""}
+    ${c.abbattuto? `<div class="card" style="padding:11px;background:${c.abbattimento && c.abbattimento.conforme? 'var(--green-pale)':'var(--amber-pale)'};border:none;margin-bottom:10px;">
+      <div style="font-weight:800;font-size:13px;">❄️ Prodotto abbattuto — ${c.abbattimento && c.abbattimento.tipo==='negativo'? 'Negativo/surgelazione':'Positivo'}</div>
+      <div class="muted" style="font-size:12px;margin-top:4px;">${c.abbattimento && c.abbattimento.temperatura!==null? c.abbattimento.temperatura+'°C':'temperatura non registrata'} ${c.abbattimento && c.abbattimento.durataMinuti!==null? '· '+c.abbattimento.durataMinuti+' min':''}</div>
+      <div class="muted" style="font-size:12px;">${c.abbattimento && c.abbattimento.conforme? '✅ entro i valori di riferimento' : '⚠️ fuori dai valori di riferimento — verificare'}</div>
+    </div>`:""}
+    ${c.ingredientiUsati.map(i=>`
+      <div class="logrow"><div>
+        <div class="val" style="font-size:14px;">${i.ingrediente} ${i.lotto? (i.semilavorato?'🏷️':'✅'):'⚠️'}</div>
+        <div class="meta">Lotto: ${i.lotto||'non tracciato'} ${i.fornitore? '· '+i.fornitore:''}</div>
+      </div></div>
+    `).join("")}
+    ${c.note? `<p style="font-size:13px;margin-top:8px;">${c.note}</p>`:""}
+    ${c.photoKey? `<div id="composizioneDetailPhoto" style="margin-top:10px;"><span class="spinner"></span> Carico foto...</div>` : ""}
+    <div class="rowbtns"><button class="btn danger" onclick="deleteComposizione('${id}')">Elimina registrazione</button></div>
+  `, async ()=>{
+    if(!c.photoKey) return;
+    try{
+      const p = await DB.get(c.photoKey, true);
+      document.getElementById("composizioneDetailPhoto").innerHTML = p? `<img src="${p.value}" style="max-width:100%;border-radius:10px;">` : `<p class="muted">Foto non disponibile.</p>`;
+    }catch(e){
+      document.getElementById("composizioneDetailPhoto").innerHTML = `<p class="muted">Foto non disponibile.</p>`;
+    }
+  });
+}
+async function deleteComposizione(id){
+  const rec = logs.composizioni.find(x=>x.id===id);
+  logs.composizioni = logs.composizioni.filter(x=>x.id!==id);
+  activeTab="ricette"; closeSheet();
+  toast("Registrazione eliminata");
+  if(rec && rec.photoKey){
+    DB.delete(rec.photoKey, true).catch(()=>{});
+  }
+  saveLog("composizioni").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+}
+
+// ---------- COAI ----------
+const COAI_ITEMS = ["Escrementi di roditori","Blatte, ooteche","Esuvie – spoglie – resti artropodi","Ragnatele","Materiale non attinente all'attività","Crepe – buchi – spazi inaccessibili"];
+function renderCoai(){
+  const history = [...logs.coai].sort((a,b)=>(b.data).localeCompare(a.data)).slice(0,10);
+  const auditSt = coaiAuditStatus();
+  const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
+  $main.innerHTML = `
+    <div class="card ${auditCls}">
+      <div class="card-head"><h2>Controllo settimanale agenti infestanti (COAI)</h2>${printBtn('coai')}</div>
+      ${auditSt==='escalated'? `<div class="chip bad">🚨 Controllo settimanale non ancora fatto</div>`: auditSt==='notice'? `<div class="chip missing">⚠️ Da fare questa settimana</div>`:""}
+      <button class="btn block" onclick="openCoaiForm()">+ Nuovo controllo</button>
+    </div>
+    <div class="card">
+      <h2>Ultimi controlli</h2>
+      ${history.length? history.map(c=>`
+        <div class="logrow" onclick="openCoaiDetail('${c.id}')" style="cursor:pointer;"><div>
+          <div class="val">${fmtDate(c.data)} ${allCoaiOk(c)?'✅':'🔴'}</div>
+          <div class="meta">${c.operatore}</div>
+        </div><span class="muted">✏️</span></div>`).join("") : `<div class="empty">Nessun controllo registrato ancora.</div>`}
+    </div>
+  `;
+}
+function openCoaiDetail(id){
+  const c = logs.coai.find(x=>x.id===id);
+  openSheet(`Controllo COAI — ${fmtDate(c.data)}`, `
+    ${COAI_ITEMS.map(item=>`
+      <div style="margin-bottom:10px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:6px;">${item}</div>
+        <div class="conforme-toggle" data-item="${item}">
+          <button type="button" class="${c.checks[item]==='assente'?'sel-ok':''}" onclick="setCdCheck('${item.replace(/'/g,"\\'")}','assente',this)">Assente</button>
+          <button type="button" class="${c.checks[item]==='presente'?'sel-bad':''}" onclick="setCdCheck('${item.replace(/'/g,"\\'")}','presente',this)">Presente</button>
+        </div>
+      </div>`).join("")}
+    <label class="field">Zona (se presente qualcosa)</label><input type="text" id="cdZona" value="${c.zona||''}">
+    <label class="field">Operatore</label><input type="text" id="cdOp" value="${c.operatore}">
+    <div class="rowbtns">
+      <button class="btn block" onclick="editCoai('${id}')">Salva modifiche</button>
+      <button class="btn danger" onclick="deleteCoai('${id}')">Elimina controllo</button>
+    </div>
+  `);
+  window._cdChecks = {...c.checks};
+}
+function setCdCheck(item, val, btn){
+  window._cdChecks[item] = val;
+  const group = btn.parentElement;
+  [...group.children].forEach(b=>b.classList.remove("sel-ok","sel-bad"));
+  btn.classList.add(val==="assente"?"sel-ok":"sel-bad");
+}
+async function editCoai(id){
+  const c = logs.coai.find(x=>x.id===id);
+  const op = document.getElementById("cdOp").value.trim();
+  if(!op){ toast("Inserisci l'operatore"); return; }
+  c.zona = document.getElementById("cdZona").value.trim();
+  c.operatore = op;
+  c.checks = window._cdChecks;
+  saveLog("coai").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Controllo aggiornato");
+  activeTab="coai"; closeSheet();
+}
+async function deleteCoai(id){
+  logs.coai = logs.coai.filter(x=>x.id!==id);
+  saveLog("coai").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Controllo eliminato");
+  activeTab="coai"; closeSheet();
+}
+function allCoaiOk(c){ return COAI_ITEMS.every(i=>c.checks[i]==="assente"); }
+function openCoaiForm(){
+  openSheet("Nuovo controllo — COAI", `
+    ${COAI_ITEMS.map(item=>`
+      <div style="margin-bottom:10px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:6px;">${item}</div>
+        <div class="conforme-toggle" data-item="${item}">
+          <button type="button" onclick="setCoaiCheck('${item.replace(/'/g,"\\'")}','assente',this)">Assente</button>
+          <button type="button" onclick="setCoaiCheck('${item.replace(/'/g,"\\'")}','presente',this)">Presente</button>
+        </div>
+      </div>`).join("")}
+    <label class="field">Zona (se presente qualcosa)</label><input type="text" id="coaiZona">
+    <label class="field">Operatore</label><input type="text" id="coaiOp" value="${lastOperator}">
+    <div class="rowbtns"><button class="btn block" onclick="saveCoai()">Salva controllo</button></div>
+  `);
+  window._coaiChecks = {};
+}
+function setCoaiCheck(item, val, btn){
+  window._coaiChecks[item] = val;
+  const group = btn.parentElement;
+  [...group.children].forEach(b=>b.classList.remove("sel-ok","sel-bad"));
+  btn.classList.add(val==="assente"?"sel-ok":"sel-bad");
+}
+async function saveCoai(){
+  const zona = document.getElementById("coaiZona").value.trim();
+  const op = document.getElementById("coaiOp").value.trim();
+  const checks = window._coaiChecks||{};
+  if(!op){ toast("Inserisci l'operatore"); return; }
+  if(Object.keys(checks).length < COAI_ITEMS.length){ toast("Completa tutte le voci"); return; }
+  const rec = {id:uid(), data:todayISO(), checks, zona, operatore:op};
+  logs.coai.push(rec);
+  saveLog("coai").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  saveOperator(op).catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast(allCoaiOk(rec)? "Controllo registrato ✅" : "Registrato — presenza rilevata ⚠️");
+  if(!allCoaiOk(rec)){
+    const badItems = COAI_ITEMS.filter(i=>checks[i]==="presente").join(", ");
+    prefillNoco("Controllo infestanti", `Rilevata presenza: ${badItems}. Zona: ${zona||'—'}.`, op);
+  }
+  closeSheet();
+}
+
+// ---------- NOCO ----------
+function renderNoco(){
+  const sorted = [...logs.noco].sort((a,b)=>(b.data).localeCompare(a.data));
+  $main.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h2>Verbali di non conformità (NOCO)</h2>${printBtn('noco')}</div>
+      <button class="btn danger block" onclick="openNocoForm()">+ Nuovo verbale</button>
+    </div>
+    <div class="card">
+      <h2>Elenco verbali</h2>
+      ${sorted.length? sorted.map(n=>`
+        <div class="noco-card ${n.stato}">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div><b>Verbale N. ${n.verbale}</b> — ${n.matrice}</div>
+            <span class="badge-stato ${n.stato}">${n.stato==='aperta'?'APERTA':'CHIUSA'}</span>
+          </div>
+          <div class="muted" style="margin:6px 0;">${fmtDate(n.data)} · ${n.redattoDa}</div>
+          <div style="font-size:13px;margin-bottom:4px;"><b>Descrizione:</b> ${n.descrizione}</div>
+          ${n.azioneCorrettiva? `<div style="font-size:13px;margin-bottom:4px;"><b>Azione correttiva:</b> ${n.azioneCorrettiva}</div>`:""}
+          ${n.efficacia? `<div style="font-size:13px;margin-bottom:4px;"><b>Efficacia:</b> ${n.efficacia}</div>`:""}
+          <div class="rowbtns" style="margin-top:8px;">
+            ${n.stato==='aperta'? `<button class="btn secondary" onclick="openNocoClose('${n.id}')">Chiudi verbale</button>`:""}
+            <button class="iconbtn" onclick="openNocoEdit('${n.id}')">Modifica</button>
+            <button class="iconbtn" onclick="deleteNoco('${n.id}')">Elimina</button>
+          </div>
+        </div>
+      `).join("") : `<div class="empty">Nessuna non conformità registrata.</div>`}
+    </div>
+  `;
+}
+function prefillNoco(matrice, descrizione, operatore){
+  window._nocoPrefill = {matrice, descrizione, operatore};
+  openNocoForm();
+}
+function openNocoForm(){
+  const pre = window._nocoPrefill || {};
+  window._nocoPrefill = null;
+  openSheet("Nuovo verbale di non conformità", `
+    <label class="field">Matrice alimentare / fase del processo</label>
+    <input type="text" id="nocoMatrice" value="${pre.matrice||''}">
+    <label class="field">Descrizione della non conformità</label>
+    <textarea id="nocoDescrizione">${pre.descrizione||''}</textarea>
+    <label class="field">Redatto da</label>
+    <input type="text" id="nocoRedatto" value="${pre.operatore||lastOperator}">
+    <div class="rowbtns"><button class="btn danger block" onclick="saveNoco()">Salva verbale</button></div>
+  `);
+}
+async function saveNoco(){
+  const matrice = document.getElementById("nocoMatrice").value.trim();
+  const descrizione = document.getElementById("nocoDescrizione").value.trim();
+  const redattoDa = document.getElementById("nocoRedatto").value.trim();
+  if(!matrice || !descrizione || !redattoDa){ toast("Compila tutti i campi"); return; }
+  config.nocoCounter = (config.nocoCounter||0) + 1;
+  saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  const rec = {id:uid(), verbale:config.nocoCounter, matrice, descrizione, data:todayISO(), redattoDa, stato:"aperta", azioneCorrettiva:"", efficacia:""};
+  logs.noco.push(rec);
+  saveLog("noco").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Verbale registrato");
+  activeTab="noco"; closeSheet();
+}
+function openNocoEdit(id){
+  const n = logs.noco.find(x=>x.id===id);
+  openSheet(`Modifica verbale N. ${n.verbale}`, `
+    <label class="field">Matrice alimentare / fase del processo</label>
+    <input type="text" id="neMatrice" value="${n.matrice}">
+    <label class="field">Descrizione della non conformità</label>
+    <textarea id="neDescrizione">${n.descrizione}</textarea>
+    <label class="field">Redatto da</label>
+    <input type="text" id="neRedatto" value="${n.redattoDa}">
+    <div class="rowbtns"><button class="btn block" onclick="editNoco('${id}')">Salva modifiche</button></div>
+  `);
+}
+async function editNoco(id){
+  const n = logs.noco.find(x=>x.id===id);
+  const matrice = document.getElementById("neMatrice").value.trim();
+  const descrizione = document.getElementById("neDescrizione").value.trim();
+  const redattoDa = document.getElementById("neRedatto").value.trim();
+  if(!matrice || !descrizione || !redattoDa){ toast("Compila tutti i campi"); return; }
+  n.matrice = matrice; n.descrizione = descrizione; n.redattoDa = redattoDa;
+  saveLog("noco").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Verbale aggiornato");
+  activeTab="noco"; closeSheet();
+}
+async function deleteNoco(id){
+  logs.noco = logs.noco.filter(x=>x.id!==id);
+  saveLog("noco").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Verbale eliminato");
+  activeTab="noco"; render();
+}
+function openNocoClose(id){
+  const n = logs.noco.find(x=>x.id===id);
+  openSheet(`Chiudi verbale N. ${n.verbale}`, `
+    <label class="field">Azione correttiva adottata</label>
+    <textarea id="nocoAzione">${n.azioneCorrettiva||''}</textarea>
+    <label class="field">Efficacia dell'azione correttiva</label>
+    <textarea id="nocoEfficacia">${n.efficacia||''}</textarea>
+    <div class="rowbtns"><button class="btn block" onclick="closeNoco('${id}')">Conferma chiusura</button></div>
+  `);
+}
+async function closeNoco(id){
+  const n = logs.noco.find(x=>x.id===id);
+  n.azioneCorrettiva = document.getElementById("nocoAzione").value.trim();
+  n.efficacia = document.getElementById("nocoEfficacia").value.trim();
+  if(!n.azioneCorrettiva){ toast("Descrivi l'azione correttiva"); return; }
+  n.stato = "chiusa";
+  saveLog("noco").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Verbale chiuso");
+  activeTab="noco"; closeSheet();
+}
+
+// ---------- IMPOSTAZIONI ----------
+function renderImpostazioni(){
+  $main.innerHTML = `
+    <div class="card">
+      <h2>Punti di controllo temperatura</h2>
+      ${config.points.map(p=>`
+        <div class="logrow">
+          <div>
+            <div class="val">${pointIcon(p.type)} ${p.name}</div>
+            <div class="meta">${p.type} · soglia ${p.type==='freezer'? '≤ '+p.max : p.min+'/'+p.max}°C</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="iconbtn" style="font-size:16px;padding:8px 11px;" onclick="openEditPoint('${p.id}')" title="Modifica o elimina">✏️</button>
+          </div>
+        </div>`).join("")}
+      <div class="rowbtns"><button class="btn secondary block" onclick="openAddPoint()">+ Aggiungi punto di controllo</button></div>
+    </div>
+    <div class="card">
+      <h2>Voci di sanificazione</h2>
+      ${["giornaliera","settimanale","mensile"].map(freq=>`
+        <h3>${freq[0].toUpperCase()+freq.slice(1)}</h3>
+        ${(config.sanifItems[freq]||[]).map(item=>`
+          <div class="logrow"><div class="val" style="font-size:13px;">${item}</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="iconbtn" style="font-size:16px;padding:8px 11px;" onclick="openEditSanifItem('${freq}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>
+          </div></div>
+        `).join("")}
+        <div class="rowbtns"><button class="iconbtn" onclick="openAddSanifItem('${freq}')">+ Aggiungi voce ${freq}</button></div>
+      `).join("")}
+    </div>
+    <div class="card">
+      <h2>Esporta dati</h2>
+      <p class="muted">Scarica i registri in formato CSV per stampa o archiviazione ai fini dell'ispezione ASL.</p>
+      <div class="rowbtns">
+        <button class="iconbtn" onclick="exportCsv('temperature')">Temperature</button>
+        <button class="iconbtn" onclick="exportCsv('sanificazione')">Sanificazione</button>
+        <button class="iconbtn" onclick="exportCsv('moma')">MOMA</button>
+        <button class="iconbtn" onclick="exportCsv('coai')">COAI</button>
+        <button class="iconbtn" onclick="exportCsv('noco')">NOCO</button>
+        <button class="iconbtn" onclick="exportCsv('produzione')">Produzione / Lotti</button>
+        <button class="iconbtn" onclick="exportCsv('composizioni')">Ricette / Composizioni</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>☁️ Archiviazione dati</h2>
+      <p class="muted">Modalità attuale: <b>${dbModeLabel()}</b>${DB.mode==="local"? " — attenzione: i dati restano solo su questo dispositivo." : ""}${!canUseClaudeAI()? " · lettura foto: OCR gratuito (meno preciso della lettura AI)" : " · lettura foto: AI Claude"}</p>
+      <button class="btn secondary block" onclick="openDbConfig()">Configura database condiviso</button>
+    </div>
+    <div class="card">
+      <h2>🖨️ Stampa registri (mese corrente)</h2>
+      <p class="muted">Genera la versione stampabile della scheda, con intestazione e spazio firme.</p>
+      <button class="btn block" onclick="printFascicolo()" style="margin-bottom:12px;">📋 Fascicolo completo per ispezione</button>
+      <p class="muted" style="margin-top:0;">Tutti i registri del mese in un unico documento, preceduti dal riepilogo di conformità.</p>
+      <div class="rowbtns">
+        <button class="printbtn" onclick="printScheda('temperature')">🖨️ Temperature</button>
+        <button class="printbtn" onclick="printScheda('sanificazione')">🖨️ Sanificazione</button>
+        <button class="printbtn" onclick="printScheda('moma')">🖨️ MOMA</button>
+        <button class="printbtn" onclick="printScheda('coai')">🖨️ Infestanti</button>
+        <button class="printbtn" onclick="printScheda('noco')">🖨️ NOCO</button>
+        <button class="printbtn" onclick="printScheda('produzione')">🖨️ Produzione / Lotti</button>
+        <button class="printbtn" onclick="printScheda('ricette')">🖨️ Ricette</button>
+      </div>
+    </div>
+    <div class="card">
+      <p class="muted">⚠️ I dati inseriti in questa app sono condivisi tra tutti gli operatori che la utilizzano. Le soglie e le voci di controllo devono corrispondere al piano di autocontrollo HACCP redatto dal vostro consulente — verificale prima dell'uso in produzione.</p>
+    </div>
+  `;
+}
+function openAddPoint(){
+  openSheet("Nuovo punto di controllo", `
+    <label class="field">Nome (es. Frigo Latticini)</label><input type="text" id="npName">
+    <label class="field">Tipo</label>
+    <select id="npType">
+      <option value="frigo">Frigorifero</option>
+      <option value="freezer">Freezer / Abbattitore</option>
+      <option value="caldo">Banco caldo</option>
+    </select>
+    <label class="field">Temperatura minima (°C) — non usata per freezer</label><input type="number" id="npMin" value="0">
+    <label class="field">Temperatura massima (°C) / soglia freezer</label><input type="number" id="npMax" value="4">
+    <div class="rowbtns"><button class="btn block" onclick="addPoint()">Aggiungi</button></div>
+  `);
+}
+async function addPoint(){
+  const name = document.getElementById("npName").value.trim();
+  const type = document.getElementById("npType").value;
+  const min = parseFloat(document.getElementById("npMin").value);
+  const max = parseFloat(document.getElementById("npMax").value);
+  if(!name){ toast("Inserisci un nome"); return; }
+  config.points.push({id:uid(), name, type, min, max});
+  activeTab = (activeTab==="temperature") ? "temperature" : "impostazioni";
+  closeSheet();
+  toast("Punto aggiunto");
+  try{ await saveConfig(); }
+  catch(e){ toast("⚠️ Errore nel salvataggio, riprova"); }
+}
+async function deletePoint(id){
+  config.points = config.points.filter(p=>p.id!==id);
+  saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Punto eliminato");
+  activeTab = (activeTab==="temperature") ? "temperature" : "impostazioni";
+  closeSheet();
+}
+function openEditPoint(id){
+  const p = config.points.find(x=>x.id===id);
+  openSheet(`Modifica — ${p.name}`, `
+    <label class="field">Nome</label><input type="text" id="epName" value="${p.name}">
+    <label class="field">Tipo</label>
+    <select id="epType">
+      <option value="frigo" ${p.type==='frigo'?'selected':''}>Frigorifero</option>
+      <option value="freezer" ${p.type==='freezer'?'selected':''}>Freezer / Abbattitore</option>
+      <option value="caldo" ${p.type==='caldo'?'selected':''}>Banco caldo</option>
+    </select>
+    <label class="field">Temperatura minima (°C) — non usata per freezer</label><input type="number" id="epMin" value="${p.min}">
+    <label class="field">Temperatura massima (°C) / soglia freezer</label><input type="number" id="epMax" value="${p.max}">
+    <div class="rowbtns">
+      <button class="btn block" onclick="editPoint('${id}')">Salva modifiche</button>
+      <button class="btn danger" onclick="deletePoint('${id}')">Elimina punto di controllo</button>
+    </div>
+  `);
+}
+async function editPoint(id){
+  const p = config.points.find(x=>x.id===id);
+  const name = document.getElementById("epName").value.trim();
+  if(!name){ toast("Inserisci un nome"); return; }
+  p.name = name;
+  p.type = document.getElementById("epType").value;
+  p.min = parseFloat(document.getElementById("epMin").value);
+  p.max = parseFloat(document.getElementById("epMax").value);
+  saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Punto aggiornato");
+  activeTab = (activeTab==="temperature") ? "temperature" : "impostazioni";
+  closeSheet();
+}
+function openAddSanifItem(freq){
+  openSheet(`Nuova voce — ${freq}`, `
+    <label class="field">Descrizione voce (es. "Cella frigo carni")</label><input type="text" id="siName">
+    <div class="rowbtns"><button class="btn block" onclick="addSanifItem('${freq}')">Aggiungi</button></div>
+  `);
+}
+async function addSanifItem(freq){
+  const name = document.getElementById("siName").value.trim();
+  if(!name){ toast("Inserisci una descrizione"); return; }
+  if(!config.sanifItems[freq]) config.sanifItems[freq]=[];
+  config.sanifItems[freq].push(name);
+  saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Punto di sanificazione aggiunto");
+  const backTo = activeTab==="sanificazione" ? "sanificazione" : "impostazioni";
+  activeTab=backTo; closeSheet();
+}
+function openEditSanifItem(freq, item){
+  openSheet(`Modifica voce — ${freq}`, `
+    <label class="field">Descrizione voce</label><input type="text" id="esiName" value="${item}">
+    <div class="rowbtns">
+      <button class="btn block" onclick="editSanifItem('${freq}','${item.replace(/'/g,"\\'")}')">Salva modifiche</button>
+      <button class="btn danger" onclick="deleteSanifItem('${freq}','${item.replace(/'/g,"\\'")}')">Elimina voce</button>
+    </div>
+  `);
+}
+async function editSanifItem(freq, oldItem){
+  const newName = document.getElementById("esiName").value.trim();
+  if(!newName){ toast("Inserisci una descrizione"); return; }
+  const idx = config.sanifItems[freq].indexOf(oldItem);
+  if(idx>=0) config.sanifItems[freq][idx] = newName;
+  saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  logs.sanificazione.forEach(r=>{ if(r.frequenza===freq && r.item===oldItem) r.item = newName; });
+  saveLog("sanificazione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Voce aggiornata");
+  activeTab = (activeTab==="sanificazione") ? "sanificazione" : "impostazioni";
+  closeSheet();
+}
+async function deleteSanifItem(freq, item){
+  config.sanifItems[freq] = config.sanifItems[freq].filter(i=>i!==item);
+  saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Voce eliminata");
+  activeTab = (activeTab==="sanificazione") ? "sanificazione" : "impostazioni";
+  closeSheet();
+}
+// ---------- STAMPA SCHEDE ----------
+function monthKeyNow(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function printWindow(title, bodyHtml){
+  const w = window.open("", "_blank");
+  if(!w){ toast("⚠️ Consenti i popup per stampare"); return; }
+  const monthLbl = MONTHS[new Date().getMonth()] + " " + new Date().getFullYear();
+  w.document.write(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>${title}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#222;margin:24px;font-size:12px;}
+    h1{font-size:18px;margin:0 0 2px 0;}
+    .sub{color:#666;font-size:11px;margin-bottom:14px;}
+    h2{font-size:14px;margin:18px 0 6px 0;border-bottom:2px solid #1F6F4A;padding-bottom:3px;color:#155334;}
+    table{width:100%;border-collapse:collapse;margin-bottom:12px;}
+    th,td{border:1px solid #999;padding:4px 6px;text-align:left;font-size:11px;vertical-align:top;}
+    th{background:#E4F1E9;color:#155334;}
+    .ok{color:#1F6F4A;font-weight:bold;}
+    .bad{color:#C0392B;font-weight:bold;}
+    .empty{color:#888;font-style:italic;padding:8px 0;}
+    .firma{margin-top:36px;display:flex;justify-content:space-between;gap:40px;}
+    .firma div{flex:1;border-top:1px solid #222;padding-top:5px;font-size:11px;color:#444;}
+    @media print{.noprint{display:none;}}
+  </style></head><body>
+  <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
+  <div class="sub">${title} · Periodo: ${monthLbl} · Stampato il ${fmtDate(todayISO())} alle ${nowTime()}</div>
+  ${bodyHtml}
+  <div class="firma"><div>Firma dell'operatore</div><div>Firma del responsabile dell'autocontrollo</div></div>
+  <div class="noprint" style="margin-top:24px;"><button onclick="window.print()" style="padding:10px 18px;font-size:14px;cursor:pointer;">🖨️ Stampa</button></div>
+  </body></html>`);
+  w.document.close();
+  setTimeout(()=>{ try{ w.print(); }catch(e){} }, 400);
+}
+function esc(v){ return (v===undefined||v===null)? "—" : String(v).replace(/</g,"&lt;"); }
+function tbl(headers, rows){
+  if(!rows.length) return `<div class="empty">Nessuna registrazione nel mese corrente.</div>`;
+  return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
+  <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+function printScheda(kind){
+  const mk = monthKeyNow();
+  const inMonth = r => (r.data||"").startsWith(mk);
+  let title = "", body = "";
+  if(kind==="temperature"){
+    title = "Scheda temperature (COTE)";
+    body = config.points.map(p=>{
+      const rows = logs.temperature.filter(r=>r.pointId===p.id && inMonth(r))
+        .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
+        .map(r=>[fmtDate(r.data), r.ora, esc(r.valore)+" °C", r.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`, esc(r.operatore), r.fonte==="foto"?"📸 foto":"manuale"]);
+      const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}°C / ${p.max}°C`;
+      return `<h2>${esc(p.name)} — soglia ${rangeLbl}</h2>` + tbl(["Data","Ora","Valore","Esito","Operatore","Fonte"], rows);
+    }).join("");
+  } else if(kind==="sanificazione"){
+    title = "Scheda sanificazione (SAPU)";
+    body = ["giornaliera","settimanale","mensile"].map(freq=>{
+      const rows = logs.sanificazione.filter(r=>r.frequenza===freq && inMonth(r))
+        .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
+        .map(r=>[fmtDate(r.data), r.ora, esc(r.item), esc(r.operatore)]);
+      return `<h2>Sanificazione ${freq}</h2>` + tbl(["Data","Ora","Voce","Operatore"], rows);
+    }).join("");
+  } else if(kind==="moma"){
+    title = "Controllo matrici in ingresso (MOMA)";
+    const rows = logs.moma.filter(inMonth).sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
+      .map(m=>[fmtDate(m.data), m.ora, esc(m.fornitore), esc(m.ddt),
+        MOMA_CHECKS.map(c=>`${c.label}: ${m.checks[c.key]==="conforme"? `<span class="ok">C</span>`:`<span class="bad">NC</span>`}`).join("<br>"),
+        esc(m.note), esc(m.operatore)]);
+    body = tbl(["Data","Ora","Fornitore","DDT","Verifiche","Note","Operatore"], rows);
+  } else if(kind==="produzione"){
+    title = "Registro produzione e tracciabilità lotti (P1)";
+    const attivi = logs.produzione.filter(p=>!p.esaurito);
+    const rowsOf = list => list.sort((a,b)=>(a.dataScadenza||"").localeCompare(b.dataScadenza||""))
+      .map(p=>[esc(p.prodotto), esc(p.lotto), esc(p.quantita), esc(p.fornitore), esc(p.ddt),
+        p.dataConsegna? fmtDate(p.dataConsegna):"—", p.dataScadenza? fmtDate(p.dataScadenza):"—", esc(p.note)]);
+    body = `<h2>Prodotti attivi</h2>` + tbl(["Prodotto","Lotto","Quantità","Fornitore","DDT","Consegna","Scadenza","Note"], rowsOf(attivi))
+      + `<h2>Esauriti (mese corrente)</h2>` + tbl(["Prodotto","Lotto","Quantità","Fornitore","DDT","Consegna","Scadenza","Note"],
+        rowsOf(logs.produzione.filter(p=>p.esaurito && (p.dataScadenza||"").startsWith(mk))));
+  } else if(kind==="ricette"){
+    title = "Ricette e composizioni";
+    body = `<h2>Ricette base</h2>` + tbl(["Ricetta","Ingredienti"],
+      (config.recipes||[]).map(r=>[esc(r.nome), (r.ingredienti||[]).map(i=>esc(i.nome||i)).join(", ")]))
+      + `<h2>Composizioni registrate (mese corrente)</h2>` + tbl(["Data","Ora","Ricetta","Ingredienti / Lotti","Operatore","Note"],
+        logs.composizioni.filter(inMonth).sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
+          .map(c=>[fmtDate(c.data), c.ora, esc(c.ricettaNome),
+            (c.ingredientiUsati||[]).map(i=>`${esc(i.nome)} (lotto: ${esc(i.lotto)||"—"})`).join("<br>"),
+            esc(c.operatore), esc(c.note)]));
+  } else if(kind==="coai"){
+    title = "Controllo agenti infestanti (COAI)";
+    const rows = logs.coai.filter(inMonth).sort((a,b)=>a.data.localeCompare(b.data))
+      .map(c=>[fmtDate(c.data), esc(c.zona),
+        Object.entries(c.checks||{}).map(([k,v])=>`${esc(k)}: ${v==="assente"? `<span class="ok">assente</span>`:`<span class="bad">PRESENZA</span>`}`).join("<br>"),
+        esc(c.operatore)]);
+    body = tbl(["Data","Zona","Verifiche","Operatore"], rows);
+  } else if(kind==="noco"){
+    title = "Verbali di non conformità (NOCO)";
+    const rows = logs.noco.filter(inMonth).sort((a,b)=>a.data.localeCompare(b.data))
+      .map(n=>[`N. ${n.verbale}`, fmtDate(n.data), esc(n.matrice), esc(n.descrizione),
+        esc(n.azioneCorrettiva), esc(n.efficacia),
+        n.stato==="aperta"? `<span class="bad">APERTA</span>`:`<span class="ok">CHIUSA</span>`, esc(n.redattoDa)]);
+    body = tbl(["Verbale","Data","Matrice/Oggetto","Descrizione","Azione correttiva","Verifica efficacia","Stato","Redatto da"], rows);
+  }
+  printWindow(title, body);
+}
+function printBtn(kind){
+  return `<button class="printbtn" onclick="printScheda('${kind}')" title="Stampa la scheda">🖨️ Stampa</button>`;
+}
+
+// ---------- FASCICOLO COMPLETO PER ISPEZIONE ----------
+function schedaBody(kind){
+  const mk = monthKeyNow();
+  const inMonth = r => (r.data||"").startsWith(mk);
+  if(kind==="temperature"){
+    return config.points.map(p=>{
+      const rows = logs.temperature.filter(r=>r.pointId===p.id && inMonth(r))
+        .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
+        .map(r=>[fmtDate(r.data), r.ora, esc(r.valore)+" °C", r.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`, esc(r.operatore), r.fonte==="foto"?"foto":"manuale"]);
+      const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : p.type==="hot" ? `≥ ${p.min}°C` : `${p.min}°C / ${p.max}°C`;
+      return `<h2>${esc(p.name)} — soglia ${rangeLbl}</h2>` + tbl(["Data","Ora","Valore","Esito","Operatore","Fonte"], rows);
+    }).join("");
+  }
+  if(kind==="sanificazione"){
+    return ["giornaliera","settimanale","mensile"].map(freq=>{
+      const rows = logs.sanificazione.filter(r=>r.frequenza===freq && inMonth(r))
+        .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
+        .map(r=>[fmtDate(r.data), r.ora, esc(r.item), esc(r.operatore)]);
+      return `<h2>Sanificazione ${freq}</h2>` + tbl(["Data","Ora","Voce","Operatore"], rows);
+    }).join("");
+  }
+  if(kind==="moma"){
+    const rows = logs.moma.filter(inMonth).sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
+      .map(m=>[fmtDate(m.data), m.ora, esc(m.fornitore), esc(m.ddt),
+        MOMA_CHECKS.map(c=>`${c.label}: ${m.checks[c.key]==="conforme"? `<span class="ok">C</span>`:`<span class="bad">NC</span>`}`).join("<br>"),
+        esc(m.note), esc(m.operatore)]);
+    return tbl(["Data","Ora","Fornitore","DDT","Verifiche","Note","Operatore"], rows);
+  }
+  if(kind==="produzione"){
+    const rowsOf = list => list.sort((a,b)=>(a.dataScadenza||"").localeCompare(b.dataScadenza||""))
+      .map(p=>[esc(p.prodotto), esc(p.lotto)+(p.lottoStimato?" *":""), esc(p.quantita), esc(p.fornitore), esc(p.ddt),
+        p.dataConsegna? fmtDate(p.dataConsegna):"—", p.dataScadenza? fmtDate(p.dataScadenza):"—"]);
+    const head = ["Prodotto","Lotto","Quantità","Fornitore","DDT","Consegna","Scadenza"];
+    return `<h2>Prodotti attivi</h2>` + tbl(head, rowsOf(logs.produzione.filter(p=>!p.esaurito)))
+      + `<h2>Esauriti (mese corrente)</h2>` + tbl(head, rowsOf(logs.produzione.filter(p=>p.esaurito && (p.dataScadenza||"").startsWith(mk))))
+      + `<div style="font-size:10px;color:#666;">* lotto non riportato in bolla: tracciabilità garantita da numero e data di emissione del DDT e settimana dell'anno.</div>`;
+  }
+  if(kind==="ricette"){
+    return `<h2>Ricette base</h2>` + tbl(["Ricetta","Ingredienti"],
+      (config.recipes||[]).map(r=>[esc(r.nome), (r.ingredienti||[]).map(i=>esc(i.nome||i)).join(", ")]))
+      + `<h2>Composizioni registrate</h2>` + tbl(["Data","Ora","Ricetta","Ingredienti / Lotti","Operatore"],
+        logs.composizioni.filter(inMonth).sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
+          .map(c=>[fmtDate(c.data), c.ora, esc(c.ricettaNome),
+            (c.ingredientiUsati||[]).map(i=>`${esc(i.nome||i.ingrediente)} (lotto: ${esc(i.lotto)||"—"})`).join("<br>"),
+            esc(c.operatore)]));
+  }
+  if(kind==="coai"){
+    return tbl(["Data","Zona","Verifiche","Operatore"],
+      logs.coai.filter(inMonth).sort((a,b)=>a.data.localeCompare(b.data))
+        .map(c=>[fmtDate(c.data), esc(c.zona),
+          Object.entries(c.checks||{}).map(([k,v])=>`${esc(k)}: ${v==="assente"? `<span class="ok">assente</span>`:`<span class="bad">PRESENZA</span>`}`).join("<br>"),
+          esc(c.operatore)]));
+  }
+  if(kind==="noco"){
+    return tbl(["Verbale","Data","Matrice/Oggetto","Descrizione","Azione correttiva","Verifica efficacia","Stato","Redatto da"],
+      logs.noco.filter(inMonth).sort((a,b)=>a.data.localeCompare(b.data))
+        .map(n=>[`N. ${n.verbale}`, fmtDate(n.data), esc(n.matrice), esc(n.descrizione),
+          esc(n.azioneCorrettiva), esc(n.efficacia),
+          n.stato==="aperta"? `<span class="bad">APERTA</span>`:`<span class="ok">CHIUSA</span>`, esc(n.redattoDa)]));
+  }
+  return "";
+}
+function printFascicolo(){
+  const mk = monthKeyNow();
+  const inMonth = r => (r.data||"").startsWith(mk);
+  const temps = logs.temperature.filter(inMonth);
+  const tempNC = temps.filter(r=>!r.conforme);
+  const sanif = logs.sanificazione.filter(inMonth);
+  const momaM = logs.moma.filter(inMonth);
+  const momaNC = momaM.filter(m=>MOMA_CHECKS.some(c=>m.checks[c.key]==="non_conforme"));
+  const coaiM = logs.coai.filter(inMonth);
+  const coaiNC = coaiM.filter(c=>Object.values(c.checks||{}).some(v=>v!=="assente"));
+  const nocoM = logs.noco.filter(inMonth);
+  const nocoAperte = nocoM.filter(n=>n.stato==="aperta");
+  const pct = temps.length ? Math.round((temps.length-tempNC.length)/temps.length*100) : null;
+  const lottiStimati = logs.produzione.filter(p=>p.lottoStimato && !p.esaurito).length;
+
+  const riepilogo = `
+  <h2>Riepilogo del periodo</h2>
+  <table>
+    <thead><tr><th>Registro</th><th>Registrazioni</th><th>Esito</th></tr></thead>
+    <tbody>
+      <tr><td>Temperature (COTE)</td><td>${temps.length}</td>
+        <td>${tempNC.length? `<span class="bad">${tempNC.length} fuori soglia</span> — conformità ${pct}%` : `<span class="ok">tutte conformi</span>`}</td></tr>
+      <tr><td>Sanificazione (SAPU)</td><td>${sanif.length}</td><td>${sanif.length? `<span class="ok">registrate con foto di conferma</span>`:"—"}</td></tr>
+      <tr><td>Matrici in ingresso (MOMA)</td><td>${momaM.length}</td>
+        <td>${momaNC.length? `<span class="bad">${momaNC.length} consegne con anomalie</span>`:`<span class="ok">tutte conformi</span>`}</td></tr>
+      <tr><td>Agenti infestanti (COAI)</td><td>${coaiM.length}</td>
+        <td>${coaiNC.length? `<span class="bad">${coaiNC.length} controlli con presenze</span>`:`<span class="ok">nessuna presenza rilevata</span>`}</td></tr>
+      <tr><td>Prodotti tracciati (P1)</td><td>${logs.produzione.filter(p=>!p.esaurito).length} attivi</td>
+        <td>${lottiStimati? `${lottiStimati} con lotto derivato dal DDT`:`<span class="ok">tutti con lotto di fornitura</span>`}</td></tr>
+      <tr><td>Non conformità (NOCO)</td><td>${nocoM.length}</td>
+        <td>${nocoAperte.length? `<span class="bad">${nocoAperte.length} ancora aperte</span>`:`<span class="ok">tutte chiuse</span>`}</td></tr>
+    </tbody>
+  </table>
+  ${nocoAperte.length? `<div style="font-size:11px;color:#C0392B;margin-bottom:10px;">Attenzione: risultano verbali di non conformità ancora aperti. Verificare l'efficacia delle azioni correttive prima dell'archiviazione.</div>`:""}`;
+
+  const sezioni = [
+    ["Registro temperature (COTE)","temperature"],
+    ["Registro sanificazione (SAPU)","sanificazione"],
+    ["Controllo matrici in ingresso (MOMA)","moma"],
+    ["Produzione e tracciabilità lotti (P1)","produzione"],
+    ["Ricette e composizioni","ricette"],
+    ["Controllo agenti infestanti (COAI)","coai"],
+    ["Verbali di non conformità (NOCO)","noco"]
+  ].map(([titolo,kind])=>`<div style="page-break-before:always;"><h1 style="font-size:15px;margin:0 0 10px 0;">${titolo}</h1>${schedaBody(kind)}</div>`).join("");
+
+  printWindow("Fascicolo di autocontrollo — documentazione completa", riepilogo + sezioni);
+}
+// Stampa scheda mensile a griglia — temperatura di un punto
+function printTempMese(pointId){
+  const p = config.points.find(x=>x.id===pointId);
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}°C / ${p.max}°C`;
+  let rows = "";
+  for(let d=1; d<=daysInMonth; d++){
+    const iso = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const recs = logs.temperature.filter(r=>r.pointId===pointId && r.data===iso);
+    if(recs.length){
+      const last = recs[recs.length-1];
+      rows += `<tr><td>${d}</td><td class="${last.conforme?'ok':'bad'}">${last.valore}°C</td>
+        <td>${last.ora}</td><td>${esc(last.operatore)}</td>
+        <td>${last.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`}</td></tr>`;
+    } else {
+      rows += `<tr><td>${d}</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`;
+    }
+  }
+  printWindow(`Scheda mensile temperature — ${p.name}`,
+    `<h2>${esc(p.name)} — soglia di conformità: ${rangeLbl}</h2>
+    <table><thead><tr><th>Giorno</th><th>Valore</th><th>Ora</th><th>Operatore</th><th>Esito</th></tr></thead>
+    <tbody>${rows}</tbody></table>`);
+}
+// Stampa scheda mensile a griglia — sanificazione per frequenza
+function sanifItemGridHtml(freq, item){
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  let rows = "";
+  for(let d=1; d<=daysInMonth; d++){
+    const iso = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const rec = logs.sanificazione.find(r=>r.item===item && r.frequenza===freq && r.data===iso);
+    if(rec){
+      rows += `<tr><td>${d}</td><td class="ok">✓</td><td>${rec.ora}</td><td>${esc(rec.operatore)}</td></tr>`;
+    } else {
+      rows += `<tr><td>${d}</td><td>—</td><td>—</td><td>—</td></tr>`;
+    }
+  }
+  return `<h2>${esc(item)} — sanificazione ${freq}</h2>
+    <table><thead><tr><th>Giorno</th><th>Eseguita</th><th>Ora</th><th>Operatore</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+function printSanifItemMese(freq, item){
+  printWindow(`Scheda mensile sanificazione ${freq} — ${item}`, sanifItemGridHtml(freq, item));
+}
+function printSanifMese(freq){
+  const items = config.sanifItems[freq]||[];
+  if(!items.length){ toast("Nessuna voce configurata"); return; }
+  printWindow(`Scheda mensile sanificazione — ${freq}`, items.map(item=>sanifItemGridHtml(freq, item)).join(""));
+}
+
+// ---------- CATENA DI TRACCIABILITÀ ----------
+function filieraHtml(prodId, livello){
+  const p = logs.produzione.find(x=>x.id===prodId);
+  if(!p || livello > 5) return "";
+  const pad = livello * 16;
+  const head = `<div style="margin-left:${pad}px;padding:7px 9px;border-left:3px solid ${p.semilavorato? '#E1A100':'#1F6F4A'};margin-bottom:5px;background:#fafafa;">
+    <b>${p.semilavorato? '🏷️':'📦'} ${esc(p.prodotto)}</b><br>
+    <span style="font-size:11px;color:#555;">Lotto: ${esc(p.lotto)} · ${p.semilavorato? 'preparato il '+fmtDate(p.dataConsegna)+' da '+esc(p.operatore) : 'da '+esc(p.fornitore)+(p.ddt? ', DDT '+esc(p.ddt):'')+' del '+fmtDate(p.dataConsegna)}</span>
+  </div>`;
+  const figli = (p.origineLotti||[]).map(o=>{
+    if(o.produzioneId) return filieraHtml(o.produzioneId, livello+1);
+    return `<div style="margin-left:${pad+16}px;padding:7px 9px;border-left:3px solid #bbb;margin-bottom:5px;background:#fafafa;">
+      <b>📦 ${esc(o.ingrediente)}</b><br><span style="font-size:11px;color:#555;">Lotto: ${esc(o.lotto)||'non tracciato'}${o.fornitore? ' · '+esc(o.fornitore):''}</span></div>`;
+  }).join("");
+  return head + figli;
+}
+function printFiliera(prodId){
+  const p = logs.produzione.find(x=>x.id===prodId);
+  printWindow(`Catena di tracciabilità — ${p.prodotto}`,
+    `<h2>Risalita dei lotti dal prodotto finito alle materie prime</h2>${filieraHtml(prodId, 0)}`);
+}
+function printEtichetta(prodId){
+  const p = logs.produzione.find(x=>x.id===prodId);
+  const w = window.open("", "_blank");
+  if(!w){ toast("⚠️ Consenti i popup per stampare"); return; }
+  w.document.write(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Etichetta</title>
+  <style>body{font-family:Arial,sans-serif;margin:0;padding:14px;}
+  .lab{border:2px solid #000;border-radius:8px;padding:12px;width:280px;}
+  .n{font-size:17px;font-weight:bold;margin-bottom:6px;}
+  .r{font-size:12px;margin-bottom:3px;}
+  .abb{display:inline-block;font-size:11px;font-weight:bold;border:1.5px solid #000;border-radius:5px;padding:2px 7px;margin-bottom:6px;}
+  .sc{font-size:15px;font-weight:bold;border-top:1px solid #000;margin-top:8px;padding-top:6px;}
+  @media print{.noprint{display:none;}}</style></head><body>
+  <div class="lab">
+    ${p.abbattuto? `<div class="abb">❄️ ABBATTUTO${p.abbattimento? ' — '+(p.abbattimento.tipo==='negativo'?'negativo':'positivo'):''}</div>`:""}
+    <div class="n">${esc(p.prodotto)}</div>
+    <div class="r"><b>Lotto:</b> ${esc(p.lotto)}</div>
+    <div class="r"><b>Preparato il:</b> ${fmtDate(p.dataConsegna)}</div>
+    ${p.quantita? `<div class="r"><b>Quantità:</b> ${esc(p.quantita)}</div>`:""}
+    ${p.operatore? `<div class="r"><b>Operatore:</b> ${esc(p.operatore)}</div>`:""}
+    <div class="sc">DA CONSUMARSI ENTRO IL ${fmtDate(p.dataScadenza)}</div>
+  </div>
+  <div class="noprint" style="margin-top:16px;"><button onclick="window.print()" style="padding:9px 16px;">🖨️ Stampa etichetta</button></div>
+  </body></html>`);
+  w.document.close();
+  setTimeout(()=>{ try{ w.print(); }catch(e){} }, 300);
+}
+
+// ---------- CONFIGURAZIONE DATABASE ----------
+const SQL_SETUP = `create table if not exists haccp_kv (
+  key text primary key,
+  value text,
+  updated_at timestamptz default now()
+);
+alter table haccp_kv enable row level security;
+create policy "accesso app" on haccp_kv
+  for all using (true) with check (true);`;
+
+function openDbConfig(){
+  const c = dbConfig || {};
+  openSheet("Archiviazione dati", `
+    <div class="card" style="padding:11px;background:var(--green-pale);border:none;margin-bottom:12px;">
+      <div style="font-weight:800;font-size:13px;">Modalità attuale: ${dbModeLabel()}</div>
+      <div class="muted" style="font-size:12px;margin-top:4px;">
+        ${DB.mode==="claude"? "I dati sono nell'archivio dell'artefatto Claude. Configura il database per usare l'app in autonomia." :
+          DB.mode==="local"? "I dati restano solo su questo dispositivo e non sono condivisi con gli altri operatori." :
+          "I dati sono sul tuo database: l'app funziona anche fuori da Claude e tutti gli operatori vedono gli stessi registri."}
+      </div>
+    </div>
+    <p class="muted"><b>Come si prepara (una volta sola):</b><br>
+    1. Crea un progetto gratuito su supabase.com<br>
+    2. Apri <i>SQL Editor</i>, incolla lo script qui sotto ed eseguilo<br>
+    3. In <i>Project Settings → API</i> copia URL e chiave <i>anon public</i></p>
+    <textarea readonly style="min-height:120px;font-family:monospace;font-size:11px;">${SQL_SETUP}</textarea>
+    <label class="field">URL del progetto</label>
+    <input type="text" id="dbUrl" placeholder="https://xxxxx.supabase.co" value="${c.url||''}">
+    <label class="field">Chiave anon public</label>
+    <input type="text" id="dbKey" placeholder="eyJhbGciOi..." value="${c.key||''}">
+    <label class="ac-opt ${c.proxy?'sel':''}" id="dbProxyRow" onclick="toggleProxy(this)">
+      <span class="ac-box">${c.proxy?'☑':'☐'}</span>
+      <span>Ho attivato la funzione <i>claude-proxy</i> per la lettura automatica di termometri e bolle</span>
+    </label>
+    <div id="dbTestResult"></div>
+    <div class="rowbtns">
+      <button class="btn block" onclick="saveDbConfig()">Verifica e salva</button>
+      ${c.url? `<button class="btn secondary" onclick="migraDati()">Copia i dati attuali sul database</button>`:""}
+      ${c.url? `<button class="btn danger" onclick="clearDbConfig()">Disconnetti</button>`:""}
+    </div>
+  `, ()=>{ window._dbProxy = !!c.proxy; });
+}
+function toggleProxy(el){
+  window._dbProxy = !window._dbProxy;
+  el.querySelector(".ac-box").textContent = window._dbProxy ? "☑" : "☐";
+  el.classList.toggle("sel", window._dbProxy);
+}
+async function saveDbConfig(){
+  const url = document.getElementById("dbUrl").value.trim();
+  const key = document.getElementById("dbKey").value.trim();
+  const res = document.getElementById("dbTestResult");
+  if(!url || !key){ toast("Inserisci URL e chiave"); return; }
+  res.innerHTML = `<p class="muted"><span class="spinner"></span> Verifica connessione...</p>`;
+  const t = await DB.test(url, key).catch(()=>({ok:false, msg:"Impossibile raggiungere il database."}));
+  if(!t.ok){ res.innerHTML = `<p style="color:var(--red);font-size:13px;">❌ ${t.msg}</p>`; return; }
+  dbConfig = {url, key, proxy: !!window._dbProxy};
+  LS.set(DBCFG_KEY, JSON.stringify(dbConfig));
+  res.innerHTML = `<p style="color:var(--green);font-size:13px;">✅ Connessione riuscita.</p>`;
+  toast("Database collegato");
+  await loadAll();
+  activeTab="impostazioni"; closeSheet();
+}
+async function clearDbConfig(){
+  if(!confirm("Disconnettere il database? I dati restano sul database, ma l'app tornerà all'archivio locale.")) return;
+  LS.remove(DBCFG_KEY);
+  dbConfig = null;
+  await loadAll();
+  toast("Database disconnesso");
+  activeTab="impostazioni"; closeSheet();
+}
+async function migraDati(){
+  if(!confirm("Copiare configurazione e registri attualmente caricati sul database? I dati già presenti sul database con le stesse chiavi verranno sovrascritti.")) return;
+  toast("Copia in corso...");
+  try{
+    await DB.set("config", JSON.stringify(config), true);
+    for(const k of ["temperature","sanificazione","moma","coai","noco","produzione","composizioni"]){
+      await DB.set("log-"+k, JSON.stringify(logs[k]), true);
+    }
+    toast("✅ Registri copiati sul database");
+  }catch(e){ toast("⚠️ Copia non riuscita: "+e.message); }
+}
+
+function exportCsv(kind){
+  const rows = logs[kind];
+  if(!rows.length){ toast("Nessun dato da esportare"); return; }
+  const keys = Array.from(new Set(rows.flatMap(r=>Object.keys(flatten(r)))));
+  const lines = [keys.join(";")];
+  rows.forEach(r=>{
+    const flat = flatten(r);
+    lines.push(keys.map(k=>JSON.stringify(flat[k]!==undefined?flat[k]:"")).join(";"));
+  });
+  const blob = new Blob([lines.join("\n")], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `haccp_${kind}_${todayISO()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function flatten(obj, prefix=""){
+  let out = {};
+  for(const k in obj){
+    if(typeof obj[k]==="object" && obj[k]!==null && !Array.isArray(obj[k])){
+      Object.assign(out, flatten(obj[k], prefix+k+"."));
+    } else {
+      out[prefix+k] = obj[k];
+    }
+  }
+  return out;
+}
+
+// ---------- INIT ----------
+(async function init(){
+  try{
+    $main.innerHTML = `<div class="empty"><span class="spinner"></span> Caricamento registri...</div>`;
+    await loadAll();
+    render();
+    window.__avviata = true;
+    if(DB.mode==="local" && !LS.available){
+      setTimeout(()=>toast("⚠️ Questo browser non salva i dati: apri l'app da un indirizzo web, non dal file"), 1200);
+    } else if(DB.mode==="local"){
+      setTimeout(()=>toast("📱 Dati salvati solo su questo dispositivo — configurali in Impostazioni"), 1200);
+    }
+    setInterval(tickTimers, 1000);
+    setInterval(pollTimersFromStorage, 10000);
+    setInterval(pollAuditsFromStorage, 10000);
+  }catch(err){
+    fatalError("Si è verificato un errore durante il caricamento dei registri.", err && (err.stack||err.message));
+  }
+})();
+</script>
+</body>
+</html>
