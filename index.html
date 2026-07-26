@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v22">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v23">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v22</title>
+<title>HACCP Baldoria v23</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -163,7 +163,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 22 · ricerca ricette · 25/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 23 · auto-configurazione · 26/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <button id="settingsBtn" style="background:rgba(255,255,255,.18);border:none;color:#fff;
@@ -228,6 +228,12 @@ const ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const DBCFG_KEY = "haccp-baldoria-dbconfig";
 let dbConfig = null;
 try{ dbConfig = JSON.parse(LS.get(DBCFG_KEY) || "null"); }catch(e){ dbConfig = null; }
+// Configurazione di default: se il dispositivo non ha ancora nulla salvato, si collega
+// automaticamente al database condiviso di Baldoria, senza bisogno di inserirla a mano.
+if(!dbConfig){
+  dbConfig = { url: "https://eoxainopyovzeytngyce.supabase.co", key: "sb_publishable_PmcLucG1cpSukhiU4dd66Q_sSA-2p4g", proxy: true };
+  LS.set(DBCFG_KEY, JSON.stringify(dbConfig));
+}
 
 const DB = {
   get mode(){
