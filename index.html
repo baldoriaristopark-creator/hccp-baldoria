@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v24">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v25">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v24</title>
+<title>HACCP Baldoria v25</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -163,7 +163,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 24 · offline + backup · 27/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 25 · ricerca singolare/plurale · 27/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2128,11 +2128,35 @@ function renderRicette(){
     </div>
   `;
 }
+// Confronto testo "intelligente": riconosce singolare/plurale (es. "bucatino" trova "bucatini")
+// confrontando le radici delle parole, invece di richiedere una corrispondenza esatta.
+function normalizeForSearch(s){
+  return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+}
+function wordsMatchApprox(word, queryWord){
+  if(!word || !queryWord) return false;
+  if(word.includes(queryWord) || queryWord.includes(word)) return true;
+  const minLen = Math.min(word.length, queryWord.length);
+  if(minLen < 4) return word === queryWord;
+  let common = 0;
+  while(common < minLen && word[common]===queryWord[common]) common++;
+  return common >= Math.max(4, minLen-1);
+}
+function textMatchesQuery(text, query){
+  const normQuery = normalizeForSearch(query).trim();
+  if(!normQuery) return true;
+  const normText = normalizeForSearch(text);
+  if(normText.includes(normQuery)) return true;
+  const queryWords = normQuery.split(/\s+/).filter(Boolean);
+  const textWords = normText.split(/[\s,]+/).filter(Boolean);
+  return queryWords.every(qw => textWords.some(tw => wordsMatchApprox(tw, qw)));
+}
+
 function ricetteBaseListHtml(query){
   const recipes = config.recipes||[];
-  const q = (query||"").trim().toLowerCase();
+  const q = (query||"").trim();
   const filtered = q? recipes.filter(r=>
-    r.nome.toLowerCase().includes(q) || r.ingredienti.some(i=>i.toLowerCase().includes(q))
+    textMatchesQuery(r.nome, q) || r.ingredienti.some(i=>textMatchesQuery(i, q))
   ) : recipes;
   if(!filtered.length){
     return q? `<div class="empty">Nessuna ricetta trovata per "${esc(query)}".</div>` : `<div class="empty">Nessuna ricetta configurata.</div>`;
@@ -2154,13 +2178,14 @@ function renderRicetteBaseList(query){
   if(el) el.innerHTML = ricetteBaseListHtml(query);
 }
 function composizioniListHtml(query){
-  const q = (query||"").trim().toLowerCase();
+  const q = (query||"").trim();
   let list = [...logs.composizioni].sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora));
   if(q){
     list = list.filter(c=>
-      (c.ricettaNome||"").toLowerCase().includes(q) ||
-      (c.operatore||"").toLowerCase().includes(q) ||
-      (c.lottoProdotto||"").toLowerCase().includes(q)
+      textMatchesQuery(c.ricettaNome, q) ||
+      textMatchesQuery(c.operatore, q) ||
+      textMatchesQuery(c.lottoProdotto, q) ||
+      (c.ingredientiUsati||[]).some(i=>textMatchesQuery(i.ingrediente, q))
     );
   } else {
     list = list.slice(0,15);
