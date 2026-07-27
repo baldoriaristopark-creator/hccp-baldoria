@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v26">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v27">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v26</title>
+<title>HACCP Baldoria v27</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -163,7 +163,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 26 · scadenze in home · 27/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 27 · reparti · 27/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -454,6 +454,40 @@ let lastOperator = "";
 let timers = [];
 let ringingTimers = [];
 let alarmAudioTimer = null;
+const REPARTI = ["Brace","Cucina","Pizzeria","Bar"];
+let repartoFiltroTemp = "";
+let repartoFiltroSanif = "";
+let repartoFiltroRicette = "";
+function guessReparto(text){
+  const t = (text||"").toLowerCase();
+  if(t.includes("brace")) return "Brace";
+  if(t.includes("pizzeria")) return "Pizzeria";
+  if(t.includes("bar")) return "Bar";
+  if(t.includes("cucina")) return "Cucina";
+  return "";
+}
+function repartoFilterHtml(currentValue, onchangeFn){
+  return `<select onchange="${onchangeFn}(this.value)" style="margin-bottom:10px;">
+    <option value="" ${!currentValue?'selected':''}>Tutti i reparti</option>
+    ${REPARTI.map(r=>`<option value="${r}" ${currentValue===r?'selected':''}>${r}</option>`).join("")}
+  </select>`;
+}
+function migrateReparti(){
+  let changed = false;
+  if(!config.sanifReparti) config.sanifReparti = {};
+  (config.points||[]).forEach(p=>{
+    if(p.reparto===undefined){ p.reparto = guessReparto(p.name); changed = true; }
+  });
+  (config.recipes||[]).forEach(r=>{
+    if(r.reparto===undefined){ r.reparto = guessReparto(r.nome); changed = true; }
+  });
+  ["giornaliera","settimanale","mensile"].forEach(freq=>{
+    (config.sanifItems[freq]||[]).forEach(item=>{
+      if(config.sanifReparti[item]===undefined){ config.sanifReparti[item] = guessReparto(item); changed = true; }
+    });
+  });
+  if(changed) saveConfig().catch(()=>{});
+}
 
 const $main = document.getElementById("main");
 const $tabs = document.getElementById("tabs");
@@ -1071,7 +1105,8 @@ function pointStatusToday(p){
 }
 
 function renderTemperature(){
-  let tiles = config.points.map(p=>{
+  const pointsFiltered = repartoFiltroTemp ? config.points.filter(p=>p.reparto===repartoFiltroTemp) : config.points;
+  let tiles = pointsFiltered.map(p=>{
     const st = pointStatusToday(p);
     const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}° / ${p.max}°C`;
     const valLbl = st.rec ? `${st.rec.valore}°C alle ${st.rec.ora}` : "Nessuna lettura oggi";
@@ -1082,6 +1117,7 @@ function renderTemperature(){
     return `<div class="point-tile ${auditCls}" onclick="openPointDetail('${p.id}')" style="position:relative;">
       <button class="iconbtn" style="position:absolute;top:8px;right:8px;font-size:15px;padding:6px 9px;" onclick="event.stopPropagation();openEditPoint('${p.id}')" title="Modifica o elimina">✏️</button>
       <div class="name">${pointIcon(p.type)} ${p.name}</div>
+      ${p.reparto? `<div class="muted" style="font-size:11px;">🏷️ ${p.reparto}</div>`:""}
       <div class="range">Soglia: ${rangeLbl}</div>
       <div class="muted">${valLbl}</div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
@@ -1091,16 +1127,18 @@ function renderTemperature(){
       </div>
     </div>`;
   }).join("");
-  if(!config.points.length) tiles = `<div class="empty">Nessun punto di controllo configurato.</div>`;
+  if(!pointsFiltered.length) tiles = `<div class="empty">${repartoFiltroTemp? `Nessun punto di controllo per il reparto "${repartoFiltroTemp}".` : "Nessun punto di controllo configurato."}</div>`;
 
   $main.innerHTML = `
     <div class="card">
       <div class="card-head"><h2>Punti di controllo</h2>${printBtn('temperature')}</div>
+      ${repartoFilterHtml(repartoFiltroTemp, "setRepartoFiltroTemp")}
       <div class="grid2">${tiles}</div>
       <div class="rowbtns"><button class="btn secondary block" onclick="openAddPoint()">+ Aggiungi frigo / freezer / banco</button></div>
     </div>
   `;
 }
+function setRepartoFiltroTemp(v){ repartoFiltroTemp = v; render(); }
 function pointIcon(type){
   return type==="freezer"?"🧊":type==="caldo"?"🔥":"❄️";
 }
@@ -1469,7 +1507,8 @@ async function salvaAzioneCorrettiva(pointId, val, recId){
 let sanifSubTab = "giornaliera";
 function renderSanificazione(){
   const t = todayISO();
-  const items = config.sanifItems[sanifSubTab]||[];
+  const allItems = config.sanifItems[sanifSubTab]||[];
+  const items = repartoFiltroSanif ? allItems.filter(item=>config.sanifReparti[item]===repartoFiltroSanif) : allItems;
   $main.innerHTML = `
     <div class="card">
       <div class="card-head"><h2>Sanificazione</h2>${printBtn('sanificazione')}</div>
@@ -1477,21 +1516,23 @@ function renderSanificazione(){
         ${["giornaliera","settimanale","mensile"].map(f=>`
           <button class="iconbtn" style="${sanifSubTab===f?'background:var(--green);color:#fff;':''}" onclick="sanifSubTab='${f}';render()">${f[0].toUpperCase()+f.slice(1)}</button>`).join("")}
       </div>
+      ${repartoFilterHtml(repartoFiltroSanif, "setRepartoFiltroSanif")}
       <p class="muted" style="margin-top:10px;">Per confermare una sanificazione serve indicare l'operatore e allegare una foto. Tocca una voce completata per vederne i dettagli.</p>
       ${items.length? items.map(item=>{
         const rec = logs.sanificazione.find(r=>r.item===item && r.frequenza===sanifSubTab && r.data===t);
         const timerKey = `sanif:${sanifSubTab}:${item}`;
         const auditSt = sanifAuditStatus(sanifSubTab, item);
         const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
+        const reparto = config.sanifReparti[item];
         return `<div class="checklist-item ${auditCls}" style="flex-wrap:wrap;">
-          <div class="lbl">${item} ${timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}</div>
+          <div class="lbl">${item} ${reparto? `<span class="muted" style="font-size:11px;">🏷️ ${reparto}</span>`:""} ${timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}</div>
           <div style="display:flex;gap:8px;align-items:center;">
             <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openEditSanifItem('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>
             <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openTimerForm('sanificazione','${timerKey}','${item.replace(/'/g,"\\'")}')" title="Imposta timer">⏱️</button>
             <button class="togglebtn ${rec?'done':''}" onclick="${rec? `openSanifDetail('${rec.id}')` : `openSanifConfirm('${item.replace(/'/g,"\\'")}')`}">${rec? '✓ '+rec.operatore : 'Segna fatto'}</button>
           </div>
         </div>`;
-      }).join("") : `<div class="empty">Nessuna voce configurata per questa frequenza.</div>`}
+      }).join("") : `<div class="empty">${repartoFiltroSanif? `Nessuna voce per il reparto "${repartoFiltroSanif}" in questa frequenza.` : "Nessuna voce configurata per questa frequenza."}</div>`}
       <div class="rowbtns"><button class="btn secondary block" onclick="openAddSanifItem('${sanifSubTab}')">+ Aggiungi punto di sanificazione (${sanifSubTab})</button></div>
     </div>
     ${items.length ? `<div class="card"><div class="card-head"><h2>Scheda mensile ${sanifSubTab} — ${MONTHS[new Date().getMonth()]}</h2><button class="printbtn" onclick="printSanifMese('${sanifSubTab}')" title="Stampa la scheda mensile">🖨️ Stampa</button></div>
@@ -1499,6 +1540,7 @@ function renderSanificazione(){
     </div>` : ""}
   `;
 }
+function setRepartoFiltroSanif(v){ repartoFiltroSanif = v; render(); }
 
 function compressImage(dataUrl, maxWidth){
   return new Promise((resolve)=>{
@@ -2139,6 +2181,7 @@ function renderRicette(){
       <div class="card-head"><h2>Ricette base</h2>${printBtn('ricette')}</div>
       <p class="muted">Definisci gli ingredienti di ogni ricetta. Quando componi un piatto, l'app recupera automaticamente il lotto più recente di ogni ingrediente dalle schede di Produzione (alimentate dalle bolle MOMA).</p>
       <input type="text" id="ricetteBaseSearchInput" placeholder="🔎 Cerca una ricetta per nome o ingrediente..." oninput="renderRicetteBaseList(this.value)" style="margin-bottom:10px;">
+      ${repartoFilterHtml(repartoFiltroRicette, "setRepartoFiltroRicette")}
       <div id="ricetteBaseListEl">${ricetteBaseListHtml("")}</div>
       <div class="rowbtns"><button class="btn secondary block" onclick="openAddRecipe()">+ Aggiungi ricetta</button></div>
       <div class="rowbtns"><button class="iconbtn block" onclick="importRicetteBase()">📥 Importa le 17 ricette base (food cost)</button></div>
@@ -2153,6 +2196,7 @@ function renderRicette(){
     </div>
   `;
 }
+function setRepartoFiltroRicette(v){ repartoFiltroRicette = v; renderRicetteBaseList(document.getElementById("ricetteBaseSearchInput")? document.getElementById("ricetteBaseSearchInput").value : ""); }
 // Confronto testo "intelligente": riconosce singolare/plurale (es. "bucatino" trova "bucatini")
 // confrontando le radici delle parole, invece di richiedere una corrispondenza esatta.
 function normalizeForSearch(s){
@@ -2180,15 +2224,17 @@ function textMatchesQuery(text, query){
 function ricetteBaseListHtml(query){
   const recipes = config.recipes||[];
   const q = (query||"").trim();
-  const filtered = q? recipes.filter(r=>
+  let filtered = q? recipes.filter(r=>
     textMatchesQuery(r.nome, q) || r.ingredienti.some(i=>textMatchesQuery(i, q))
   ) : recipes;
+  if(repartoFiltroRicette) filtered = filtered.filter(r=>r.reparto===repartoFiltroRicette);
   if(!filtered.length){
-    return q? `<div class="empty">Nessuna ricetta trovata per "${esc(query)}".</div>` : `<div class="empty">Nessuna ricetta configurata.</div>`;
+    return q? `<div class="empty">Nessuna ricetta trovata per "${esc(query)}".</div>` : `<div class="empty">Nessuna ricetta ${repartoFiltroRicette? `nel reparto "${repartoFiltroRicette}"`:"configurata"}.</div>`;
   }
   return filtered.map(r=>`
     <div class="point-tile" style="cursor:default;">
       <div class="name">🍽️ ${r.nome} ${r.photoKey? '📷':''}</div>
+      ${r.reparto? `<div class="muted" style="font-size:11px;">🏷️ ${r.reparto}</div>`:""}
       <div class="muted">${r.ingredienti.length} ingredienti: ${r.ingredienti.join(', ')}</div>
       ${r.procedimento? `<div class="muted" style="margin-top:4px;">📝 Procedimento trascritto disponibile</div>`:''}
       <div class="rowbtns" style="margin-top:8px;">
@@ -2307,6 +2353,11 @@ function openAddRecipe(){
       <div id="rcPhotoResult"></div>
     </div>
     <label class="field">Nome piatto/prodotto</label><input type="text" id="rcNome">
+    <label class="field">Reparto (facoltativo)</label>
+    <select id="rcReparto">
+      <option value="">Nessuno</option>
+      ${REPARTI.map(r=>`<option value="${r}">${r}</option>`).join("")}
+    </select>
     <label class="field">Ingredienti (uno per riga, con lo stesso nome usato nelle bolle/Produzione)</label>
     <textarea id="rcIngredienti" style="min-height:110px;" placeholder="Farina 00&#10;Pomodoro San Marzano&#10;Mozzarella fior di latte"></textarea>
     <label class="field">Procedimento (trascrizione integrale, facoltativo)</label>
@@ -2325,6 +2376,7 @@ function openAddRecipe(){
 }
 async function saveNewRecipe(){
   const nome = document.getElementById("rcNome").value.trim();
+  const reparto = document.getElementById("rcReparto").value;
   const ingredienti = document.getElementById("rcIngredienti").value.split("\n").map(s=>s.trim()).filter(Boolean);
   const procedimento = document.getElementById("rcProcedimento").value.trim();
   const giorni = parseInt(document.getElementById("rcGiorni").value) || 0;
@@ -2333,7 +2385,7 @@ async function saveNewRecipe(){
   if(!nome){ toast("Inserisci il nome del piatto"); return; }
   if(!ingredienti.length){ toast("Inserisci almeno un ingrediente"); return; }
   if(!config.recipes) config.recipes = [];
-  const rec = {id:uid(), nome, ingredienti, giorniConservazione:giorni, procedimento};
+  const rec = {id:uid(), nome, reparto, ingredienti, giorniConservazione:giorni, procedimento};
   if(giorniAbbattuto!==undefined) rec.giorniConservazioneAbbattuto = giorniAbbattuto;
   if(window._recipePhoto){
     rec.photoKey = "photo-ricetta-"+rec.id;
@@ -2356,6 +2408,11 @@ function openEditRecipe(id){
       <div id="rcPhotoResult"></div>
     </div>
     <label class="field">Nome piatto/prodotto</label><input type="text" id="rcNome" value="${r.nome}">
+    <label class="field">Reparto (facoltativo)</label>
+    <select id="rcReparto">
+      <option value="" ${!r.reparto?'selected':''}>Nessuno</option>
+      ${REPARTI.map(rp=>`<option value="${rp}" ${r.reparto===rp?'selected':''}>${rp}</option>`).join("")}
+    </select>
     <label class="field">Ingredienti (uno per riga)</label>
     <textarea id="rcIngredienti" style="min-height:110px;">${r.ingredienti.join("\n")}</textarea>
     <label class="field">Procedimento (trascrizione integrale, facoltativo)</label>
@@ -2389,6 +2446,7 @@ async function editRecipe(id){
   if(!nome){ toast("Inserisci il nome del piatto"); return; }
   if(!ingredienti.length){ toast("Inserisci almeno un ingrediente"); return; }
   r.nome = nome; r.ingredienti = ingredienti;
+  r.reparto = document.getElementById("rcReparto").value;
   r.procedimento = document.getElementById("rcProcedimento").value.trim();
   r.giorniConservazione = parseInt(document.getElementById("rcGiorni").value) || 0;
   const giorniAbbattutoRaw = document.getElementById("rcGiorniAbbattuto").value;
@@ -3020,6 +3078,11 @@ function openAddPoint(){
       <option value="freezer">Freezer / Abbattitore</option>
       <option value="caldo">Banco caldo</option>
     </select>
+    <label class="field">Reparto (facoltativo)</label>
+    <select id="npReparto">
+      <option value="">Nessuno</option>
+      ${REPARTI.map(r=>`<option value="${r}">${r}</option>`).join("")}
+    </select>
     <label class="field">Temperatura minima (°C) — non usata per freezer</label><input type="number" id="npMin" value="0">
     <label class="field">Temperatura massima (°C) / soglia freezer</label><input type="number" id="npMax" value="4">
     <div class="rowbtns"><button class="btn block" onclick="addPoint()">Aggiungi</button></div>
@@ -3028,10 +3091,11 @@ function openAddPoint(){
 async function addPoint(){
   const name = document.getElementById("npName").value.trim();
   const type = document.getElementById("npType").value;
+  const reparto = document.getElementById("npReparto").value;
   const min = parseFloat(document.getElementById("npMin").value);
   const max = parseFloat(document.getElementById("npMax").value);
   if(!name){ toast("Inserisci un nome"); return; }
-  config.points.push({id:uid(), name, type, min, max});
+  config.points.push({id:uid(), name, type, min, max, reparto});
   activeTab = (activeTab==="temperature") ? "temperature" : "impostazioni";
   closeSheet();
   toast("Punto aggiunto");
@@ -3055,6 +3119,11 @@ function openEditPoint(id){
       <option value="freezer" ${p.type==='freezer'?'selected':''}>Freezer / Abbattitore</option>
       <option value="caldo" ${p.type==='caldo'?'selected':''}>Banco caldo</option>
     </select>
+    <label class="field">Reparto (facoltativo)</label>
+    <select id="epReparto">
+      <option value="" ${!p.reparto?'selected':''}>Nessuno</option>
+      ${REPARTI.map(r=>`<option value="${r}" ${p.reparto===r?'selected':''}>${r}</option>`).join("")}
+    </select>
     <label class="field">Temperatura minima (°C) — non usata per freezer</label><input type="number" id="epMin" value="${p.min}">
     <label class="field">Temperatura massima (°C) / soglia freezer</label><input type="number" id="epMax" value="${p.max}">
     <div class="rowbtns">
@@ -3069,6 +3138,7 @@ async function editPoint(id){
   if(!name){ toast("Inserisci un nome"); return; }
   p.name = name;
   p.type = document.getElementById("epType").value;
+  p.reparto = document.getElementById("epReparto").value;
   p.min = parseFloat(document.getElementById("epMin").value);
   p.max = parseFloat(document.getElementById("epMax").value);
   saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
@@ -3079,14 +3149,22 @@ async function editPoint(id){
 function openAddSanifItem(freq){
   openSheet(`Nuova voce — ${freq}`, `
     <label class="field">Descrizione voce (es. "Cella frigo carni")</label><input type="text" id="siName">
+    <label class="field">Reparto (facoltativo)</label>
+    <select id="siReparto">
+      <option value="">Nessuno</option>
+      ${REPARTI.map(r=>`<option value="${r}">${r}</option>`).join("")}
+    </select>
     <div class="rowbtns"><button class="btn block" onclick="addSanifItem('${freq}')">Aggiungi</button></div>
   `);
 }
 async function addSanifItem(freq){
   const name = document.getElementById("siName").value.trim();
+  const reparto = document.getElementById("siReparto").value;
   if(!name){ toast("Inserisci una descrizione"); return; }
   if(!config.sanifItems[freq]) config.sanifItems[freq]=[];
   config.sanifItems[freq].push(name);
+  if(!config.sanifReparti) config.sanifReparti = {};
+  config.sanifReparti[name] = reparto;
   saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
   toast("Punto di sanificazione aggiunto");
   const backTo = activeTab==="sanificazione" ? "sanificazione" : "impostazioni";
@@ -3095,6 +3173,11 @@ async function addSanifItem(freq){
 function openEditSanifItem(freq, item){
   openSheet(`Modifica voce — ${freq}`, `
     <label class="field">Descrizione voce</label><input type="text" id="esiName" value="${item}">
+    <label class="field">Reparto (facoltativo)</label>
+    <select id="esiReparto">
+      <option value="" ${!config.sanifReparti[item]?'selected':''}>Nessuno</option>
+      ${REPARTI.map(r=>`<option value="${r}" ${config.sanifReparti[item]===r?'selected':''}>${r}</option>`).join("")}
+    </select>
     <div class="rowbtns">
       <button class="btn block" onclick="editSanifItem('${freq}','${item.replace(/'/g,"\\'")}')">Salva modifiche</button>
       <button class="btn danger" onclick="deleteSanifItem('${freq}','${item.replace(/'/g,"\\'")}')">Elimina voce</button>
@@ -3103,9 +3186,13 @@ function openEditSanifItem(freq, item){
 }
 async function editSanifItem(freq, oldItem){
   const newName = document.getElementById("esiName").value.trim();
+  const reparto = document.getElementById("esiReparto").value;
   if(!newName){ toast("Inserisci una descrizione"); return; }
   const idx = config.sanifItems[freq].indexOf(oldItem);
   if(idx>=0) config.sanifItems[freq][idx] = newName;
+  if(!config.sanifReparti) config.sanifReparti = {};
+  delete config.sanifReparti[oldItem];
+  config.sanifReparti[newName] = reparto;
   saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
   logs.sanificazione.forEach(r=>{ if(r.frequenza===freq && r.item===oldItem) r.item = newName; });
   saveLog("sanificazione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
@@ -3115,6 +3202,7 @@ async function editSanifItem(freq, oldItem){
 }
 async function deleteSanifItem(freq, item){
   config.sanifItems[freq] = config.sanifItems[freq].filter(i=>i!==item);
+  if(config.sanifReparti) delete config.sanifReparti[item];
   saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
   toast("Voce eliminata");
   activeTab = (activeTab==="sanificazione") ? "sanificazione" : "impostazioni";
@@ -3637,6 +3725,7 @@ function openOfflineInfo(){
   try{
     $main.innerHTML = `<div class="empty"><span class="spinner"></span> Caricamento registri...</div>`;
     await loadAll();
+    migrateReparti();
     render();
     window.__avviata = true;
     updateOfflineBadge();
