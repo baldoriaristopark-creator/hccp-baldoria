@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v27">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v28">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v27</title>
+<title>HACCP Baldoria v28</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -66,6 +66,7 @@
   .chip.ok{background:var(--green-pale);color:var(--green-dark);}
   .chip.bad{background:var(--red-pale);color:var(--red);}
   .chip.missing{background:var(--amber-pale);color:var(--amber);}
+  .chip.spento{background:var(--line);color:var(--ink-soft);}
   .timer-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:800;
     background:var(--yellow-pale);color:var(--amber);padding:3px 8px;border-radius:99px;}
 
@@ -101,6 +102,7 @@
   table.month th{background:var(--green-pale);color:var(--green-dark);font-size:10px;}
   table.month td.ok{background:var(--green-pale);color:var(--green-dark);font-weight:800;}
   table.month td.bad{background:var(--red-pale);color:var(--red);font-weight:800;}
+  table.month td.spento{background:var(--line);color:var(--ink-soft);font-weight:800;}
   table.month td.today{outline:2px solid var(--yellow);}
 
   .logrow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;
@@ -163,7 +165,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 27 · reparti · 27/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 28 · spento + stampa · 27/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1101,6 +1103,7 @@ function pointStatusToday(p){
   const t = todayISO();
   const rec = logs.temperature.filter(r=>r.pointId===p.id && r.data===t).sort((a,b)=>b.ora.localeCompare(a.ora))[0];
   if(!rec) return {state:"missing", rec:null};
+  if(rec.spento) return {state:"spento", rec};
   return {state: rec.conforme ? "ok":"bad", rec};
 }
 
@@ -1109,9 +1112,9 @@ function renderTemperature(){
   let tiles = pointsFiltered.map(p=>{
     const st = pointStatusToday(p);
     const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}° / ${p.max}°C`;
-    const valLbl = st.rec ? `${st.rec.valore}°C alle ${st.rec.ora}` : "Nessuna lettura oggi";
-    const chipCls = st.state==="ok"?"ok":st.state==="bad"?"bad":"missing";
-    const chipTxt = st.state==="ok"?"Conforme":st.state==="bad"?"Fuori soglia":"Da registrare";
+    const valLbl = !st.rec ? "Nessuna lettura oggi" : st.state==="spento" ? `⚫ Spento alle ${st.rec.ora}` : `${st.rec.valore}°C alle ${st.rec.ora}`;
+    const chipCls = st.state==="ok"?"ok":st.state==="bad"?"bad":st.state==="spento"?"spento":"missing";
+    const chipTxt = st.state==="ok"?"Conforme":st.state==="bad"?"Fuori soglia":st.state==="spento"?"Spento":"Da registrare";
     const auditSt = pointAuditStatus(p.id);
     const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
     return `<div class="point-tile ${auditCls}" onclick="openPointDetail('${p.id}')" style="position:relative;">
@@ -1153,6 +1156,7 @@ function openPointDetail(pointId){
     <div class="rowbtns">
       <button class="btn block" onclick="openTempEntry('${pointId}','foto')">📸 Rileva da foto (lettura automatica)</button>
       <button class="btn secondary block" onclick="openTempEntry('${pointId}','manuale')">✍️ Inserisci manualmente</button>
+      <button class="iconbtn block" onclick="openSpentoForm('${pointId}')">⚫ Segna come spento / non in uso</button>
     </div>
     <h3>⏱️ Promemoria / Timer</h3>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
@@ -1166,7 +1170,7 @@ function openPointDetail(pointId){
       ${history.length? history.map(r=>`
         <div class="logrow" onclick="openTempEntryDetail('${r.id}')" style="cursor:pointer;">
           <div>
-            <div class="val">${r.valore}°C ${r.conforme? '✅':'🔴'}</div>
+            <div class="val">${r.spento? '⚫ Spento' : r.valore+'°C '+(r.conforme? '✅':'🔴')}</div>
             <div class="meta">${fmtDate(r.data)} · ${r.ora} · ${r.operatore||"—"} ${r.fonte==='foto'?'· 📸 foto':''}</div>
           </div>
           <span class="muted">✏️</span>
@@ -1177,8 +1181,43 @@ function openPointDetail(pointId){
   });
 }
 
+function openSpentoForm(pointId){
+  const p = config.points.find(x=>x.id===pointId);
+  openSheet(`Segna come spento — ${p.name}`, `
+    <p class="muted">Usa questa opzione quando il frigo/cella è spento, in sbrinamento o fuori servizio — conta comunque come controllo effettuato per oggi, senza segnalare una falsa non conformità.</p>
+    <label class="field">Operatore</label>
+    <input type="text" id="spentoOp" value="${lastOperator}" placeholder="Nome operatore">
+    <label class="field">Motivo (facoltativo)</label>
+    <input type="text" id="spentoNote" placeholder="es. sbrinamento, manutenzione, fuori servizio">
+    <div class="rowbtns"><button class="btn block" onclick="saveSpento('${pointId}')">Conferma spento</button></div>
+  `);
+}
+async function saveSpento(pointId){
+  const op = document.getElementById("spentoOp").value.trim();
+  const note = document.getElementById("spentoNote").value.trim();
+  if(!op){ toast("Inserisci il nome dell'operatore"); return; }
+  const p = config.points.find(x=>x.id===pointId);
+  const rec = { id:uid(), pointId, pointName:p.name, data:todayISO(), ora:nowTime(), operatore:op, spento:true, note, conforme:null };
+  logs.temperature.push(rec);
+  saveLog("temperature").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  saveOperator(op).catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("⚫ Segnato come spento");
+  activeTab="temperature"; closeSheet();
+}
 function openTempEntryDetail(id){
   const r = logs.temperature.find(x=>x.id===id);
+  if(r.spento){
+    openSheet(`Registrazione — ${fmtDate(r.data)}`, `
+      <p class="muted">${r.pointName||''} · ${fmtDate(r.data)} · ${r.ora} · ⚫ Segnato come spento/non in uso</p>
+      <label class="field">Operatore</label><input type="text" id="teOp" value="${r.operatore||''}">
+      <label class="field">Motivo</label><input type="text" id="teNote" value="${r.note||''}">
+      <div class="rowbtns">
+        <button class="btn block" onclick="editSpentoEntry('${id}')">Salva modifiche</button>
+        <button class="btn danger" onclick="deleteTempEntry('${id}')">Elimina registrazione</button>
+      </div>
+    `);
+    return;
+  }
   openSheet(`Registrazione — ${fmtDate(r.data)}`, `
     <p class="muted">${r.pointName||''} · ${fmtDate(r.data)} · ${r.ora}${r.fonte==='foto'?' · 📸 rilevata da foto':''} · ${r.conforme? '✅ Conforme':'🔴 Fuori soglia'}</p>
     ${r.photoKey? `<div id="tempDetailPhoto"><span class="spinner"></span> Carico foto...</div>` : `<p class="muted">Nessuna foto per questa registrazione (inserimento manuale).</p>`}
@@ -1198,6 +1237,16 @@ function openTempEntryDetail(id){
       }
     }
   });
+}
+async function editSpentoEntry(id){
+  const r = logs.temperature.find(x=>x.id===id);
+  const op = document.getElementById("teOp").value.trim();
+  if(!op){ toast("Inserisci l'operatore"); return; }
+  r.operatore = op;
+  r.note = document.getElementById("teNote").value.trim();
+  saveLog("temperature").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("Registrazione aggiornata");
+  activeTab="temperature"; closeSheet();
 }
 async function editTempEntry(id){
   const r = logs.temperature.find(x=>x.id===id);
@@ -1235,8 +1284,13 @@ function buildMonthGrid(kind, filterId, point){
       const recs = logs.temperature.filter(r=>r.pointId===filterId && r.data===iso);
       if(recs.length){
         const last = recs[recs.length-1];
-        cls = last.conforme?"ok":"bad";
-        cellHtml = `<span onclick="openTempEntryDetail('${last.id}')" style="cursor:pointer;text-decoration:underline;">${last.valore}°${last.photoKey?' 📷':''}</span>`;
+        if(last.spento){
+          cls = "spento";
+          cellHtml = `<span onclick="openTempEntryDetail('${last.id}')" style="cursor:pointer;text-decoration:underline;">⚫ Spento</span>`;
+        } else {
+          cls = last.conforme?"ok":"bad";
+          cellHtml = `<span onclick="openTempEntryDetail('${last.id}')" style="cursor:pointer;text-decoration:underline;">${last.valore}°${last.photoKey?' 📷':''}</span>`;
+        }
       } else { cls=""; cellHtml="—"; }
     } else {
       const rec = logs.sanificazione.find(r=>r.item===filterId.item && r.frequenza===filterId.freq && r.data===iso);
@@ -3237,7 +3291,10 @@ function printWindow(title, bodyHtml){
   <div class="sub">${title} · Periodo: ${monthLbl} · Stampato il ${fmtDate(todayISO())} alle ${nowTime()}</div>
   ${bodyHtml}
   <div class="firma"><div>Firma dell'operatore</div><div>Firma del responsabile dell'autocontrollo</div></div>
-  <div class="noprint" style="margin-top:24px;"><button onclick="window.print()" style="padding:10px 18px;font-size:14px;cursor:pointer;">🖨️ Stampa</button></div>
+  <div class="noprint" style="margin-top:24px;display:flex;gap:10px;">
+    <button onclick="window.print()" style="padding:10px 18px;font-size:14px;cursor:pointer;">🖨️ Stampa</button>
+    <button onclick="window.close()" style="padding:10px 18px;font-size:14px;cursor:pointer;background:#eee;border:1px solid #ccc;border-radius:6px;">✕ Chiudi</button>
+  </div>
   </body></html>`);
   w.document.close();
   setTimeout(()=>{ try{ w.print(); }catch(e){} }, 400);
@@ -3257,7 +3314,9 @@ function printScheda(kind){
     body = config.points.map(p=>{
       const rows = logs.temperature.filter(r=>r.pointId===p.id && inMonth(r))
         .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
-        .map(r=>[fmtDate(r.data), r.ora, esc(r.valore)+" °C", r.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`, esc(r.operatore), r.fonte==="foto"?"📸 foto":"manuale"]);
+        .map(r=> r.spento
+          ? [fmtDate(r.data), r.ora, "⚫ Spento", esc(r.note)||"—", esc(r.operatore), "—"]
+          : [fmtDate(r.data), r.ora, esc(r.valore)+" °C", r.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`, esc(r.operatore), r.fonte==="foto"?"📸 foto":"manuale"]);
       const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}°C / ${p.max}°C`;
       return `<h2>${esc(p.name)} — soglia ${rangeLbl}</h2>` + tbl(["Data","Ora","Valore","Esito","Operatore","Fonte"], rows);
     }).join("");
@@ -3323,7 +3382,9 @@ function schedaBody(kind){
     return config.points.map(p=>{
       const rows = logs.temperature.filter(r=>r.pointId===p.id && inMonth(r))
         .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
-        .map(r=>[fmtDate(r.data), r.ora, esc(r.valore)+" °C", r.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`, esc(r.operatore), r.fonte==="foto"?"foto":"manuale"]);
+        .map(r=> r.spento
+          ? [fmtDate(r.data), r.ora, "⚫ Spento", esc(r.note)||"—", esc(r.operatore), "—"]
+          : [fmtDate(r.data), r.ora, esc(r.valore)+" °C", r.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`, esc(r.operatore), r.fonte==="foto"?"foto":"manuale"]);
       const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : p.type==="hot" ? `≥ ${p.min}°C` : `${p.min}°C / ${p.max}°C`;
       return `<h2>${esc(p.name)} — soglia ${rangeLbl}</h2>` + tbl(["Data","Ora","Valore","Esito","Operatore","Fonte"], rows);
     }).join("");
@@ -3381,7 +3442,7 @@ function printFascicolo(){
   const mk = monthKeyNow();
   const inMonth = r => (r.data||"").startsWith(mk);
   const temps = logs.temperature.filter(inMonth);
-  const tempNC = temps.filter(r=>!r.conforme);
+  const tempNC = temps.filter(r=>!r.spento && !r.conforme);
   const sanif = logs.sanificazione.filter(inMonth);
   const momaM = logs.moma.filter(inMonth);
   const momaNC = momaM.filter(m=>MOMA_CHECKS.some(c=>m.checks[c.key]==="non_conforme"));
@@ -3436,9 +3497,15 @@ function printTempMese(pointId){
     const recs = logs.temperature.filter(r=>r.pointId===pointId && r.data===iso);
     if(recs.length){
       const last = recs[recs.length-1];
-      rows += `<tr><td>${d}</td><td class="${last.conforme?'ok':'bad'}">${last.valore}°C</td>
-        <td>${last.ora}</td><td>${esc(last.operatore)}</td>
-        <td>${last.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`}</td></tr>`;
+      if(last.spento){
+        rows += `<tr><td>${d}</td><td>⚫ Spento</td>
+          <td>${last.ora}</td><td>${esc(last.operatore)}</td>
+          <td>${esc(last.note)||'—'}</td></tr>`;
+      } else {
+        rows += `<tr><td>${d}</td><td class="${last.conforme?'ok':'bad'}">${last.valore}°C</td>
+          <td>${last.ora}</td><td>${esc(last.operatore)}</td>
+          <td>${last.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`}</td></tr>`;
+      }
     } else {
       rows += `<tr><td>${d}</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`;
     }
@@ -3517,7 +3584,10 @@ function printEtichetta(prodId){
     ${p.operatore? `<div class="r"><b>Operatore:</b> ${esc(p.operatore)}</div>`:""}
     <div class="sc">DA CONSUMARSI ENTRO IL ${fmtDate(p.dataScadenza)}</div>
   </div>
-  <div class="noprint" style="margin-top:16px;"><button onclick="window.print()" style="padding:9px 16px;">🖨️ Stampa etichetta</button></div>
+  <div class="noprint" style="margin-top:16px;display:flex;gap:10px;">
+    <button onclick="window.print()" style="padding:9px 16px;">🖨️ Stampa etichetta</button>
+    <button onclick="window.close()" style="padding:9px 16px;background:#eee;border:1px solid #ccc;border-radius:6px;">✕ Chiudi</button>
+  </div>
   </body></html>`);
   w.document.close();
   setTimeout(()=>{ try{ w.print(); }catch(e){} }, 300);
