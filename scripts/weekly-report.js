@@ -29,10 +29,18 @@ async function buildReport() {
   const desde = isoDaysAgo(7);
   const oggi = isoDaysAgo(0);
 
-  const [config, temperature, sanificazione, moma, noco, produzione, composizioni] = await Promise.all([
+  const [config, temperature, sanificazione, moma, noco, produzione, composizioni, coai] = await Promise.all([
     sbGet("config"), sbGet("log-temperature"), sbGet("log-sanificazione"),
-    sbGet("log-moma"), sbGet("log-noco"), sbGet("log-produzione"), sbGet("log-composizioni")
+    sbGet("log-moma"), sbGet("log-noco"), sbGet("log-produzione"), sbGet("log-composizioni"), sbGet("log-coai")
   ]);
+
+  // Snapshot completo per l'allegato di backup, stessa struttura usata dal pulsante
+  // "Scarica backup completo" dentro l'app.
+  const snapshot = {
+    generatedAt: new Date().toISOString(),
+    config,
+    logs: { temperature, sanificazione, moma, noco, produzione, composizioni, coai }
+  };
 
   const inSettimana = (r) => r.data >= desde && r.data <= oggi;
 
@@ -95,15 +103,21 @@ async function buildReport() {
       </p>
 
       <p style="font-size:12px;color:#8a8272;margin-top:24px;border-top:1px solid #eee;padding-top:12px;">
-        Report generato automaticamente ogni lunedì dall'app HACCP Baldoria. Per i dettagli completi, apri l'app.
+        Report generato automaticamente ogni lunedì dall'app HACCP Baldoria. Per i dettagli completi, apri l'app.<br>
+        📎 In allegato trovi il backup completo di tutti i dati in formato JSON, aggiornato a oggi.
       </p>
     </div>
   </div>`;
 
-  return html;
+  return { html, snapshot };
 }
 
-async function sendEmail(html) {
+async function sendEmail(html, snapshot) {
+  const attachments = snapshot ? [{
+    filename: `haccp-baldoria-backup-${isoDaysAgo(0)}.json`,
+    content: Buffer.from(JSON.stringify(snapshot, null, 2)).toString("base64")
+  }] : [];
+
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -114,7 +128,8 @@ async function sendEmail(html) {
       from: "Baldoria HACCP <onboarding@resend.dev>",
       to: [DEST_EMAIL],
       subject: `🔥 Baldoria — Riepilogo settimanale HACCP (${fmtDateIt(isoDaysAgo(7))} – ${fmtDateIt(isoDaysAgo(0))})`,
-      html
+      html,
+      attachments
     })
   });
   const data = await r.json();
@@ -122,7 +137,7 @@ async function sendEmail(html) {
     console.error("Errore invio email:", JSON.stringify(data));
     process.exit(1);
   }
-  console.log("Email inviata con successo:", data.id);
+  console.log("Email inviata con successo (con allegato backup):", data.id);
 }
 
 module.exports = { buildReport, sendEmail };
@@ -130,8 +145,8 @@ module.exports = { buildReport, sendEmail };
 if (require.main === module) {
   (async () => {
     try {
-      const html = await buildReport();
-      await sendEmail(html);
+      const { html, snapshot } = await buildReport();
+      await sendEmail(html, snapshot);
     } catch (err) {
       console.error("Errore nella generazione/invio del report:", err);
       process.exit(1);
