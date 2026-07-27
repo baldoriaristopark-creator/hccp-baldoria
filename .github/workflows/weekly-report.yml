@@ -1,0 +1,19 @@
+name: Report settimanale HACCP
+
+on:
+  schedule:
+    # Ogni lunedì alle 7:00 UTC (9:00 in Italia con ora legale)
+    - cron: '0 7 * * 1'
+  workflow_dispatch: {}   # permette anche l'invio manuale per test, da GitHub
+
+jobs:
+  invia-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Invia report settimanale via email
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: node scripts/weekly-report.js
