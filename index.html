@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v28">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v29">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v28</title>
+<title>HACCP Baldoria v29</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -165,7 +165,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 28 · spento + stampa · 27/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 29 · nomi registri e soglie da manuale · 27/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2574,7 +2574,7 @@ function openComponiForm(recipeId){
           <div><label class="field" style="margin-top:0;">Temperatura raggiunta (°C)</label><input type="number" step="0.1" id="componiAbbTemp" oninput="window._componiAbbattuto.temperatura=this.value"></div>
           <div><label class="field" style="margin-top:0;">Durata (minuti)</label><input type="number" id="componiAbbDurata" oninput="window._componiAbbattuto.durata=this.value"></div>
         </div>
-        <p class="muted" style="font-size:12px;margin-top:8px;">Riferimento: positivo ≤ +3°C entro 90 min · negativo ≤ -18°C entro 240 min. Fuori da questi valori la preparazione viene comunque salvata, ma segnalata come da verificare.</p>
+        <p class="muted" style="font-size:12px;margin-top:8px;">Riferimento (da manuale di autocontrollo Baldoria): positivo ≤ +3°C entro 110 min · negativo ≤ -18°C entro 240 min. Fuori da questi valori la preparazione viene comunque salvata, ma segnalata come da verificare.</p>
       </div>
     </div>
     <label class="field">Quantità preparata</label>
@@ -2699,7 +2699,7 @@ async function saveComposizione(recipeId){
     const temp = abb.temperatura!==""? parseFloat(abb.temperatura) : null;
     const durata = abb.durata!==""? parseInt(abb.durata) : null;
     const sogliaTemp = abb.tipo==="negativo" ? -18 : 3;
-    const sogliaDurata = abb.tipo==="negativo" ? 240 : 90;
+    const sogliaDurata = abb.tipo==="negativo" ? 240 : 110;
     const tempOk = temp!==null && (abb.tipo==="negativo"? temp<=sogliaTemp : temp<=sogliaTemp);
     const durataOk = durata!==null && durata<=sogliaDurata;
     abbattimento = { tipo: abb.tipo, temperatura: temp, durataMinuti: durata, conforme: !!(tempOk && durataOk) };
@@ -3310,7 +3310,7 @@ function printScheda(kind){
   const inMonth = r => (r.data||"").startsWith(mk);
   let title = "", body = "";
   if(kind==="temperature"){
-    title = "Scheda temperature (COTE)";
+    title = "Scheda temperature (MOTE)";
     body = config.points.map(p=>{
       const rows = logs.temperature.filter(r=>r.pointId===p.id && inMonth(r))
         .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
@@ -3321,7 +3321,7 @@ function printScheda(kind){
       return `<h2>${esc(p.name)} — soglia ${rangeLbl}</h2>` + tbl(["Data","Ora","Valore","Esito","Operatore","Fonte"], rows);
     }).join("");
   } else if(kind==="sanificazione"){
-    title = "Scheda sanificazione (SAPU)";
+    title = "Scheda sanificazione (MOSA)";
     body = ["giornaliera","settimanale","mensile"].map(freq=>{
       const rows = logs.sanificazione.filter(r=>r.frequenza===freq && inMonth(r))
         .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
@@ -3458,9 +3458,9 @@ function printFascicolo(){
   <table>
     <thead><tr><th>Registro</th><th>Registrazioni</th><th>Esito</th></tr></thead>
     <tbody>
-      <tr><td>Temperature (COTE)</td><td>${temps.length}</td>
+      <tr><td>Temperature (MOTE)</td><td>${temps.length}</td>
         <td>${tempNC.length? `<span class="bad">${tempNC.length} fuori soglia</span> — conformità ${pct}%` : `<span class="ok">tutte conformi</span>`}</td></tr>
-      <tr><td>Sanificazione (SAPU)</td><td>${sanif.length}</td><td>${sanif.length? `<span class="ok">registrate con foto di conferma</span>`:"—"}</td></tr>
+      <tr><td>Sanificazione (MOSA)</td><td>${sanif.length}</td><td>${sanif.length? `<span class="ok">registrate con foto di conferma</span>`:"—"}</td></tr>
       <tr><td>Matrici in ingresso (MOMA)</td><td>${momaM.length}</td>
         <td>${momaNC.length? `<span class="bad">${momaNC.length} consegne con anomalie</span>`:`<span class="ok">tutte conformi</span>`}</td></tr>
       <tr><td>Agenti infestanti (COAI)</td><td>${coaiM.length}</td>
@@ -3474,8 +3474,8 @@ function printFascicolo(){
   ${nocoAperte.length? `<div style="font-size:11px;color:#C0392B;margin-bottom:10px;">Attenzione: risultano verbali di non conformità ancora aperti. Verificare l'efficacia delle azioni correttive prima dell'archiviazione.</div>`:""}`;
 
   const sezioni = [
-    ["Registro temperature (COTE)","temperature"],
-    ["Registro sanificazione (SAPU)","sanificazione"],
+    ["Registro temperature (MOTE)","temperature"],
+    ["Registro sanificazione (MOSA)","sanificazione"],
     ["Controllo matrici in ingresso (MOMA)","moma"],
     ["Produzione e tracciabilità lotti (P1)","produzione"],
     ["Ricette e composizioni","ricette"],
