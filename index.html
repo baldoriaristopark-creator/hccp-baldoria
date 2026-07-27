@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v25">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v26">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v25</title>
+<title>HACCP Baldoria v26</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -163,7 +163,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 25 · ricerca singolare/plurale · 27/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 26 · scadenze in home · 27/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1033,6 +1033,31 @@ function renderHome(){
         <button class="btn danger" onclick="openNocoForm()">⚠️ Segnala non conformità</button>
       </div>
     </div>
+    ${(scadutiProd.length || inScadenzaProd.length) ? `
+    <div class="card">
+      <h2>📦 Da controllare in dispensa/frigo</h2>
+      ${scadutiProd.length? `
+        <div class="muted" style="font-weight:800;color:var(--red);margin-bottom:4px;">🚨 Già scaduti (${scadutiProd.length})</div>
+        ${scadutiProd.slice(0,8).map(p=>`
+          <div class="logrow" onclick="openProduzioneDetail('${p.id}')" style="cursor:pointer;">
+            <div><div class="val">${p.prodotto}</div><div class="meta">${p.lotto} · scaduto il ${fmtDate(p.dataScadenza)}</div></div>
+            <span class="chip bad">Scaduto</span>
+          </div>
+        `).join("")}
+        ${scadutiProd.length>8? `<p class="muted" style="font-size:12px;">+ altri ${scadutiProd.length-8}, vedi in Produzione</p>`:""}
+      `:""}
+      ${inScadenzaProd.length? `
+        <div class="muted" style="font-weight:800;color:var(--amber);margin-top:${scadutiProd.length?'12px':'0'};margin-bottom:4px;">⏳ In scadenza oggi o domani (${inScadenzaProd.length})</div>
+        ${inScadenzaProd.slice(0,8).map(p=>`
+          <div class="logrow" onclick="openProduzioneDetail('${p.id}')" style="cursor:pointer;">
+            <div><div class="val">${p.prodotto}</div><div class="meta">${p.lotto} · scade il ${fmtDate(p.dataScadenza)}</div></div>
+            <span class="chip missing">${p.dataScadenza===t? 'Oggi':'Domani'}</span>
+          </div>
+        `).join("")}
+        ${inScadenzaProd.length>8? `<p class="muted" style="font-size:12px;">+ altri ${inScadenzaProd.length-8}, vedi in Produzione</p>`:""}
+      `:""}
+    </div>
+    `:""}
   `;
 }
 function quickTemp(){ activeTab="temperature"; render(); }
