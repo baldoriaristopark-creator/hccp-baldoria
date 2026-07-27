@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v23">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v24">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v23</title>
+<title>HACCP Baldoria v24</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -163,11 +163,17 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 23 · auto-configurazione · 26/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 24 · offline + backup · 27/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
-      <button id="settingsBtn" style="background:rgba(255,255,255,.18);border:none;color:#fff;
-        border-radius:10px;padding:9px 12px;font-size:18px;cursor:pointer;">⚙️</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div id="offlineBadge" onclick="openOfflineInfo()" style="display:none;align-items:center;gap:5px;background:rgba(255,255,255,.18);
+          border-radius:10px;padding:9px 10px;font-size:13px;cursor:pointer;font-weight:700;">
+          📡 <span id="offlineBadgeCount">0</span>
+        </div>
+        <button id="settingsBtn" style="background:rgba(255,255,255,.18);border:none;color:#fff;
+          border-radius:10px;padding:9px 12px;font-size:18px;cursor:pointer;">⚙️</button>
+      </div>
     </div>
     <nav class="tabs" id="tabs"></nav>
   </header>
@@ -257,6 +263,10 @@ const DB = {
       if(v===null) throw new Error("not found");
       return {key, value:v, shared:true};
     }
+    // Modalità offline: se c'è una modifica locale non ancora sincronizzata per questa chiave,
+    // è più recente di quella sul server — la usiamo direttamente, senza aspettare la rete.
+    const pending = getPendingSync(key);
+    if(pending) return {key, value: pending.value, shared:true};
     const r = await fetch(this._url(`?key=eq.${encodeURIComponent(key)}&select=value`), {headers:this._headers()});
     if(!r.ok) throw new Error("db get "+r.status);
     const rows = await r.json();
@@ -269,13 +279,21 @@ const DB = {
       if(!LS.set("haccp:"+key, value)) throw new Error("memoria del browser non disponibile");
       return {key, value, shared:true};
     }
-    const r = await fetch(this._url(""), {
-      method:"POST",
-      headers:{...this._headers(), "Prefer":"resolution=merge-duplicates,return=minimal"},
-      body: JSON.stringify({key, value, updated_at:new Date().toISOString()})
-    });
-    if(!r.ok) throw new Error("db set "+r.status);
-    return {key, value, shared:true};
+    try{
+      const r = await fetch(this._url(""), {
+        method:"POST",
+        headers:{...this._headers(), "Prefer":"resolution=merge-duplicates,return=minimal"},
+        body: JSON.stringify({key, value, updated_at:new Date().toISOString()})
+      });
+      if(!r.ok) throw new Error("db set "+r.status);
+      clearPendingSync(key);
+      return {key, value, shared:true};
+    }catch(err){
+      // Rete assente o Supabase irraggiungibile: il dato NON si perde, resta in coda
+      // sul dispositivo e riparte da solo appena torna la connessione.
+      queuePendingSync(key, value);
+      return {key, value, shared:true, offline:true};
+    }
   },
   async delete(key, shared){
     if(this.mode==="claude") return window.storage.delete(key, shared);
@@ -304,6 +322,61 @@ const DB = {
     return {ok:false, msg:"Errore di connessione ("+r.status+")."};
   }
 };
+
+// ---------- MODALITÀ OFFLINE: coda di sincronizzazione locale ----------
+// Se una registrazione non riesce a raggiungere il database condiviso (rete assente,
+// Supabase irraggiungibile), resta salvata qui sul dispositivo e riparte da sola.
+const PENDING_SYNC_KEY = "haccp-baldoria-pending-sync";
+function getPendingQueue(){
+  try{ return JSON.parse(LS.get(PENDING_SYNC_KEY) || "{}"); }catch(e){ return {}; }
+}
+function setPendingQueue(q){ LS.set(PENDING_SYNC_KEY, JSON.stringify(q)); }
+function getPendingSync(key){ const q = getPendingQueue(); return q[key] || null; }
+function queuePendingSync(key, value){
+  const q = getPendingQueue();
+  q[key] = { value, ts: Date.now() };
+  setPendingQueue(q);
+  updateOfflineBadge();
+}
+function clearPendingSync(key){
+  const q = getPendingQueue();
+  if(q[key]){ delete q[key]; setPendingQueue(q); updateOfflineBadge(); }
+}
+function pendingSyncCount(){ return Object.keys(getPendingQueue()).length; }
+async function flushPendingSync(){
+  if(DB.mode!=="supabase") return;
+  const q = getPendingQueue();
+  const keys = Object.keys(q);
+  if(!keys.length) return;
+  for(const key of keys){
+    const item = q[key];
+    try{
+      const r = await fetch(DB._url(""), {
+        method:"POST",
+        headers:{...DB._headers(), "Prefer":"resolution=merge-duplicates,return=minimal"},
+        body: JSON.stringify({key, value:item.value, updated_at:new Date().toISOString()})
+      });
+      if(r.ok) clearPendingSync(key);
+    }catch(e){ /* rete ancora assente: resta in coda, si riprova al prossimo giro */ }
+  }
+  // Se la coda si è svuotata, i dati appena sincronizzati potrebbero differire da quelli
+  // in memoria su altri dispositivi: un ricaricamento leggero mantiene tutto coerente.
+  if(!pendingSyncCount() && window.__avviata){
+    loadAll().then(()=>{ if($overlay.innerHTML.trim()==="") render(); }).catch(()=>{});
+  }
+}
+function updateOfflineBadge(){
+  const n = pendingSyncCount();
+  const el = document.getElementById("offlineBadge");
+  if(!el) return;
+  if(n>0){
+    el.style.display = "flex";
+    el.querySelector("#offlineBadgeCount").textContent = n;
+  } else {
+    el.style.display = "none";
+  }
+}
+
 function dbModeLabel(){
   return DB.mode==="supabase" ? "☁️ Database condiviso" :
          DB.mode==="claude"   ? "💬 Archivio Claude" :
@@ -2859,7 +2932,14 @@ function renderImpostazioni(){
     <div class="card">
       <h2>☁️ Archiviazione dati</h2>
       <p class="muted">Modalità attuale: <b>${dbModeLabel()}</b>${DB.mode==="local"? " — attenzione: i dati restano solo su questo dispositivo." : ""}${!canUseClaudeAI()? " · lettura foto: OCR gratuito (meno preciso della lettura AI)" : " · lettura foto: AI Claude"}</p>
+      ${DB.mode==="supabase"? `<p class="muted" style="margin-top:6px;">📡 Sincronizzazione: ${pendingSyncCount()>0? `<b>${pendingSyncCount()} in attesa</b> (offline o rete lenta)` : `<b>tutto aggiornato</b>`}</p>`:""}
       <button class="btn secondary block" onclick="openDbConfig()">Configura database condiviso</button>
+    </div>
+    <div class="card">
+      <h2>💾 Backup e Ripristino</h2>
+      <p class="muted">${DB.mode==="supabase"? "Ogni giorno l'app salva automaticamente una copia completa di tutti i registri, così avete sempre un punto a cui tornare in caso di problemi." : "Il backup automatico giornaliero richiede la modalità database condiviso."}</p>
+      <div class="rowbtns"><button class="btn secondary block" onclick="downloadFullBackupNow()">⬇️ Scarica backup completo adesso</button></div>
+      ${DB.mode==="supabase"? `<div class="rowbtns"><button class="iconbtn block" onclick="openBackupPanel()">📂 Vedi backup automatici disponibili</button></div>`:""}
     </div>
     <div class="card">
       <h2>🖨️ Stampa registri (mese corrente)</h2>
@@ -3387,6 +3467,75 @@ async function migraDati(){
   }catch(e){ toast("⚠️ Copia non riuscita: "+e.message); }
 }
 
+// ---------- BACKUP AUTOMATICO ----------
+const BACKUP_PREFIX = "backup:";
+function buildFullSnapshot(){
+  return { generatedAt: new Date().toISOString(), config, logs };
+}
+async function runAutoBackupIfDue(){
+  if(DB.mode!=="supabase") return; // ha senso solo con database condiviso: in locale i dati sono già solo qui
+  const key = BACKUP_PREFIX + todayISO();
+  try{
+    await DB.get(key, true);
+    return; // esiste già il backup di oggi
+  }catch(e){ /* non esiste ancora: lo creiamo sotto */ }
+  try{
+    await DB.set(key, JSON.stringify(buildFullSnapshot()), true);
+    pruneOldBackups().catch(()=>{});
+  }catch(err){ /* si ritenterà al prossimo avvio dell'app */ }
+}
+async function pruneOldBackups(){
+  const list = await DB.list(BACKUP_PREFIX, true);
+  const keys = (list.keys||[]).filter(k=>k.startsWith(BACKUP_PREFIX)).sort();
+  const LIMIT = 30;
+  if(keys.length > LIMIT){
+    for(const k of keys.slice(0, keys.length - LIMIT)){ await DB.delete(k, true).catch(()=>{}); }
+  }
+}
+function triggerJsonDownload(filename, dataStr){
+  const blob = new Blob([dataStr], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function downloadFullBackupNow(){
+  triggerJsonDownload(`haccp-baldoria-backup-${todayISO()}.json`, JSON.stringify(buildFullSnapshot(), null, 2));
+  toast("💾 Backup scaricato");
+}
+async function downloadBackupSnapshot(key){
+  try{
+    const r = await DB.get(key, true);
+    triggerJsonDownload(key.replace(":","-")+".json", r.value);
+    toast("💾 Backup scaricato");
+  }catch(e){ toast("⚠️ Impossibile scaricare questo backup"); }
+}
+function openBackupPanel(){
+  openSheet("💾 Backup e Ripristino", `
+    <div class="card" style="padding:11px;background:var(--green-pale);border:none;">
+      <div style="font-weight:800;font-size:13px;">Backup automatico giornaliero</div>
+      <p class="muted" style="font-size:12px;margin-top:4px;">Ogni giorno, alla prima apertura dell'app, viene salvata una copia completa di tutti i registri. Le ultime 30 copie vengono conservate.</p>
+    </div>
+    <h2 style="margin-top:16px;">Backup automatici disponibili</h2>
+    <div id="backupListEl"><span class="spinner"></span> Carico...</div>
+  `, async ()=>{
+    const el = document.getElementById("backupListEl");
+    try{
+      const list = await DB.list(BACKUP_PREFIX, true);
+      const keys = (list.keys||[]).filter(k=>k.startsWith(BACKUP_PREFIX)).sort().reverse().slice(0,14);
+      el.innerHTML = keys.length? keys.map(k=>`
+        <div class="logrow">
+          <div><div class="val">${fmtDate(k.replace(BACKUP_PREFIX,""))}</div></div>
+          <span class="muted" style="cursor:pointer;text-decoration:underline;" onclick="downloadBackupSnapshot('${k}')">⬇️ Scarica</span>
+        </div>
+      `).join("") : `<div class="empty">Nessun backup automatico ancora disponibile (se ne crea uno ogni giorno).</div>`;
+    }catch(e){
+      el.innerHTML = `<div class="empty">Impossibile caricare l'elenco (controlla la connessione).</div>`;
+    }
+  });
+}
+
 function exportCsv(kind){
   const rows = logs[kind];
   if(!rows.length){ toast("Nessun dato da esportare"); return; }
@@ -3415,20 +3564,44 @@ function flatten(obj, prefix=""){
 }
 
 // ---------- INIT ----------
+function openOfflineInfo(){
+  const n = pendingSyncCount();
+  const q = getPendingQueue();
+  const elenco = Object.keys(q).map(k=>{
+    const nomi = {
+      "log-temperature":"Temperature", "log-sanificazione":"Sanificazione", "log-moma":"MOMA",
+      "log-coai":"Infestanti (COAI)", "log-noco":"Non conformità (NOCO)", "log-produzione":"Produzione/Lotti",
+      "log-composizioni":"Ricette/Composizioni", "config":"Configurazione ricette/punti"
+    };
+    return `<div class="logrow"><div><div class="val">${nomi[k]||k}</div><div class="meta">In attesa dal ${fmtDate(new Date(q[k].ts).toISOString().slice(0,10))}</div></div></div>`;
+  }).join("");
+  openSheet("📡 Sincronizzazione", `
+    <p class="muted">${n>0
+      ? `Ci sono <b>${n}</b> modific${n===1?'a':'he'} salvat${n===1?'a':'e'} su questo dispositivo, in attesa di raggiungere il database condiviso. Nessun dato è stato perso: appena torna la connessione, l'app li invia da sola in automatico.`
+      : `Tutto sincronizzato — nessuna modifica in attesa.`}</p>
+    ${elenco}
+    ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
+  `);
+}
 (async function init(){
   try{
     $main.innerHTML = `<div class="empty"><span class="spinner"></span> Caricamento registri...</div>`;
     await loadAll();
     render();
     window.__avviata = true;
+    updateOfflineBadge();
     if(DB.mode==="local" && !LS.available){
       setTimeout(()=>toast("⚠️ Questo browser non salva i dati: apri l'app da un indirizzo web, non dal file"), 1200);
     } else if(DB.mode==="local"){
       setTimeout(()=>toast("📱 Dati salvati solo su questo dispositivo — configurali in Impostazioni"), 1200);
     }
+    if(pendingSyncCount()>0) setTimeout(()=>toast(`📡 ${pendingSyncCount()} modifica/he in attesa di sincronizzazione`), 1200);
     setInterval(tickTimers, 1000);
     setInterval(pollTimersFromStorage, 10000);
     setInterval(pollAuditsFromStorage, 10000);
+    setInterval(flushPendingSync, 20000);
+    window.addEventListener("online", ()=>{ toast("🌐 Connessione ripristinata, sincronizzo..."); flushPendingSync(); });
+    runAutoBackupIfDue();
   }catch(err){
     fatalError("Si è verificato un errore durante il caricamento dei registri.", err && (err.stack||err.message));
   }
