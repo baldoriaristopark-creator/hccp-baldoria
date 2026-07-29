@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v32">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v33">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v32</title>
+<title>HACCP Baldoria v33</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -165,7 +165,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 32 · inserimento in ritardo · 27/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 33 · nuovi orari allarmi · 27/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -736,7 +736,7 @@ function triggerAuditCheck(type){
   }
   audits[type] = { noticeAt: Date.now(), escalated:false, missing };
   saveAudits().catch(()=>{});
-  const labels = {daily:"Controllo ore 11:30", weekly:"Controllo settimanale (lunedì 18:00)", monthly:"Controllo mensile (1° del mese)"};
+  const labels = {daily:"Controllo ore 11:30", weekly:"Controllo settimanale (giovedì 11:00)", monthly:"Controllo mensile (15 del mese ore 12:00)"};
   toast(`⚠️ ${labels[type]}: verifiche mancanti`);
   render();
 }
@@ -847,11 +847,11 @@ function checkScheduledAudits(){
     window._lastDailyTrigger = todayKey;
     triggerAuditCheck('daily');
   }
-  if(now.getDay()===1 && now.getHours()===18 && now.getMinutes()===0 && window._lastWeeklyTrigger!==todayKey){
+  if(now.getDay()===4 && now.getHours()===11 && now.getMinutes()===0 && window._lastWeeklyTrigger!==todayKey){
     window._lastWeeklyTrigger = todayKey;
     triggerAuditCheck('weekly');
   }
-  if(now.getDate()===1 && now.getHours()===9 && now.getMinutes()===0 && window._lastMonthlyTrigger!==todayKey){
+  if(now.getDate()===15 && now.getHours()===12 && now.getMinutes()===0 && window._lastMonthlyTrigger!==todayKey){
     window._lastMonthlyTrigger = todayKey;
     triggerAuditCheck('monthly');
   }
