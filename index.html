@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v29">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v30">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v29</title>
+<title>HACCP Baldoria v30</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -165,7 +165,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 29 · nomi registri e soglie da manuale · 27/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 30 · regola sanificazione notturna · 27/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -500,6 +500,18 @@ function toLocalISODate(d){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function todayISO(){ return toLocalISODate(new Date()); }
+// Per la sola Sanificazione: tra mezzanotte e le 4:00 del mattino, la registrazione
+// si riferisce ancora alla giornata precedente (chi chiude dopo mezzanotte sta
+// completando le pulizie di IERI, non iniziando quelle di oggi).
+function sanifDateISO(){
+  const now = new Date();
+  if(now.getHours() < 4){
+    const y = new Date(now);
+    y.setDate(y.getDate()-1);
+    return toLocalISODate(y);
+  }
+  return toLocalISODate(now);
+}
 function isoWeekOfYear(isoDate){
   const d = new Date(isoDate+"T00:00:00");
   const target = new Date(d.valueOf());
@@ -665,8 +677,9 @@ async function saveAudits(){
 }
 function auditMissingDaily(){
   const t = todayISO();
+  const tSanif = sanifDateISO();
   const missingTemp = config.points.filter(p=>!logs.temperature.some(r=>r.pointId===p.id && r.data===t));
-  const missingSanif = (config.sanifItems.giornaliera||[]).filter(item=>!logs.sanificazione.some(r=>r.item===item && r.frequenza==='giornaliera' && r.data===t));
+  const missingSanif = (config.sanifItems.giornaliera||[]).filter(item=>!logs.sanificazione.some(r=>r.item===item && r.frequenza==='giornaliera' && r.data===tSanif));
   return {missingTemp: missingTemp.map(p=>p.id), missingSanif, missingTempLabels: missingTemp.map(p=>p.name)};
 }
 function auditMissingWeekly(){
@@ -1560,7 +1573,7 @@ async function salvaAzioneCorrettiva(pointId, val, recId){
 // ---------- SANIFICAZIONE ----------
 let sanifSubTab = "giornaliera";
 function renderSanificazione(){
-  const t = todayISO();
+  const t = sanifDateISO();
   const allItems = config.sanifItems[sanifSubTab]||[];
   const items = repartoFiltroSanif ? allItems.filter(item=>config.sanifReparti[item]===repartoFiltroSanif) : allItems;
   $main.innerHTML = `
@@ -1613,8 +1626,12 @@ function compressImage(dataUrl, maxWidth){
 }
 
 function openSanifConfirm(item){
+  const nottePassata = new Date().getHours() < 4;
   openSheet(`Conferma sanificazione`, `
     <p class="muted"><b>${item}</b> — ${sanifSubTab}</p>
+    ${nottePassata? `<div class="card" style="padding:10px;background:var(--amber-pale);border:none;margin-bottom:10px;">
+      <p class="muted" style="margin:0;font-size:12px;">🌙 Sono passate da poco le 00:00 — questa sanificazione verrà registrata come completata per <b>ieri, ${fmtDate(sanifDateISO())}</b> (fino alle 4:00 del mattino le sanificazioni si riferiscono ancora alla giornata precedente).</p>
+    </div>`:""}
     <label class="field">Operatore</label>
     <input type="text" id="sanifOp" value="${lastOperator}" placeholder="Nome operatore">
     <label class="field">Foto di conferma (obbligatoria)</label>
@@ -1651,7 +1668,7 @@ async function saveSanifConfirm(item){
   const id = uid();
   const photoKey = "photo-sanif-"+id;
   const photoData = window._sanifPhoto;
-  logs.sanificazione.push({id, item, frequenza:sanifSubTab, data:todayISO(), ora:nowTime(), operatore:op, photoKey});
+  logs.sanificazione.push({id, item, frequenza:sanifSubTab, data:sanifDateISO(), ora:nowTime(), operatore:op, photoKey});
   window._sanifPhoto = null;
   activeTab="sanificazione"; closeSheet();
   toast("Sanificazione confermata ✅");
