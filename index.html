@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v33">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v34">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v33</title>
+<title>HACCP Baldoria v34</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -165,7 +165,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 33 · nuovi orari allarmi · 27/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 34 · filtro stato temperature/sanificazione · 27/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -462,6 +462,8 @@ let repartoFiltroSanif = "";
 let repartoFiltroRicette = "";
 let dateFiltroTemp = "";
 let dateFiltroSanif = "";
+let statoFiltroTemp = "";
+let statoFiltroSanif = "";
 let dateFiltroMoma = "";
 let dateFiltroComposizioni = "";
 function dateFilterHtml(currentValue, onchangeFn){
@@ -1134,8 +1136,10 @@ function renderTemperature(){
   const pointsFiltered = repartoFiltroTemp ? config.points.filter(p=>p.reparto===repartoFiltroTemp) : config.points;
   const dataRif = dateFiltroTemp || todayISO();
   const isOggi = !dateFiltroTemp;
-  let tiles = pointsFiltered.map(p=>{
-    const st = pointStatusToday(p, dataRif);
+  let pointsConStato = pointsFiltered.map(p=>({p, st: pointStatusToday(p, dataRif)}));
+  if(statoFiltroTemp==="confermato") pointsConStato = pointsConStato.filter(x=>x.st.state!=="missing");
+  else if(statoFiltroTemp==="daregistrare") pointsConStato = pointsConStato.filter(x=>x.st.state==="missing");
+  let tiles = pointsConStato.map(({p, st})=>{
     const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}° / ${p.max}°C`;
     const noLetturaLbl = isOggi? "Nessuna lettura oggi" : `Nessuna lettura il ${fmtDate(dataRif)}`;
     const valLbl = !st.rec ? noLetturaLbl : st.state==="spento" ? `⚫ Spento alle ${st.rec.ora}${st.rec.tardiva?' ⏱️':''}` : `${st.rec.valore}°C alle ${st.rec.ora}${st.rec.tardiva?' ⏱️':''}`;
@@ -1156,13 +1160,18 @@ function renderTemperature(){
       </div>
     </div>`;
   }).join("");
-  if(!pointsFiltered.length) tiles = `<div class="empty">${repartoFiltroTemp? `Nessun punto di controllo per il reparto "${repartoFiltroTemp}".` : "Nessun punto di controllo configurato."}</div>`;
+  if(!pointsConStato.length) tiles = `<div class="empty">${repartoFiltroTemp||statoFiltroTemp? `Nessun punto di controllo corrisponde ai filtri scelti.` : "Nessun punto di controllo configurato."}</div>`;
 
   $main.innerHTML = `
     <div class="card">
       <div class="card-head"><h2>Punti di controllo ${!isOggi? `— ${fmtDate(dataRif)}`:''}</h2>${printBtn('temperature')}</div>
       ${repartoFilterHtml(repartoFiltroTemp, "setRepartoFiltroTemp")}
       ${dateFilterHtml(dateFiltroTemp, "setDateFiltroTemp")}
+      <select onchange="setStatoFiltroTemp(this.value)" style="margin-bottom:10px;">
+        <option value="" ${!statoFiltroTemp?'selected':''}>Tutti gli stati</option>
+        <option value="confermato" ${statoFiltroTemp==='confermato'?'selected':''}>✅ Confermato (già registrato)</option>
+        <option value="daregistrare" ${statoFiltroTemp==='daregistrare'?'selected':''}>⏳ Da registrare</option>
+      </select>
       <div class="grid2">${tiles}</div>
       <div class="rowbtns"><button class="btn secondary block" onclick="openAddPoint()">+ Aggiungi frigo / freezer / banco</button></div>
     </div>
@@ -1170,6 +1179,7 @@ function renderTemperature(){
 }
 function setRepartoFiltroTemp(v){ repartoFiltroTemp = v; render(); }
 function setDateFiltroTemp(v){ dateFiltroTemp = v; render(); }
+function setStatoFiltroTemp(v){ statoFiltroTemp = v; render(); }
 function pointIcon(type){
   return type==="freezer"?"🧊":type==="caldo"?"🔥":"❄️";
 }
@@ -1611,7 +1621,11 @@ function renderSanificazione(){
   const isOggi = !dateFiltroSanif;
   const t = dateFiltroSanif || sanifDateISO();
   const allItems = config.sanifItems[sanifSubTab]||[];
-  const items = repartoFiltroSanif ? allItems.filter(item=>config.sanifReparti[item]===repartoFiltroSanif) : allItems;
+  let items = repartoFiltroSanif ? allItems.filter(item=>config.sanifReparti[item]===repartoFiltroSanif) : allItems;
+  let itemsConRec = items.map(item=>({item, rec: logs.sanificazione.find(r=>r.item===item && r.frequenza===sanifSubTab && r.data===t)}));
+  if(statoFiltroSanif==="fatto") itemsConRec = itemsConRec.filter(x=>!!x.rec);
+  else if(statoFiltroSanif==="nonfatto") itemsConRec = itemsConRec.filter(x=>!x.rec);
+  items = itemsConRec.map(x=>x.item);
   $main.innerHTML = `
     <div class="card">
       <div class="card-head"><h2>Sanificazione ${!isOggi? `— ${fmtDate(t)}`:''}</h2>${printBtn('sanificazione')}</div>
@@ -1621,9 +1635,13 @@ function renderSanificazione(){
       </div>
       ${repartoFilterHtml(repartoFiltroSanif, "setRepartoFiltroSanif")}
       ${dateFilterHtml(dateFiltroSanif, "setDateFiltroSanif")}
+      <select onchange="setStatoFiltroSanif(this.value)" style="margin-bottom:10px;">
+        <option value="" ${!statoFiltroSanif?'selected':''}>Tutti gli stati</option>
+        <option value="fatto" ${statoFiltroSanif==='fatto'?'selected':''}>✅ Fatto</option>
+        <option value="nonfatto" ${statoFiltroSanif==='nonfatto'?'selected':''}>⏳ Non fatto</option>
+      </select>
       <p class="muted" style="margin-top:10px;">${isOggi? "Per confermare una sanificazione serve indicare l'operatore e allegare una foto. Tocca una voce completata per vederne i dettagli." : `Stai consultando lo storico del ${fmtDate(t)} — per registrare una nuova sanificazione torna alla data odierna.`}</p>
-      ${items.length? items.map(item=>{
-        const rec = logs.sanificazione.find(r=>r.item===item && r.frequenza===sanifSubTab && r.data===t);
+      ${itemsConRec.length? itemsConRec.map(({item, rec})=>{
         const timerKey = `sanif:${sanifSubTab}:${item}`;
         const auditSt = isOggi? sanifAuditStatus(sanifSubTab, item) : null;
         const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
@@ -1636,7 +1654,7 @@ function renderSanificazione(){
             ${rec? `<button class="togglebtn done" onclick="openSanifDetail('${rec.id}')">✓ ${rec.operatore}${rec.tardiva?' ⏱️':''}</button>` : isOggi? `<button class="togglebtn" onclick="openSanifConfirm('${item.replace(/'/g,"\\'")}')">Segna fatto</button>` : `<span class="muted" style="font-size:13px;">— non registrata</span>`}
           </div>
         </div>`;
-      }).join("") : `<div class="empty">${repartoFiltroSanif? `Nessuna voce per il reparto "${repartoFiltroSanif}" in questa frequenza.` : "Nessuna voce configurata per questa frequenza."}</div>`}
+      }).join("") : `<div class="empty">Nessuna voce corrisponde ai filtri scelti.</div>`}
       <div class="rowbtns"><button class="btn secondary block" onclick="openAddSanifItem('${sanifSubTab}')">+ Aggiungi punto di sanificazione (${sanifSubTab})</button></div>
     </div>
     ${items.length ? `<div class="card"><div class="card-head"><h2>Scheda mensile ${sanifSubTab} — ${MONTHS[new Date().getMonth()]}</h2><button class="printbtn" onclick="printSanifMese('${sanifSubTab}')" title="Stampa la scheda mensile">🖨️ Stampa</button></div>
@@ -1646,6 +1664,7 @@ function renderSanificazione(){
 }
 function setRepartoFiltroSanif(v){ repartoFiltroSanif = v; render(); }
 function setDateFiltroSanif(v){ dateFiltroSanif = v; render(); }
+function setStatoFiltroSanif(v){ statoFiltroSanif = v; render(); }
 
 function compressImage(dataUrl, maxWidth){
   return new Promise((resolve)=>{
