@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v31">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v32">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v31</title>
+<title>HACCP Baldoria v32</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -165,7 +165,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 31 · ricerca per data · 27/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 32 · inserimento in ritardo · 27/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1138,7 +1138,7 @@ function renderTemperature(){
     const st = pointStatusToday(p, dataRif);
     const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}° / ${p.max}°C`;
     const noLetturaLbl = isOggi? "Nessuna lettura oggi" : `Nessuna lettura il ${fmtDate(dataRif)}`;
-    const valLbl = !st.rec ? noLetturaLbl : st.state==="spento" ? `⚫ Spento alle ${st.rec.ora}` : `${st.rec.valore}°C alle ${st.rec.ora}`;
+    const valLbl = !st.rec ? noLetturaLbl : st.state==="spento" ? `⚫ Spento alle ${st.rec.ora}${st.rec.tardiva?' ⏱️':''}` : `${st.rec.valore}°C alle ${st.rec.ora}${st.rec.tardiva?' ⏱️':''}`;
     const chipCls = st.state==="ok"?"ok":st.state==="bad"?"bad":st.state==="spento"?"spento":"missing";
     const chipTxt = st.state==="ok"?"Conforme":st.state==="bad"?"Fuori soglia":st.state==="spento"?"Spento":"Da registrare";
     const auditSt = isOggi? pointAuditStatus(p.id) : null;
@@ -1198,7 +1198,7 @@ function openPointDetail(pointId){
       ${history.length? history.map(r=>`
         <div class="logrow" onclick="openTempEntryDetail('${r.id}')" style="cursor:pointer;">
           <div>
-            <div class="val">${r.spento? '⚫ Spento' : r.valore+'°C '+(r.conforme? '✅':'🔴')}</div>
+            <div class="val">${r.spento? '⚫ Spento' : r.valore+'°C '+(r.conforme? '✅':'🔴')} ${r.tardiva? '<span class="chip missing" style="font-size:10px;">⏱️ in ritardo</span>':''}</div>
             <div class="meta">${fmtDate(r.data)} · ${r.ora} · ${r.operatore||"—"} ${r.fonte==='foto'?'· 📸 foto':''}</div>
           </div>
           <span class="muted">✏️</span>
@@ -1217,6 +1217,10 @@ function openSpentoForm(pointId){
     <input type="text" id="spentoOp" value="${lastOperator}" placeholder="Nome operatore">
     <label class="field">Motivo (facoltativo)</label>
     <input type="text" id="spentoNote" placeholder="es. sbrinamento, manutenzione, fuori servizio">
+    <label class="field">Data</label>
+    <input type="date" id="spentoData" value="${todayISO()}" max="${todayISO()}">
+    <label class="field">Ora</label>
+    <input type="time" id="spentoOra" value="${nowTime()}">
     <div class="rowbtns"><button class="btn block" onclick="saveSpento('${pointId}')">Conferma spento</button></div>
   `);
 }
@@ -1225,18 +1229,22 @@ async function saveSpento(pointId){
   const note = document.getElementById("spentoNote").value.trim();
   if(!op){ toast("Inserisci il nome dell'operatore"); return; }
   const p = config.points.find(x=>x.id===pointId);
-  const rec = { id:uid(), pointId, pointName:p.name, data:todayISO(), ora:nowTime(), operatore:op, spento:true, note, conforme:null };
+  const data = document.getElementById("spentoData").value || todayISO();
+  const ora = document.getElementById("spentoOra").value || nowTime();
+  const tardiva = data!==todayISO() || Math.abs(timeToMinutes(ora)-timeToMinutes(nowTime()))>10;
+  const rec = { id:uid(), pointId, pointName:p.name, data, ora, operatore:op, spento:true, note, conforme:null, tardiva, registratoIl:new Date().toISOString() };
   logs.temperature.push(rec);
   saveLog("temperature").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
   saveOperator(op).catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
-  toast("⚫ Segnato come spento");
+  toast("⚫ Segnato come spento" + (tardiva? " · ⏱️ inserito in ritardo":""));
   activeTab="temperature"; closeSheet();
 }
 function openTempEntryDetail(id){
   const r = logs.temperature.find(x=>x.id===id);
+  const tardivaLbl = r.tardiva? ` · <span class="chip missing" style="font-size:11px;">⏱️ inserita in ritardo</span>${r.registratoIl? ` (compilata realmente il ${fmtDate(r.registratoIl.slice(0,10))} alle ${r.registratoIl.slice(11,16)})`:''}` : '';
   if(r.spento){
     openSheet(`Registrazione — ${fmtDate(r.data)}`, `
-      <p class="muted">${r.pointName||''} · ${fmtDate(r.data)} · ${r.ora} · ⚫ Segnato come spento/non in uso</p>
+      <p class="muted">${r.pointName||''} · ${fmtDate(r.data)} · ${r.ora} · ⚫ Segnato come spento/non in uso${tardivaLbl}</p>
       <label class="field">Operatore</label><input type="text" id="teOp" value="${r.operatore||''}">
       <label class="field">Motivo</label><input type="text" id="teNote" value="${r.note||''}">
       <div class="rowbtns">
@@ -1247,7 +1255,7 @@ function openTempEntryDetail(id){
     return;
   }
   openSheet(`Registrazione — ${fmtDate(r.data)}`, `
-    <p class="muted">${r.pointName||''} · ${fmtDate(r.data)} · ${r.ora}${r.fonte==='foto'?' · 📸 rilevata da foto':''} · ${r.conforme? '✅ Conforme':'🔴 Fuori soglia'}</p>
+    <p class="muted">${r.pointName||''} · ${fmtDate(r.data)} · ${r.ora}${r.fonte==='foto'?' · 📸 rilevata da foto':''} · ${r.conforme? '✅ Conforme':'🔴 Fuori soglia'}${tardivaLbl}</p>
     ${r.photoKey? `<div id="tempDetailPhoto"><span class="spinner"></span> Carico foto...</div>` : `<p class="muted">Nessuna foto per questa registrazione (inserimento manuale).</p>`}
     <label class="field">Valore (°C)</label><input type="number" step="0.1" id="teVal" value="${r.valore}">
     <label class="field">Operatore</label><input type="text" id="teOp" value="${r.operatore||''}">
@@ -1341,6 +1349,11 @@ function openTempEntry(pointId, mode){
       <input type="number" step="0.1" id="tempVal" placeholder="es. 3.5">
       <label class="field">Operatore</label>
       <input type="text" id="tempOp" value="${lastOperator}" placeholder="Nome operatore">
+      <label class="field">Data</label>
+      <input type="date" id="tempData" value="${todayISO()}" max="${todayISO()}">
+      <label class="field">Ora</label>
+      <input type="time" id="tempOra" value="${nowTime()}">
+      <p class="muted" style="font-size:12px;">Lasciale come sono se stai registrando ora. Cambiale solo se ti sei dimenticato di segnare una lettura fatta prima — verrà segnalata come inserita in ritardo, restando comunque valida.</p>
       <div class="rowbtns">
         <button class="btn block" onclick="saveTempManual('${pointId}')">Salva registrazione</button>
       </div>
@@ -1365,7 +1378,10 @@ async function saveTempManual(pointId){
   const op = document.getElementById("tempOp").value.trim();
   if(isNaN(val)){ toast("Inserisci un valore valido"); return; }
   if(!op){ toast("Inserisci il nome dell'operatore"); return; }
-  await commitTempReading(pointId, val, op, "manuale");
+  const dataEl = document.getElementById("tempData");
+  const oraEl = document.getElementById("tempOra");
+  const customDateTime = dataEl ? { data: dataEl.value, ora: oraEl.value } : null;
+  await commitTempReading(pointId, val, op, "manuale", customDateTime);
   closeSheet();
 }
 
@@ -1454,10 +1470,14 @@ async function confirmPhotoReading(pointId){
   closeSheet();
 }
 
-async function commitTempReading(pointId, val, op, fonte){
+function timeToMinutes(t){ const [h,m] = (t||"0:0").split(":").map(Number); return h*60+m; }
+async function commitTempReading(pointId, val, op, fonte, customDateTime){
   const p = config.points.find(x=>x.id===pointId);
   const conforme = p.type==="freezer" ? (val<=p.max) : (val>=p.min && val<=p.max);
-  const rec = { id:uid(), pointId, pointName:p.name, data:todayISO(), ora:nowTime(), valore:val, operatore:op, conforme, fonte };
+  const data = (customDateTime && customDateTime.data) || todayISO();
+  const ora = (customDateTime && customDateTime.ora) || nowTime();
+  const tardiva = data!==todayISO() || Math.abs(timeToMinutes(ora)-timeToMinutes(nowTime()))>10;
+  const rec = { id:uid(), pointId, pointName:p.name, data, ora, valore:val, operatore:op, conforme, fonte, tardiva, registratoIl:new Date().toISOString() };
   if(fonte==="foto" && window._tempPhoto){
     rec.photoKey = "photo-temp-"+rec.id;
     DB.set(rec.photoKey, window._tempPhoto, true).catch(()=>toast("⚠️ Errore di salvataggio foto"));
@@ -1466,7 +1486,7 @@ async function commitTempReading(pointId, val, op, fonte){
   logs.temperature.push(rec);
   saveLog("temperature").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
   saveOperator(op).catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
-  toast(conforme? "Temperatura registrata ✅" : "Registrata — FUORI SOGLIA ⚠️");
+  toast((conforme? "Temperatura registrata ✅" : "Registrata — FUORI SOGLIA ⚠️") + (tardiva? " · ⏱️ inserita in ritardo":""));
   if(!conforme){
     openAzioniCorrettive(p, val, op, fonte, rec);
   }
@@ -1613,7 +1633,7 @@ function renderSanificazione(){
           <div style="display:flex;gap:8px;align-items:center;">
             ${isOggi? `<button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openEditSanifItem('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>
             <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openTimerForm('sanificazione','${timerKey}','${item.replace(/'/g,"\\'")}')" title="Imposta timer">⏱️</button>` : ""}
-            ${rec? `<button class="togglebtn done" onclick="openSanifDetail('${rec.id}')">✓ ${rec.operatore}</button>` : isOggi? `<button class="togglebtn" onclick="openSanifConfirm('${item.replace(/'/g,"\\'")}')">Segna fatto</button>` : `<span class="muted" style="font-size:13px;">— non registrata</span>`}
+            ${rec? `<button class="togglebtn done" onclick="openSanifDetail('${rec.id}')">✓ ${rec.operatore}${rec.tardiva?' ⏱️':''}</button>` : isOggi? `<button class="togglebtn" onclick="openSanifConfirm('${item.replace(/'/g,"\\'")}')">Segna fatto</button>` : `<span class="muted" style="font-size:13px;">— non registrata</span>`}
           </div>
         </div>`;
       }).join("") : `<div class="empty">${repartoFiltroSanif? `Nessuna voce per il reparto "${repartoFiltroSanif}" in questa frequenza.` : "Nessuna voce configurata per questa frequenza."}</div>`}
@@ -1658,6 +1678,11 @@ function openSanifConfirm(item){
       <button class="btn secondary block" onclick="document.getElementById('sanifPhotoInput').click()">📷 Scatta / carica foto</button>
       <div id="sanifPhotoPreview"></div>
     </div>
+    <label class="field">Data</label>
+    <input type="date" id="sanifData" value="${sanifDateISO()}" max="${todayISO()}">
+    <label class="field">Ora</label>
+    <input type="time" id="sanifOra" value="${nowTime()}">
+    <p class="muted" style="font-size:12px;">Lasciale come sono se stai confermando ora. Cambiale solo se ti sei dimenticato di segnarla prima — verrà indicata come inserita in ritardo, restando comunque valida.</p>
     <div class="rowbtns">
       <button class="btn block" id="sanifConfirmBtn" disabled onclick="saveSanifConfirm('${item.replace(/'/g,"\\'")}')">✅ Conferma sanificazione</button>
     </div>
@@ -1686,10 +1711,13 @@ async function saveSanifConfirm(item){
   const id = uid();
   const photoKey = "photo-sanif-"+id;
   const photoData = window._sanifPhoto;
-  logs.sanificazione.push({id, item, frequenza:sanifSubTab, data:sanifDateISO(), ora:nowTime(), operatore:op, photoKey});
+  const data = document.getElementById("sanifData").value || sanifDateISO();
+  const ora = document.getElementById("sanifOra").value || nowTime();
+  const tardiva = data!==sanifDateISO() || Math.abs(timeToMinutes(ora)-timeToMinutes(nowTime()))>10;
+  logs.sanificazione.push({id, item, frequenza:sanifSubTab, data, ora, operatore:op, photoKey, tardiva, registratoIl:new Date().toISOString()});
   window._sanifPhoto = null;
   activeTab="sanificazione"; closeSheet();
-  toast("Sanificazione confermata ✅");
+  toast("Sanificazione confermata ✅" + (tardiva? " · ⏱️ inserita in ritardo":""));
   DB.set(photoKey, photoData, true).catch(()=>toast("⚠️ Errore di salvataggio foto, controlla la connessione"));
   saveLog("sanificazione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
   saveOperator(op).catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
@@ -1697,8 +1725,9 @@ async function saveSanifConfirm(item){
 
 async function openSanifDetail(id){
   const rec = logs.sanificazione.find(r=>r.id===id);
+  const tardivaLbl = rec.tardiva? ` · <span class="chip missing" style="font-size:11px;">⏱️ inserita in ritardo</span>${rec.registratoIl? ` (compilata realmente il ${fmtDate(rec.registratoIl.slice(0,10))} alle ${rec.registratoIl.slice(11,16)})`:''}` : '';
   openSheet(rec.item, `
-    <p class="muted">${rec.frequenza} · ${fmtDate(rec.data)} · ${rec.ora} · <b>${rec.operatore}</b></p>
+    <p class="muted">${rec.frequenza} · ${fmtDate(rec.data)} · ${rec.ora} · <b>${rec.operatore}</b>${tardivaLbl}</p>
     <div id="sanifDetailPhoto"><span class="spinner"></span> Carico foto...</div>
     <div class="rowbtns"><button class="btn danger" onclick="deleteSanifEntry('${id}')">Elimina registrazione</button></div>
   `, async ()=>{
