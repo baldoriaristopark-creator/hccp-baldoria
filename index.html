@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v34">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v35">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v34</title>
+<title>HACCP Baldoria v35</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -165,7 +165,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 34 · filtro stato temperature/sanificazione · 27/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 35 · data fine disponibilità composizioni · 27/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2880,15 +2880,22 @@ async function saveComposizione(recipeId){
 }
 function openComposizioneDetail(id){
   const c = logs.composizioni.find(x=>x.id===id);
+  const semilavorato = c.semilavoratoId? logs.produzione.find(p=>p.id===c.semilavoratoId) : null;
   openSheet(c.ricettaNome, `
     <p class="muted">${fmtDate(c.data)} · ${c.ora} · ${c.operatore}</p>
     ${c.lottoProdotto? `<div class="card" style="padding:11px;background:var(--green-pale);border:none;margin-bottom:10px;">
       <div style="font-weight:800;font-size:13px;">🏷️ Lotto interno prodotto</div>
       <div class="muted" style="font-size:12px;margin-top:4px;">${c.lottoProdotto}</div>
-      ${c.semilavoratoId && logs.produzione.some(p=>p.id===c.semilavoratoId)? `<div class="rowbtns" style="margin-top:8px;">
+      ${semilavorato? `<div class="muted" style="font-size:12px;margin-top:4px;">
+        ${semilavorato.esaurito? `⚫ Non più disponibile dal ${fmtDate(semilavorato.dataEsaurimento)}` : `Scadenza prevista: ${fmtDate(semilavorato.dataScadenza)}`}
+      </div>`:""}
+      ${c.semilavoratoId && semilavorato? `<div class="rowbtns" style="margin-top:8px;">
         <button class="printbtn" onclick="printEtichetta('${c.semilavoratoId}')">🏷️ Etichetta</button>
         <button class="printbtn" onclick="printFiliera('${c.semilavoratoId}')">🔗 Catena</button>
       </div>`:""}
+      ${semilavorato? `<label class="field" style="margin-top:10px;">Data fine disponibilità (non più utilizzabile da)</label>
+      <input type="date" id="compEsaurimento" value="${semilavorato.dataEsaurimento||todayISO()}" max="${todayISO()}">
+      <button class="btn secondary block" style="margin-top:8px;" onclick="markComposizioneEsaurita('${id}')">${semilavorato.esaurito? 'Aggiorna data fine disponibilità':'Segna come terminata/non più disponibile'}</button>`:""}
     </div>`:""}
     ${c.abbattuto? `<div class="card" style="padding:11px;background:${c.abbattimento && c.abbattimento.conforme? 'var(--green-pale)':'var(--amber-pale)'};border:none;margin-bottom:10px;">
       <div style="font-weight:800;font-size:13px;">❄️ Prodotto abbattuto — ${c.abbattimento && c.abbattimento.tipo==='negativo'? 'Negativo/surgelazione':'Positivo'}</div>
@@ -2913,6 +2920,17 @@ function openComposizioneDetail(id){
       document.getElementById("composizioneDetailPhoto").innerHTML = `<p class="muted">Foto non disponibile.</p>`;
     }
   });
+}
+async function markComposizioneEsaurita(compId){
+  const c = logs.composizioni.find(x=>x.id===compId);
+  const semilavorato = logs.produzione.find(p=>p.id===c.semilavoratoId);
+  if(!semilavorato){ toast("⚠️ Lotto collegato non trovato"); return; }
+  const dataScelta = document.getElementById("compEsaurimento").value || todayISO();
+  semilavorato.dataEsaurimento = dataScelta;
+  semilavorato.esaurito = true;
+  saveLog("produzione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast(`Segnata come non più disponibile dal ${fmtDate(dataScelta)}`);
+  activeTab="ricette"; closeSheet();
 }
 async function deleteComposizione(id){
   const rec = logs.composizioni.find(x=>x.id===id);
