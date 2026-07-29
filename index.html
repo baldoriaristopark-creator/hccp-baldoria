@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v30">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v31">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v30</title>
+<title>HACCP Baldoria v31</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -165,7 +165,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 30 · regola sanificazione notturna · 27/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 31 · ricerca per data · 27/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -460,6 +460,16 @@ const REPARTI = ["Brace","Cucina","Pizzeria","Bar"];
 let repartoFiltroTemp = "";
 let repartoFiltroSanif = "";
 let repartoFiltroRicette = "";
+let dateFiltroTemp = "";
+let dateFiltroSanif = "";
+let dateFiltroMoma = "";
+let dateFiltroComposizioni = "";
+function dateFilterHtml(currentValue, onchangeFn){
+  return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+    <input type="date" value="${currentValue||''}" onchange="${onchangeFn}(this.value)" style="flex:1;margin-bottom:0;">
+    ${currentValue? `<button class="iconbtn" onclick="${onchangeFn}('')" style="padding:9px 12px;white-space:nowrap;">✕ Tutte le date</button>`:''}
+  </div>`;
+}
 function guessReparto(text){
   const t = (text||"").toLowerCase();
   if(t.includes("brace")) return "Brace";
@@ -1112,8 +1122,8 @@ function renderHome(){
 function quickTemp(){ activeTab="temperature"; render(); }
 
 // ---------- TEMPERATURE ----------
-function pointStatusToday(p){
-  const t = todayISO();
+function pointStatusToday(p, date){
+  const t = date || todayISO();
   const rec = logs.temperature.filter(r=>r.pointId===p.id && r.data===t).sort((a,b)=>b.ora.localeCompare(a.ora))[0];
   if(!rec) return {state:"missing", rec:null};
   if(rec.spento) return {state:"spento", rec};
@@ -1122,13 +1132,16 @@ function pointStatusToday(p){
 
 function renderTemperature(){
   const pointsFiltered = repartoFiltroTemp ? config.points.filter(p=>p.reparto===repartoFiltroTemp) : config.points;
+  const dataRif = dateFiltroTemp || todayISO();
+  const isOggi = !dateFiltroTemp;
   let tiles = pointsFiltered.map(p=>{
-    const st = pointStatusToday(p);
+    const st = pointStatusToday(p, dataRif);
     const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}° / ${p.max}°C`;
-    const valLbl = !st.rec ? "Nessuna lettura oggi" : st.state==="spento" ? `⚫ Spento alle ${st.rec.ora}` : `${st.rec.valore}°C alle ${st.rec.ora}`;
+    const noLetturaLbl = isOggi? "Nessuna lettura oggi" : `Nessuna lettura il ${fmtDate(dataRif)}`;
+    const valLbl = !st.rec ? noLetturaLbl : st.state==="spento" ? `⚫ Spento alle ${st.rec.ora}` : `${st.rec.valore}°C alle ${st.rec.ora}`;
     const chipCls = st.state==="ok"?"ok":st.state==="bad"?"bad":st.state==="spento"?"spento":"missing";
     const chipTxt = st.state==="ok"?"Conforme":st.state==="bad"?"Fuori soglia":st.state==="spento"?"Spento":"Da registrare";
-    const auditSt = pointAuditStatus(p.id);
+    const auditSt = isOggi? pointAuditStatus(p.id) : null;
     const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
     return `<div class="point-tile ${auditCls}" onclick="openPointDetail('${p.id}')" style="position:relative;">
       <button class="iconbtn" style="position:absolute;top:8px;right:8px;font-size:15px;padding:6px 9px;" onclick="event.stopPropagation();openEditPoint('${p.id}')" title="Modifica o elimina">✏️</button>
@@ -1138,7 +1151,7 @@ function renderTemperature(){
       <div class="muted">${valLbl}</div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
         <div class="chip ${chipCls}">${chipTxt}</div>
-        ${timerFor('temp:'+p.id) ? `<span class="timer-badge" data-timer-key="temp:${p.id}">⏱️ ${fmtCountdown(timerFor('temp:'+p.id).endTime-Date.now())}</span>` : ""}
+        ${isOggi && timerFor('temp:'+p.id) ? `<span class="timer-badge" data-timer-key="temp:${p.id}">⏱️ ${fmtCountdown(timerFor('temp:'+p.id).endTime-Date.now())}</span>` : ""}
         ${auditSt==='escalated' ? `<span class="timer-badge expired">🚨 CONTROLLO MANCANTE</span>` : auditSt==='notice' ? `<span class="timer-badge">⚠️ da verificare</span>` : ""}
       </div>
     </div>`;
@@ -1147,14 +1160,16 @@ function renderTemperature(){
 
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Punti di controllo</h2>${printBtn('temperature')}</div>
+      <div class="card-head"><h2>Punti di controllo ${!isOggi? `— ${fmtDate(dataRif)}`:''}</h2>${printBtn('temperature')}</div>
       ${repartoFilterHtml(repartoFiltroTemp, "setRepartoFiltroTemp")}
+      ${dateFilterHtml(dateFiltroTemp, "setDateFiltroTemp")}
       <div class="grid2">${tiles}</div>
       <div class="rowbtns"><button class="btn secondary block" onclick="openAddPoint()">+ Aggiungi frigo / freezer / banco</button></div>
     </div>
   `;
 }
 function setRepartoFiltroTemp(v){ repartoFiltroTemp = v; render(); }
+function setDateFiltroTemp(v){ dateFiltroTemp = v; render(); }
 function pointIcon(type){
   return type==="freezer"?"🧊":type==="caldo"?"🔥":"❄️";
 }
@@ -1573,30 +1588,32 @@ async function salvaAzioneCorrettiva(pointId, val, recId){
 // ---------- SANIFICAZIONE ----------
 let sanifSubTab = "giornaliera";
 function renderSanificazione(){
-  const t = sanifDateISO();
+  const isOggi = !dateFiltroSanif;
+  const t = dateFiltroSanif || sanifDateISO();
   const allItems = config.sanifItems[sanifSubTab]||[];
   const items = repartoFiltroSanif ? allItems.filter(item=>config.sanifReparti[item]===repartoFiltroSanif) : allItems;
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Sanificazione</h2>${printBtn('sanificazione')}</div>
+      <div class="card-head"><h2>Sanificazione ${!isOggi? `— ${fmtDate(t)}`:''}</h2>${printBtn('sanificazione')}</div>
       <div class="rowbtns" style="margin-top:0;">
         ${["giornaliera","settimanale","mensile"].map(f=>`
           <button class="iconbtn" style="${sanifSubTab===f?'background:var(--green);color:#fff;':''}" onclick="sanifSubTab='${f}';render()">${f[0].toUpperCase()+f.slice(1)}</button>`).join("")}
       </div>
       ${repartoFilterHtml(repartoFiltroSanif, "setRepartoFiltroSanif")}
-      <p class="muted" style="margin-top:10px;">Per confermare una sanificazione serve indicare l'operatore e allegare una foto. Tocca una voce completata per vederne i dettagli.</p>
+      ${dateFilterHtml(dateFiltroSanif, "setDateFiltroSanif")}
+      <p class="muted" style="margin-top:10px;">${isOggi? "Per confermare una sanificazione serve indicare l'operatore e allegare una foto. Tocca una voce completata per vederne i dettagli." : `Stai consultando lo storico del ${fmtDate(t)} — per registrare una nuova sanificazione torna alla data odierna.`}</p>
       ${items.length? items.map(item=>{
         const rec = logs.sanificazione.find(r=>r.item===item && r.frequenza===sanifSubTab && r.data===t);
         const timerKey = `sanif:${sanifSubTab}:${item}`;
-        const auditSt = sanifAuditStatus(sanifSubTab, item);
+        const auditSt = isOggi? sanifAuditStatus(sanifSubTab, item) : null;
         const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
         const reparto = config.sanifReparti[item];
         return `<div class="checklist-item ${auditCls}" style="flex-wrap:wrap;">
-          <div class="lbl">${item} ${reparto? `<span class="muted" style="font-size:11px;">🏷️ ${reparto}</span>`:""} ${timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}</div>
+          <div class="lbl">${item} ${reparto? `<span class="muted" style="font-size:11px;">🏷️ ${reparto}</span>`:""} ${isOggi && timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}</div>
           <div style="display:flex;gap:8px;align-items:center;">
-            <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openEditSanifItem('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>
-            <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openTimerForm('sanificazione','${timerKey}','${item.replace(/'/g,"\\'")}')" title="Imposta timer">⏱️</button>
-            <button class="togglebtn ${rec?'done':''}" onclick="${rec? `openSanifDetail('${rec.id}')` : `openSanifConfirm('${item.replace(/'/g,"\\'")}')`}">${rec? '✓ '+rec.operatore : 'Segna fatto'}</button>
+            ${isOggi? `<button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openEditSanifItem('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>
+            <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openTimerForm('sanificazione','${timerKey}','${item.replace(/'/g,"\\'")}')" title="Imposta timer">⏱️</button>` : ""}
+            ${rec? `<button class="togglebtn done" onclick="openSanifDetail('${rec.id}')">✓ ${rec.operatore}</button>` : isOggi? `<button class="togglebtn" onclick="openSanifConfirm('${item.replace(/'/g,"\\'")}')">Segna fatto</button>` : `<span class="muted" style="font-size:13px;">— non registrata</span>`}
           </div>
         </div>`;
       }).join("") : `<div class="empty">${repartoFiltroSanif? `Nessuna voce per il reparto "${repartoFiltroSanif}" in questa frequenza.` : "Nessuna voce configurata per questa frequenza."}</div>`}
@@ -1608,6 +1625,7 @@ function renderSanificazione(){
   `;
 }
 function setRepartoFiltroSanif(v){ repartoFiltroSanif = v; render(); }
+function setDateFiltroSanif(v){ dateFiltroSanif = v; render(); }
 
 function compressImage(dataUrl, maxWidth){
   return new Promise((resolve)=>{
@@ -1706,7 +1724,9 @@ async function deleteSanifEntry(id){
 
 // ---------- MOMA ----------
 function renderMoma(){
-  const history = [...logs.moma].sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora)).slice(0,20);
+  let history = [...logs.moma].sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora));
+  if(dateFiltroMoma) history = history.filter(m=>m.data===dateFiltroMoma);
+  else history = history.slice(0,20);
   $main.innerHTML = `
     <div class="card">
       <div class="card-head"><h2>Controllo matrici alimentari in ingresso (MOMA)</h2>${printBtn('moma')}</div>
@@ -1714,7 +1734,8 @@ function renderMoma(){
       <button class="btn block" onclick="openMomaForm()">+ Nuova consegna</button>
     </div>
     <div class="card">
-      <h2>Ultime consegne</h2>
+      <h2>${dateFiltroMoma? `Consegne del ${fmtDate(dateFiltroMoma)}` : "Ultime consegne"}</h2>
+      ${dateFilterHtml(dateFiltroMoma, "setDateFiltroMoma")}
       ${history.length? history.map(m=>`
         <div class="logrow" onclick="openMomaDetail('${m.id}')" style="cursor:pointer;">
           <div>
@@ -1722,10 +1743,11 @@ function renderMoma(){
             <div class="meta">${fmtDate(m.data)} · DDT ${m.ddt||'—'} · ${m.operatore}</div>
           </div>
           <span class="muted">✏️</span>
-        </div>`).join("") : `<div class="empty">Nessuna consegna registrata ancora.</div>`}
+        </div>`).join("") : `<div class="empty">${dateFiltroMoma? `Nessuna consegna registrata il ${fmtDate(dateFiltroMoma)}.` : "Nessuna consegna registrata ancora."}</div>`}
     </div>
   `;
 }
+function setDateFiltroMoma(v){ dateFiltroMoma = v; render(); }
 function openMomaDetail(id){
   const m = logs.moma.find(x=>x.id===id);
   openSheet(`Consegna — ${m.fornitore}`, `
@@ -2259,7 +2281,8 @@ function renderRicette(){
     </div>
     <div class="card">
       <h2>🔎 Cerca composizioni</h2>
-      <input type="text" id="ricetteSearchInput" placeholder="Cerca per nome piatto, operatore o lotto..." oninput="renderComposizioniList(this.value)">
+      <input type="text" id="ricetteSearchInput" placeholder="Cerca per nome piatto, operatore o lotto..." oninput="renderComposizioniList(this.value)" style="margin-bottom:10px;">
+      ${dateFilterHtml(dateFiltroComposizioni, "setDateFiltroComposizioni")}
     </div>
     <div class="card">
       <h2>Composizioni registrate</h2>
@@ -2322,6 +2345,7 @@ function renderRicetteBaseList(query){
 function composizioniListHtml(query){
   const q = (query||"").trim();
   let list = [...logs.composizioni].sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora));
+  if(dateFiltroComposizioni) list = list.filter(c=>c.data===dateFiltroComposizioni);
   if(q){
     list = list.filter(c=>
       textMatchesQuery(c.ricettaNome, q) ||
@@ -2329,10 +2353,10 @@ function composizioniListHtml(query){
       textMatchesQuery(c.lottoProdotto, q) ||
       (c.ingredientiUsati||[]).some(i=>textMatchesQuery(i.ingrediente, q))
     );
-  } else {
+  } else if(!dateFiltroComposizioni) {
     list = list.slice(0,15);
   }
-  if(!list.length) return `<div class="empty">${q? "Nessuna composizione trovata per \""+esc(query)+"\".":"Nessuna composizione registrata ancora."}</div>`;
+  if(!list.length) return `<div class="empty">${q||dateFiltroComposizioni? "Nessuna composizione trovata.":"Nessuna composizione registrata ancora."}</div>`;
   return list.map(c=>`
     <div class="logrow" onclick="openComposizioneDetail('${c.id}')" style="cursor:pointer;">
       <div>
@@ -2346,6 +2370,10 @@ function composizioniListHtml(query){
 function renderComposizioniList(query){
   const el = document.getElementById("composizioniListEl");
   if(el) el.innerHTML = composizioniListHtml(query);
+}
+function setDateFiltroComposizioni(v){
+  dateFiltroComposizioni = v;
+  renderComposizioniList(document.getElementById("ricetteSearchInput")? document.getElementById("ricetteSearchInput").value : "");
 }
 // ---------- IMPORTAZIONE RICETTE BASE (dal food cost / economo) ----------
 const RICETTE_BASE_IMPORT = [
