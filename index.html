@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v54">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v55">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v54</title>
+<title>HACCP Baldoria v55</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 54 · scadenze lunga conservazione · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 55 · applica retroattivamente · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2398,6 +2398,20 @@ function isLungaConservazione(nome){
   const n = (nome||"").toLowerCase();
   return PAROLE_LUNGA_CONSERVAZIONE.some(k => n.includes(k));
 }
+async function applicaLungaConservazioneRetroattiva(){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  const daAggiornare = logs.produzione.filter(p => !p.esaurito && !p.lungaConservazione && isLungaConservazione(p.prodotto));
+  if(!daAggiornare.length){ toast("Nessun articolo da aggiornare: tutti quelli riconoscibili sono già impostati correttamente."); return; }
+  if(!confirm(`Trovati ${daAggiornare.length} articoli a lunga conservazione tra quelli già presenti (es. alcolici, dispensa, monouso). Aggiornare la loro scadenza a 2 anni dalla consegna?`)) return;
+  daAggiornare.forEach(p=>{
+    p.dataScadenza = addDaysISO(p.dataConsegna || todayISO(), 730);
+    p.lungaConservazione = true;
+    p.note = (p.note||"") + " [Scadenza corretta automaticamente: riconosciuto come articolo a lunga conservazione.]";
+  });
+  await saveLog("produzione");
+  toast(`✅ Aggiornati ${daAggiornare.length} articoli`);
+  render();
+}
 async function saveMoma(){
   const fornitore = document.getElementById("momaFornitore").value.trim();
   const ddt = document.getElementById("momaDdt").value.trim();
@@ -2496,7 +2510,8 @@ function renderProduzione(){
   $main.innerHTML = `
     <div class="card">
       <div class="card-head"><h2>Registro articoli e tracciabilità lotti (P1)</h2><div style="display:flex;gap:6px;">${printBtn('produzione')}${saveBtn('produzione')}</div></div>
-      <p class="muted">Le schede vengono create automaticamente leggendo la bolla in "Matrici in ingresso". Scadenza calcolata a 7 giorni dalla consegna — modificabile per ogni prodotto.</p>
+      <p class="muted">Le schede vengono create automaticamente leggendo la bolla in "Matrici in ingresso". Scadenza calcolata a 7 giorni dalla consegna (2 anni per gli articoli a lunga conservazione riconosciuti automaticamente) — modificabile per ogni prodotto.</p>
+      ${isAdmin()? `<div class="rowbtns"><button class="iconbtn block" onclick="applicaLungaConservazioneRetroattiva()">🔄 Applica riconoscimento lunga conservazione ai prodotti già presenti</button></div>`:""}
       <input type="text" id="produzioneSearchInput" placeholder="🔎 Cerca per prodotto, lotto o fornitore..." oninput="renderProduzioneList(this.value)" style="margin-bottom:10px;">
       <button class="btn block" onclick="openProduzioneForm()">+ Aggiungi prodotto manualmente</button>
     </div>
@@ -4523,7 +4538,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "54";
+const APP_VERSION = "55";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
