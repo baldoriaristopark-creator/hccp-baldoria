@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v44">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v45">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v44</title>
+<title>HACCP Baldoria v45</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 44 · tracciabilità per ricetta · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 45 · ricette semplificate · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2589,21 +2589,12 @@ function renderRicette(){
   $main.innerHTML = `
     <div class="card">
       <div class="card-head"><h2>Ricette base</h2>${printBtn('ricette')}</div>
-      <p class="muted">Definisci gli ingredienti di ogni ricetta. Quando componi un piatto, l'app recupera automaticamente il lotto più recente di ogni ingrediente dalle schede di Produzione (alimentate dalle bolle MOMA).</p>
+      <p class="muted">Definisci gli ingredienti di ogni ricetta. Quando componi un piatto, l'app recupera automaticamente il lotto più recente di ogni ingrediente dalle schede di Produzione (alimentate dalle bolle MOMA). Tocca "🔍 Tracciabilità" su una ricetta per vedere tutte le composizioni fatte e i lotti usati.</p>
       <input type="text" id="ricetteBaseSearchInput" placeholder="🔎 Cerca una ricetta per nome o ingrediente..." oninput="renderRicetteBaseList(this.value)" style="margin-bottom:10px;">
       ${repartoFilterHtml(repartoFiltroRicette, "setRepartoFiltroRicette")}
       <div id="ricetteBaseListEl">${ricetteBaseListHtml("")}</div>
       <div class="rowbtns"><button class="btn secondary block" onclick="openAddRecipe()">+ Aggiungi ricetta</button></div>
       <div class="rowbtns"><button class="iconbtn block" onclick="importRicetteBase()">📥 Importa le 17 ricette base (food cost)</button></div>
-    </div>
-    <div class="card">
-      <h2>🔎 Cerca composizioni</h2>
-      <input type="text" id="ricetteSearchInput" placeholder="Cerca per nome piatto, operatore o lotto..." oninput="renderComposizioniList(this.value)" style="margin-bottom:10px;">
-      ${dateFilterHtml(dateFiltroComposizioni, "setDateFiltroComposizioni")}
-    </div>
-    <div class="card">
-      <h2>Composizioni registrate</h2>
-      <div id="composizioniListEl">${composizioniListHtml("")}</div>
     </div>
   `;
 }
@@ -2647,8 +2638,20 @@ function openRicettaTracciabilita(recipeId){
   const ingredientiOrdinati = Object.keys(perIngrediente).sort();
 
   openSheet(`🔍 Tracciabilità — ${r.nome}`, `
-    <p class="muted">${sue.length} preparazion${sue.length===1?'e registrata':'i registrate'}. Lotti usati per ogni ingrediente, dal più recente.</p>
-    ${ingredientiOrdinati.length? ingredientiOrdinati.map(ing=>`
+    <p class="muted">${sue.length} preparazion${sue.length===1?'e registrata':'i registrate'}.</p>
+    <h2 style="font-size:14px;margin:4px 0 8px;">Elenco composizioni (dalla più recente)</h2>
+    ${sue.length? sue.map(c=>`
+      <div class="logrow" onclick="openComposizioneDetail('${c.id}')" style="cursor:pointer;">
+        <div>
+          <div class="val" style="font-size:13px;">${fmtDate(c.data)} · ${c.ora} ${c.ingredientiUsati.some(i=>!i.lotto)? '⚠️':'✅'}${c.abbattuto? ' ❄️':''}</div>
+          <div class="meta">${c.operatore}</div>
+        </div>
+        <span class="muted">›</span>
+      </div>
+    `).join("") : `<div class="empty">Nessuna preparazione registrata ancora per questa ricetta.</div>`}
+    ${ingredientiOrdinati.length? `
+    <h2 style="font-size:14px;margin:18px 0 8px;">Lotti usati per ingrediente</h2>
+    ${ingredientiOrdinati.map(ing=>`
       <div class="card" style="padding:10px 12px;background:var(--cream);border:1px solid var(--line);margin-bottom:8px;">
         <div style="font-weight:800;font-size:13px;">${ing}</div>
         ${perIngrediente[ing].map(v=>`
@@ -2661,7 +2664,7 @@ function openRicettaTracciabilita(recipeId){
           </div>
         `).join("")}
       </div>
-    `).join("") : `<div class="empty">Nessuna preparazione registrata ancora per questa ricetta.</div>`}
+    `).join("")}` : ""}
   `);
 }
 function ricetteBaseListHtml(query){
@@ -2687,20 +2690,6 @@ function ricetteBaseListHtml(query){
         <button class="iconbtn" onclick="openRicettaTracciabilita('${r.id}')">🔍 Tracciabilità</button>
         <button class="iconbtn" onclick="openEditRecipe('${r.id}')">✏️ Modifica</button>
       </div>
-      ${sueComposizioni.length? `
-        <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px;">
-          <div class="muted" style="font-weight:700;font-size:12px;">📋 Composizioni fatte con questa ricetta (${sueComposizioni.length})</div>
-          ${sueComposizioni.map(c=>`
-            <div class="logrow" onclick="openComposizioneDetail('${c.id}')" style="cursor:pointer;padding:6px 0;">
-              <div>
-                <div class="val" style="font-size:13px;">${fmtDate(c.data)} · ${c.ora} ${c.ingredientiUsati.some(i=>!i.lotto)? '⚠️':'✅'}${c.abbattuto? ' ❄️':''}</div>
-                <div class="meta">${c.operatore}</div>
-              </div>
-              <span class="muted">›</span>
-            </div>
-          `).join("")}
-        </div>
-      `:''}
     </div>
   `;
   }).join("");
@@ -4432,7 +4421,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "44";
+const APP_VERSION = "45";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
