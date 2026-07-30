@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v49">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v50">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v49</title>
+<title>HACCP Baldoria v50</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 49 · scheda dedicata sanificazione · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 50 · reparti multipli ricette · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -500,7 +500,12 @@ function migrateReparti(){
     if(p.reparto===undefined){ p.reparto = guessReparto(p.name); changed = true; }
   });
   (config.recipes||[]).forEach(r=>{
-    if(r.reparto===undefined){ r.reparto = guessReparto(r.nome); changed = true; }
+    if(!r.reparti){
+      const singolo = r.reparto!==undefined? r.reparto : guessReparto(r.nome);
+      r.reparti = singolo? [singolo] : [];
+      delete r.reparto;
+      changed = true;
+    }
   });
   ["giornaliera","settimanale","mensile"].forEach(freq=>{
     (config.sanifItems[freq]||[]).forEach(item=>{
@@ -647,6 +652,14 @@ function hasRepartoAccess(itemReparto){
   if(!miei.length) return true;
   if(!itemReparto) return true;
   return miei.includes(itemReparto);
+}
+// Per elementi con più reparti assegnati (es. le ricette): visibile se l'operatore
+// ha accesso ad ALMENO UNO dei reparti dell'elemento (o se non ne ha nessuno).
+function hasAnyRepartoAccess(repartiArr){
+  if(!repartiArr || !repartiArr.length) return true;
+  const miei = mieiReparti();
+  if(!miei.length) return true;
+  return repartiArr.some(r=>miei.includes(r));
 }
 function renderLoginGate(){
   $tabs.innerHTML = "";
@@ -2718,8 +2731,8 @@ function ricetteBaseListHtml(query){
   let filtered = q? recipes.filter(r=>
     textMatchesQuery(r.nome, q) || r.ingredienti.some(i=>textMatchesQuery(i, q))
   ) : recipes;
-  if(repartoFiltroRicette) filtered = filtered.filter(r=>r.reparto===repartoFiltroRicette);
-  filtered = filtered.filter(r=>hasRepartoAccess(r.reparto));
+  if(repartoFiltroRicette) filtered = filtered.filter(r=>(r.reparti||[]).includes(repartoFiltroRicette));
+  filtered = filtered.filter(r=>hasAnyRepartoAccess(r.reparti));
   if(!filtered.length){
     return q? `<div class="empty">Nessuna ricetta trovata per "${esc(query)}".</div>` : `<div class="empty">Nessuna ricetta ${repartoFiltroRicette? `nel reparto "${repartoFiltroRicette}"`:"configurata"}.</div>`;
   }
@@ -2728,7 +2741,7 @@ function ricetteBaseListHtml(query){
     return `
     <div class="point-tile" style="cursor:default;">
       <div class="name">🍽️ ${r.nome} ${r.photoKey? '📷':''}</div>
-      ${r.reparto? `<div class="muted" style="font-size:11px;">🏷️ ${r.reparto}</div>`:""}
+      ${r.reparti&&r.reparti.length? `<div class="muted" style="font-size:11px;">🏷️ ${r.reparti.join(', ')}</div>`:""}
       <div class="muted">${r.ingredienti.length} ingredienti: ${r.ingredienti.join(', ')}</div>
       ${r.procedimento? `<div class="muted" style="margin-top:4px;">📝 Procedimento trascritto disponibile</div>`:''}
       <div class="rowbtns" style="margin-top:8px;">
@@ -2854,11 +2867,7 @@ function openAddRecipe(){
       <div id="rcPhotoResult"></div>
     </div>
     <label class="field">Nome piatto/prodotto</label><input type="text" id="rcNome">
-    <label class="field">Reparto (facoltativo)</label>
-    <select id="rcReparto">
-      <option value="">Nessuno</option>
-      ${REPARTI.map(r=>`<option value="${r}">${r}</option>`).join("")}
-    </select>
+    ${repartiCheckboxHtml("rcReparti", [])}
     <label class="field">Ingredienti (uno per riga, con lo stesso nome usato nelle bolle/Produzione)</label>
     <textarea id="rcIngredienti" style="min-height:110px;" placeholder="Farina 00&#10;Pomodoro San Marzano&#10;Mozzarella fior di latte"></textarea>
     <label class="field">Procedimento (trascrizione integrale, facoltativo)</label>
@@ -2877,7 +2886,7 @@ function openAddRecipe(){
 }
 async function saveNewRecipe(){
   const nome = document.getElementById("rcNome").value.trim();
-  const reparto = document.getElementById("rcReparto").value;
+  const reparti = readRepartiCheckbox("rcReparti");
   const ingredienti = document.getElementById("rcIngredienti").value.split("\n").map(s=>s.trim()).filter(Boolean);
   const procedimento = document.getElementById("rcProcedimento").value.trim();
   const giorni = parseInt(document.getElementById("rcGiorni").value) || 0;
@@ -2886,7 +2895,7 @@ async function saveNewRecipe(){
   if(!nome){ toast("Inserisci il nome del piatto"); return; }
   if(!ingredienti.length){ toast("Inserisci almeno un ingrediente"); return; }
   if(!config.recipes) config.recipes = [];
-  const rec = {id:uid(), nome, reparto, ingredienti, giorniConservazione:giorni, procedimento};
+  const rec = {id:uid(), nome, reparti, ingredienti, giorniConservazione:giorni, procedimento};
   if(giorniAbbattuto!==undefined) rec.giorniConservazioneAbbattuto = giorniAbbattuto;
   if(window._recipePhoto){
     rec.photoKey = "photo-ricetta-"+rec.id;
@@ -2909,11 +2918,7 @@ function openEditRecipe(id){
       <div id="rcPhotoResult"></div>
     </div>
     <label class="field">Nome piatto/prodotto</label><input type="text" id="rcNome" value="${r.nome}">
-    <label class="field">Reparto (facoltativo)</label>
-    <select id="rcReparto">
-      <option value="" ${!r.reparto?'selected':''}>Nessuno</option>
-      ${REPARTI.map(rp=>`<option value="${rp}" ${r.reparto===rp?'selected':''}>${rp}</option>`).join("")}
-    </select>
+    ${repartiCheckboxHtml("rcReparti", r.reparti||[])}
     <label class="field">Ingredienti (uno per riga)</label>
     <textarea id="rcIngredienti" style="min-height:110px;">${r.ingredienti.join("\n")}</textarea>
     <label class="field">Procedimento (trascrizione integrale, facoltativo)</label>
@@ -2947,7 +2952,7 @@ async function editRecipe(id){
   if(!nome){ toast("Inserisci il nome del piatto"); return; }
   if(!ingredienti.length){ toast("Inserisci almeno un ingrediente"); return; }
   r.nome = nome; r.ingredienti = ingredienti;
-  r.reparto = document.getElementById("rcReparto").value;
+  r.reparti = readRepartiCheckbox("rcReparti");
   r.procedimento = document.getElementById("rcProcedimento").value.trim();
   r.giorniConservazione = parseInt(document.getElementById("rcGiorni").value) || 0;
   const giorniAbbattutoRaw = document.getElementById("rcGiorniAbbattuto").value;
@@ -4479,7 +4484,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "49";
+const APP_VERSION = "50";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
