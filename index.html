@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v38">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v39">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v38</title>
+<title>HACCP Baldoria v39</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -165,7 +165,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 38 · sezione turni · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 39 · barra Home/HACCP/Turni · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1135,15 +1135,10 @@ function stopAlarmSound(){
 }
 
 // ---------- TABS ----------
+const HACCP_GROUP_IDS = ["temperature","sanificazione","moma","produzione","ricette","coai","noco"];
 const TABS = [
   {id:"home", label:"🏠 Home"},
-  {id:"temperature", label:"🌡️ Temperature"},
-  {id:"sanificazione", label:"🧽 Sanificazione"},
-  {id:"moma", label:"🚚 Matrici in ingresso"},
-  {id:"produzione", label:"📦 Produzione / Lotti"},
-  {id:"ricette", label:"🧾 Ricette"},
-  {id:"coai", label:"🐭 Infestanti"},
-  {id:"noco", label:"⚠️ Non conformità"},
+  {id:"haccp", label:"📋 HACCP"},
   {id:"turni", label:"📅 Turni"},
 ];
 
@@ -1152,13 +1147,36 @@ function renderTabs(){
   TABS.forEach(t=>{
     const b = document.createElement("button");
     b.textContent = t.label;
-    b.className = t.id===activeTab ? "active":"";
-    b.onclick = ()=>{ activeTab = t.id; render(); };
+    const attiva = t.id===activeTab || (t.id==="haccp" && HACCP_GROUP_IDS.includes(activeTab));
+    b.className = attiva ? "active":"";
+    b.onclick = ()=>{ activeTab = t.id==="haccp" ? "haccp" : t.id; render(); };
     $tabs.appendChild(b);
   });
   const settingsBtn = document.getElementById("settingsBtn");
   settingsBtn.style.outline = activeTab==="impostazioni" ? "2px solid var(--yellow)" : "none";
   settingsBtn.onclick = ()=>{ activeTab="impostazioni"; render(); };
+}
+function renderHaccpMenu(){
+  const voci = [
+    {id:"temperature", label:"🌡️ Temperature", desc:"Controllo frigo, freezer e banchi caldi"},
+    {id:"sanificazione", label:"🧽 Sanificazione", desc:"Pulizie giornaliere, settimanali, mensili"},
+    {id:"moma", label:"🚚 Matrici in ingresso", desc:"Controllo consegne e bolle"},
+    {id:"produzione", label:"📦 Produzione / Lotti", desc:"Tracciabilità lotti e scadenze"},
+    {id:"ricette", label:"🧾 Ricette", desc:"Composizioni, ingredienti e abbattimento"},
+    {id:"coai", label:"🐭 Infestanti", desc:"Controllo settimanale (COAI)"},
+    {id:"noco", label:"⚠️ Non conformità", desc:"Verbali e azioni correttive"},
+  ];
+  $main.innerHTML = `
+    <div class="card">
+      <h2>📋 Registri HACCP</h2>
+      ${voci.map(v=>`
+        <div class="logrow" onclick="activeTab='${v.id}';render()" style="cursor:pointer;">
+          <div><div class="val">${v.label}</div><div class="meta">${v.desc}</div></div>
+          <span class="muted" style="font-size:20px;">›</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function setToday(){
@@ -1185,6 +1203,7 @@ function closeSheet(){ $overlay.innerHTML = ""; render(); }
 function render(){
   renderTabs(); setToday();
   if(activeTab==="home") renderHome();
+  else if(activeTab==="haccp") renderHaccpMenu();
   else if(activeTab==="temperature") renderTemperature();
   else if(activeTab==="sanificazione") renderSanificazione();
   else if(activeTab==="moma") renderMoma();
