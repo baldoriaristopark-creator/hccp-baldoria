@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v48">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v49">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v48</title>
+<title>HACCP Baldoria v49</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 48 · reparti per operatore · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 49 · scheda dedicata sanificazione · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1915,7 +1915,7 @@ function renderSanificazione(){
         const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
         const reparto = config.sanifReparti[item];
         return `<div class="checklist-item ${auditCls}" style="flex-wrap:wrap;">
-          <div class="lbl">${item} ${reparto? `<span class="muted" style="font-size:11px;">🏷️ ${reparto}</span>`:""} ${isOggi && timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}</div>
+          <div class="lbl" onclick="openSanifItemDetail('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" style="cursor:pointer;">${item} ${reparto? `<span class="muted" style="font-size:11px;">🏷️ ${reparto}</span>`:""} ${isOggi && timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}</div>
           <div style="display:flex;gap:8px;align-items:center;">
             ${isOggi && isAdmin()? `<button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openEditSanifItem('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>
             <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openTimerForm('sanificazione','${timerKey}','${item.replace(/'/g,"\\'")}')" title="Imposta timer">⏱️</button>` : ""}
@@ -1925,10 +1925,39 @@ function renderSanificazione(){
       }).join("") : `<div class="empty">Nessuna voce corrisponde ai filtri scelti.</div>`}
       ${isAdmin()? `<div class="rowbtns"><button class="btn secondary block" onclick="openAddSanifItem('${sanifSubTab}')">+ Aggiungi punto di sanificazione (${sanifSubTab})</button></div>`:""}
     </div>
-    ${items.length ? `<div class="card"><div class="card-head"><h2>Scheda mensile ${sanifSubTab} — ${MONTHS[new Date().getMonth()]}</h2><button class="printbtn" onclick="printSanifMese('${sanifSubTab}')" title="Stampa la scheda mensile">🖨️ Stampa</button></div>
-      ${items.map(item=>`<h3 style="display:flex;justify-content:space-between;align-items:center;gap:8px;">${item} <button class="printbtn" onclick="printSanifItemMese('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Stampa questa voce">🖨️ Stampa</button></h3>${buildMonthGrid("sanif", {item, freq:sanifSubTab})}`).join("")}
-    </div>` : ""}
   `;
+}
+function openSanifItemDetail(freq, item){
+  const reparto = config.sanifReparti[item];
+  const history = logs.sanificazione.filter(r=>r.item===item && r.frequenza===freq).sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora)).slice(0,15);
+  const oggiRec = logs.sanificazione.find(r=>r.item===item && r.frequenza===freq && r.data===sanifDateISO());
+  const timerKey = `sanif:${freq}:${item}`;
+
+  openSheet(`🧽 ${item}`, `
+    ${reparto? `<p class="muted">Reparto: <b>${reparto}</b> · Frequenza: <b>${freq}</b></p>` : `<p class="muted">Frequenza: <b>${freq}</b></p>`}
+    <div class="rowbtns">
+      ${oggiRec? `<button class="btn secondary block" onclick="openSanifDetail('${oggiRec.id}')">✓ Già confermata oggi da ${oggiRec.operatore}</button>`
+                : `<button class="btn block" onclick="closeSheet();openSanifConfirm('${item.replace(/'/g,"\\'")}')">Segna fatto oggi</button>`}
+    </div>
+    <h3>⏱️ Promemoria / Timer</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div data-timer-key="${timerKey}" class="timer-badge">${timerFor(timerKey)? '⏱️ '+fmtCountdown(timerFor(timerKey).endTime-Date.now()) : 'Nessun timer attivo'}</div>
+      <button class="iconbtn" onclick="openTimerForm('sanificazione','${timerKey}','${item.replace(/'/g,"\\'")}')">Imposta timer</button>
+    </div>
+    <h3 style="display:flex;justify-content:space-between;align-items:center;gap:8px;">Scheda mensile — ${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()} <button class="printbtn" onclick="printSanifItemMese('${freq}','${item.replace(/'/g,"\\'")}')" title="Stampa la scheda mensile">🖨️ Stampa</button></h3>
+    <div id="monthGridHolder"></div>
+    <h3>Ultime registrazioni</h3>
+    ${history.length? history.map(r=>`
+      <div class="logrow" onclick="openSanifDetail('${r.id}')" style="cursor:pointer;">
+        <div>
+          <div class="val">✓ ${fmtDate(r.data)} ${r.tardiva? '<span class="chip missing" style="font-size:10px;">⏱️ in ritardo</span>':''}</div>
+          <div class="meta">${r.ora} · ${r.operatore}</div>
+        </div>
+        <span class="muted">✏️</span>
+      </div>`).join("") : `<div class="empty">Nessuna registrazione ancora.</div>`}
+  `, ()=>{
+    document.getElementById("monthGridHolder").innerHTML = buildMonthGrid("sanif", {item, freq});
+  });
 }
 function setRepartoFiltroSanif(v){ repartoFiltroSanif = v; render(); }
 function setDateFiltroSanif(v){ dateFiltroSanif = v; render(); }
@@ -4450,7 +4479,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "48";
+const APP_VERSION = "49";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
