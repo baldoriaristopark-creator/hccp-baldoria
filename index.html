@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v53">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v54">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v53</title>
+<title>HACCP Baldoria v54</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 53 · fix NOCO + Articoli/Lotti · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 54 · scadenze lunga conservazione · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2375,6 +2375,29 @@ function setMomaCheck(key, val, btn){
   [...group.children].forEach(b=>b.classList.remove("sel-ok","sel-bad"));
   btn.classList.add(val==="conforme"?"sel-ok":"sel-bad");
 }
+// Riconosce dal nome se un articolo è a lunga conservazione (non deperibile a breve termine),
+// per non assegnargli una scadenza di 7 giorni come ai prodotti freschi.
+const PAROLE_LUNGA_CONSERVAZIONE = [
+  // alcolici e superalcolici
+  "vodka","gin","rum","whisky","whiskey","grappa","liquore","liquor","amaro","brandy","cognac","tequila",
+  "vino","spumante","prosecco","champagne","birra","vermouth","aperitivo","bitter","sciroppo",
+  // materiale monouso / plastica / carta
+  "bicchiere","bicchier","piatto plastica","piatti plastica","posate plastica","tovagliolo","tovagliol",
+  "sacchetto","sacchett","contenitore plastica","cannuccia","cannucc","stuzzicadent","tovaglia carta",
+  "carta forno","pellicola","alluminio","stagnola","guanti",
+  // detergenza e pulizia
+  "detersivo","detergente","sgrassatore","candeggina","disinfettante","sapone","alcool denaturato",
+  "igienizzante","brillantante","ammorbidente",
+  // dispensa a lunga conservazione
+  "scatola","scatolame","conserva","pelati","passata","concentrato di pomodoro","farina","zucchero",
+  "sale","riso","pasta secca","legumi secchi","fagioli secchi","ceci secchi","olio","aceto","caffè","caffe",
+  "tè ","biscotti","cioccolato","cacao","lievito","topping","dado","spezie","spezia","zafferano",
+  "miele","marmellata","confettura","gallette","cereali","farro","couscous","quinoa","zucch"
+];
+function isLungaConservazione(nome){
+  const n = (nome||"").toLowerCase();
+  return PAROLE_LUNGA_CONSERVAZIONE.some(k => n.includes(k));
+}
 async function saveMoma(){
   const fornitore = document.getElementById("momaFornitore").value.trim();
   const ddt = document.getElementById("momaDdt").value.trim();
@@ -2413,6 +2436,8 @@ async function saveMoma(){
       const lottoFinale = (p.lotto && p.lotto.trim())
         ? p.lotto.trim()
         : `DDT ${ddt||'s.n.'} del ${dataBollaLbl} · sett. ${sett}`;
+      const lunga = isLungaConservazione(p.nome);
+      const scadenzaProdotto = lunga ? addDaysISO(consegna, 730) : scadenza;
       logs.produzione.push({
         id: uid(),
         prodotto: p.nome.trim(),
@@ -2422,8 +2447,9 @@ async function saveMoma(){
         fornitore, ddt,
         dataConsegna: consegna,
         dataInizioProduzione: consegna,
-        dataScadenza: scadenza,
-        note: `Tracciabilità: consegna del ${fmtDate(consegna)} da ${fornitore}, DDT ${ddt||'—'}, lotto ${lottoFinale}${(p.lotto && p.lotto.trim())? '' : " (lotto non presente in bolla — tracciato con data emissione bolla e settimana dell'anno)"}.`,
+        dataScadenza: scadenzaProdotto,
+        lungaConservazione: lunga,
+        note: `Tracciabilità: consegna del ${fmtDate(consegna)} da ${fornitore}, DDT ${ddt||'—'}, lotto ${lottoFinale}${(p.lotto && p.lotto.trim())? '' : " (lotto non presente in bolla — tracciato con data emissione bolla e settimana dell'anno)"}.${lunga? ' Prodotto a lunga conservazione: scadenza indicativa, verificare e correggere se necessario.':''}`,
         momaId: rec.id,
         esaurito: false
       });
@@ -2503,7 +2529,7 @@ function produzioneListHtml(query){
   return sorted.map(p=>`
     <div class="logrow" onclick="openProduzioneDetail('${p.id}')" style="cursor:pointer;">
       <div>
-        <div class="val">${p.semilavorato? '🏷️ ':''}${p.prodotto}</div>
+        <div class="val">${p.semilavorato? '🏷️ ':''}${p.lungaConservazione? '🗄️ ':''}${p.prodotto}</div>
         <div class="meta">Lotto: ${p.lotto||'—'} · ${p.fornitore} · scade il ${fmtDate(p.dataScadenza)}</div>
       </div>
       <span class="chip ${statusOf(p)}">${statusLabel(p)}</span>
@@ -4497,7 +4523,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "53";
+const APP_VERSION = "54";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
