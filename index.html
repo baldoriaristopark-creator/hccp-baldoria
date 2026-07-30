@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v40">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v41">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v40</title>
+<title>HACCP Baldoria v41</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 40 · auto-aggiornamento · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 41 · controllo generale e correzioni · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -3235,7 +3235,7 @@ async function deleteCoai(id){
   toast("Controllo eliminato");
   activeTab="coai"; closeSheet();
 }
-function allCoaiOk(c){ return COAI_ITEMS.every(i=>c.checks[i]==="assente"); }
+function allCoaiOk(c){ return COAI_ITEMS.every(i=>(c.checks||{})[i]==="assente"); }
 function openCoaiForm(){
   openSheet("Nuovo controllo — COAI", `
     ${COAI_ITEMS.map(item=>`
@@ -4124,6 +4124,9 @@ function buildFullSnapshot(){
 }
 async function runAutoBackupIfDue(){
   if(DB.mode!=="supabase") return; // ha senso solo con database condiviso: in locale i dati sono già solo qui
+  // Non creare MAI un backup se config o un registro non si sono caricati correttamente:
+  // salveremmo per sempre uno snapshot vuoto/corrotto al posto di uno buono per la giornata.
+  if(Object.values(loadFailures).some(v=>v)) return;
   const key = BACKUP_PREFIX + todayISO();
   try{
     await DB.get(key, true);
@@ -4298,7 +4301,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "40";
+const APP_VERSION = "41";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
