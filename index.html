@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v47">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v48">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v47</title>
+<title>HACCP Baldoria v48</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 47 · permessi operatori · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 48 · reparti per operatore · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -485,9 +485,12 @@ function guessReparto(text){
   return "";
 }
 function repartoFilterHtml(currentValue, onchangeFn){
+  const miei = mieiReparti();
+  const opzioni = miei.length? miei : REPARTI;
+  if(miei.length===1) return ""; // un solo reparto assegnato: non serve filtrare, vede già solo quello
   return `<select onchange="${onchangeFn}(this.value)" style="margin-bottom:10px;">
     <option value="" ${!currentValue?'selected':''}>Tutti i reparti</option>
-    ${REPARTI.map(r=>`<option value="${r}" ${currentValue===r?'selected':''}>${r}</option>`).join("")}
+    ${opzioni.map(r=>`<option value="${r}" ${currentValue===r?'selected':''}>${r}</option>`).join("")}
   </select>`;
 }
 function migrateReparti(){
@@ -631,6 +634,20 @@ function isAdmin(){
   const op = getCurrentOperator();
   return !!(op && op.ruolo==="admin");
 }
+// Reparti a cui l'operatore attuale ha accesso. Array vuoto = nessuna restrizione (vede tutto).
+function mieiReparti(){
+  const op = getCurrentOperator();
+  if(!op || isAdmin()) return [];
+  return op.reparti||[];
+}
+// Un elemento con reparto "itemReparto" è visibile all'operatore attuale?
+// Admin e operatori senza restrizioni vedono tutto; elementi senza reparto assegnato sono sempre visibili.
+function hasRepartoAccess(itemReparto){
+  const miei = mieiReparti();
+  if(!miei.length) return true;
+  if(!itemReparto) return true;
+  return miei.includes(itemReparto);
+}
 function renderLoginGate(){
   $tabs.innerHTML = "";
   const nessunOperatore = !(config.operatori && config.operatori.length);
@@ -697,6 +714,23 @@ function cambiaOperatore(){
   activeTab = "home";
   renderLoginGate();
 }
+function repartiCheckboxHtml(idPrefix, selected){
+  selected = selected||[];
+  return `<label class="field">Reparti (lascia tutti deselezionati per vedere tutto)</label>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 10px;">
+      ${REPARTI.map(r=>`
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;background:var(--cream);border:1px solid var(--line);border-radius:8px;padding:6px 10px;">
+          <input type="checkbox" id="${idPrefix}_${r}" ${selected.includes(r)?'checked':''}> ${r}
+        </label>
+      `).join("")}
+    </div>`;
+}
+function readRepartiCheckbox(idPrefix){
+  return REPARTI.filter(r=>{
+    const el = document.getElementById(`${idPrefix}_${r}`);
+    return el && el.checked;
+  });
+}
 function openAddOperatoreForm(){
   if(!isAdmin()){ toast("⛔ Solo l'amministratore può aggiungere operatori"); return; }
   openSheet("Nuovo operatore", `
@@ -704,6 +738,7 @@ function openAddOperatoreForm(){
     <label class="field">PIN (4-6 cifre)</label><input type="password" inputmode="numeric" maxlength="6" id="newOpPin">
     <label class="field">Ruolo</label>
     <select id="newOpRuolo"><option value="operatore">Operatore</option><option value="admin">Amministratore</option></select>
+    ${repartiCheckboxHtml("newOpReparti", [])}
     <div id="newOpError" style="color:var(--red);font-size:13px;margin-top:6px;"></div>
     <div class="rowbtns"><button class="btn block" onclick="salvaNuovoOperatore()">Aggiungi operatore</button></div>
   `);
@@ -713,11 +748,12 @@ async function salvaNuovoOperatore(){
   const nome = document.getElementById("newOpNome").value.trim();
   const pin = document.getElementById("newOpPin").value.trim();
   const ruolo = document.getElementById("newOpRuolo").value;
+  const reparti = readRepartiCheckbox("newOpReparti");
   const errEl = document.getElementById("newOpError");
   if(!nome){ errEl.textContent = "Inserisci il nome."; return; }
   if(!/^\d{4,6}$/.test(pin)){ errEl.textContent = "Il PIN deve avere da 4 a 6 cifre numeriche."; return; }
   if((config.operatori||[]).some(o=>o.pin===pin)){ errEl.textContent = "PIN già usato da un altro operatore, scegline uno diverso."; return; }
-  config.operatori.push({id:uid(), nome, pin, ruolo, attivo:true});
+  config.operatori.push({id:uid(), nome, pin, ruolo, attivo:true, reparti});
   await saveConfig();
   toast("Operatore aggiunto");
   activeTab="impostazioni"; closeSheet();
@@ -751,6 +787,7 @@ function openEditOperatoreForm(id){
       <option value="operatore" ${o.ruolo==='operatore'?'selected':''}>Operatore</option>
       <option value="admin" ${o.ruolo==='admin'?'selected':''}>Amministratore</option>
     </select>
+    ${repartiCheckboxHtml("editOpReparti", o.reparti||[])}
     <div id="editOpError" style="color:var(--red);font-size:13px;margin-top:6px;"></div>
     <div class="rowbtns"><button class="btn block" onclick="salvaModificaOperatore('${id}')">Salva modifiche</button></div>
   `);
@@ -762,6 +799,7 @@ async function salvaModificaOperatore(id){
   const nome = document.getElementById("editOpNome").value.trim();
   const pin = document.getElementById("editOpPin").value.trim();
   const ruolo = document.getElementById("editOpRuolo").value;
+  const reparti = readRepartiCheckbox("editOpReparti");
   const errEl = document.getElementById("editOpError");
   if(!nome){ errEl.textContent = "Inserisci il nome."; return; }
   if(pin && !/^\d{4,6}$/.test(pin)){ errEl.textContent = "Il nuovo PIN deve avere da 4 a 6 cifre numeriche."; return; }
@@ -773,6 +811,7 @@ async function salvaModificaOperatore(id){
   o.nome = nome;
   if(pin) o.pin = pin;
   o.ruolo = ruolo;
+  o.reparti = reparti;
   await saveConfig();
   if(id===currentOperatorId){
     lastOperator = nome;
@@ -787,7 +826,7 @@ function operatoriListHtml(){
   return ops.map(o=>`
     <div class="logrow">
       <div><div class="val">${o.nome} ${o.ruolo==='admin'?'👑':''}${o.id===currentOperatorId?' <span class="muted" style="font-size:11px;">(tu)</span>':''}</div>
-      <div class="meta">${o.ruolo==='admin'?'Amministratore':'Operatore'} ${!o.attivo? '· <span style="color:var(--red);font-weight:700;">Bloccato</span>':''}</div></div>
+      <div class="meta">${o.ruolo==='admin'?'Amministratore':'Operatore'} ${o.reparti&&o.reparti.length? '· 🏷️ '+o.reparti.join(', ') : (o.ruolo!=='admin'? '· tutti i reparti':'')} ${!o.attivo? '· <span style="color:var(--red);font-weight:700;">Bloccato</span>':''}</div></div>
       ${isAdmin() ? `<div style="display:flex;gap:6px;">
         <button class="iconbtn" onclick="openEditOperatoreForm('${o.id}')">✏️ Modifica</button>
         ${o.id!==currentOperatorId ? `<button class="iconbtn" onclick="toggleOperatoreAttivo('${o.id}')">${o.attivo?'🔒 Blocca':'🔓 Sblocca'}</button>
@@ -1361,7 +1400,7 @@ function pointStatusToday(p, date){
 }
 
 function renderTemperature(){
-  const pointsFiltered = repartoFiltroTemp ? config.points.filter(p=>p.reparto===repartoFiltroTemp) : config.points;
+  const pointsFiltered = (repartoFiltroTemp ? config.points.filter(p=>p.reparto===repartoFiltroTemp) : config.points).filter(p=>hasRepartoAccess(p.reparto));
   const dataRif = dateFiltroTemp || todayISO();
   const isOggi = !dateFiltroTemp;
   let pointsConStato = pointsFiltered.map(p=>({p, st: pointStatusToday(p, dataRif)}));
@@ -1850,7 +1889,7 @@ function renderSanificazione(){
   const isOggi = !dateFiltroSanif;
   const t = dateFiltroSanif || sanifDateISO();
   const allItems = config.sanifItems[sanifSubTab]||[];
-  let items = repartoFiltroSanif ? allItems.filter(item=>config.sanifReparti[item]===repartoFiltroSanif) : allItems;
+  let items = (repartoFiltroSanif ? allItems.filter(item=>config.sanifReparti[item]===repartoFiltroSanif) : allItems).filter(item=>hasRepartoAccess(config.sanifReparti[item]));
   let itemsConRec = items.map(item=>({item, rec: logs.sanificazione.find(r=>r.item===item && r.frequenza===sanifSubTab && r.data===t)}));
   if(statoFiltroSanif==="fatto") itemsConRec = itemsConRec.filter(x=>!!x.rec);
   else if(statoFiltroSanif==="nonfatto") itemsConRec = itemsConRec.filter(x=>!x.rec);
@@ -2651,6 +2690,7 @@ function ricetteBaseListHtml(query){
     textMatchesQuery(r.nome, q) || r.ingredienti.some(i=>textMatchesQuery(i, q))
   ) : recipes;
   if(repartoFiltroRicette) filtered = filtered.filter(r=>r.reparto===repartoFiltroRicette);
+  filtered = filtered.filter(r=>hasRepartoAccess(r.reparto));
   if(!filtered.length){
     return q? `<div class="empty">Nessuna ricetta trovata per "${esc(query)}".</div>` : `<div class="empty">Nessuna ricetta ${repartoFiltroRicette? `nel reparto "${repartoFiltroRicette}"`:"configurata"}.</div>`;
   }
@@ -4410,7 +4450,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "47";
+const APP_VERSION = "48";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
