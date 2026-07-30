@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v46">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v47">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v46</title>
+<title>HACCP Baldoria v47</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 46 · tracciabilità solo elenco · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 47 · permessi operatori · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -698,6 +698,7 @@ function cambiaOperatore(){
   renderLoginGate();
 }
 function openAddOperatoreForm(){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può aggiungere operatori"); return; }
   openSheet("Nuovo operatore", `
     <label class="field">Nome</label><input type="text" id="newOpNome">
     <label class="field">PIN (4-6 cifre)</label><input type="password" inputmode="numeric" maxlength="6" id="newOpPin">
@@ -708,6 +709,7 @@ function openAddOperatoreForm(){
   `);
 }
 async function salvaNuovoOperatore(){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può aggiungere operatori"); return; }
   const nome = document.getElementById("newOpNome").value.trim();
   const pin = document.getElementById("newOpPin").value.trim();
   const ruolo = document.getElementById("newOpRuolo").value;
@@ -754,6 +756,7 @@ function openEditOperatoreForm(id){
   `);
 }
 async function salvaModificaOperatore(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può modificare gli operatori"); return; }
   const o = config.operatori.find(x=>x.id===id);
   if(!o) return;
   const nome = document.getElementById("editOpNome").value.trim();
@@ -1373,7 +1376,7 @@ function renderTemperature(){
     const auditSt = isOggi? pointAuditStatus(p.id) : null;
     const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
     return `<div class="point-tile ${auditCls}" onclick="openPointDetail('${p.id}')" style="position:relative;">
-      <button class="iconbtn" style="position:absolute;top:8px;right:8px;font-size:15px;padding:6px 9px;" onclick="event.stopPropagation();openEditPoint('${p.id}')" title="Modifica o elimina">✏️</button>
+      ${isAdmin()? `<button class="iconbtn" style="position:absolute;top:8px;right:8px;font-size:15px;padding:6px 9px;" onclick="event.stopPropagation();openEditPoint('${p.id}')" title="Modifica o elimina">✏️</button>`:""}
       <div class="name">${pointIcon(p.type)} ${p.name}</div>
       ${p.reparto? `<div class="muted" style="font-size:11px;">🏷️ ${p.reparto}</div>`:""}
       <div class="range">Soglia: ${rangeLbl}</div>
@@ -1398,7 +1401,7 @@ function renderTemperature(){
         <option value="daregistrare" ${statoFiltroTemp==='daregistrare'?'selected':''}>⏳ Da registrare</option>
       </select>
       <div class="grid2">${tiles}</div>
-      <div class="rowbtns"><button class="btn secondary block" onclick="openAddPoint()">+ Aggiungi frigo / freezer / banco</button></div>
+      ${isAdmin()? `<div class="rowbtns"><button class="btn secondary block" onclick="openAddPoint()">+ Aggiungi frigo / freezer / banco</button></div>`:""}
     </div>
   `;
 }
@@ -1875,13 +1878,13 @@ function renderSanificazione(){
         return `<div class="checklist-item ${auditCls}" style="flex-wrap:wrap;">
           <div class="lbl">${item} ${reparto? `<span class="muted" style="font-size:11px;">🏷️ ${reparto}</span>`:""} ${isOggi && timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}</div>
           <div style="display:flex;gap:8px;align-items:center;">
-            ${isOggi? `<button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openEditSanifItem('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>
+            ${isOggi && isAdmin()? `<button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openEditSanifItem('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>
             <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openTimerForm('sanificazione','${timerKey}','${item.replace(/'/g,"\\'")}')" title="Imposta timer">⏱️</button>` : ""}
             ${rec? `<button class="togglebtn done" onclick="openSanifDetail('${rec.id}')">✓ ${rec.operatore}${rec.tardiva?' ⏱️':''}</button>` : isOggi? `<button class="togglebtn" onclick="openSanifConfirm('${item.replace(/'/g,"\\'")}')">Segna fatto</button>` : `<span class="muted" style="font-size:13px;">— non registrata</span>`}
           </div>
         </div>`;
       }).join("") : `<div class="empty">Nessuna voce corrisponde ai filtri scelti.</div>`}
-      <div class="rowbtns"><button class="btn secondary block" onclick="openAddSanifItem('${sanifSubTab}')">+ Aggiungi punto di sanificazione (${sanifSubTab})</button></div>
+      ${isAdmin()? `<div class="rowbtns"><button class="btn secondary block" onclick="openAddSanifItem('${sanifSubTab}')">+ Aggiungi punto di sanificazione (${sanifSubTab})</button></div>`:""}
     </div>
     ${items.length ? `<div class="card"><div class="card-head"><h2>Scheda mensile ${sanifSubTab} — ${MONTHS[new Date().getMonth()]}</h2><button class="printbtn" onclick="printSanifMese('${sanifSubTab}')" title="Stampa la scheda mensile">🖨️ Stampa</button></div>
       ${items.map(item=>`<h3 style="display:flex;justify-content:space-between;align-items:center;gap:8px;">${item} <button class="printbtn" onclick="printSanifItemMese('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Stampa questa voce">🖨️ Stampa</button></h3>${buildMonthGrid("sanif", {item, freq:sanifSubTab})}`).join("")}
@@ -3547,6 +3550,7 @@ function renderImpostazioni(){
       ${isAdmin()? `<div class="rowbtns"><button class="btn secondary block" onclick="openAddOperatoreForm()">+ Aggiungi operatore</button></div>`:''}
       <div class="rowbtns"><button class="iconbtn block" onclick="cambiaOperatore()">🚪 Cambia operatore / Esci</button></div>
     </div>
+    ${isAdmin()? `
     <div class="card">
       <h2>Punti di controllo temperatura</h2>
       ${config.points.map(p=>`
@@ -3574,6 +3578,7 @@ function renderImpostazioni(){
         <div class="rowbtns"><button class="iconbtn" onclick="openAddSanifItem('${freq}')">+ Aggiungi voce ${freq}</button></div>
       `).join("")}
     </div>
+    ` : ''}
     <div class="card">
       <h2>Esporta dati</h2>
       <p class="muted">Scarica i registri in formato CSV per stampa o archiviazione ai fini dell'ispezione ASL.</p>
@@ -3621,6 +3626,7 @@ function renderImpostazioni(){
   `;
 }
 function openAddPoint(){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può aggiungere punti di controllo"); return; }
   openSheet("Nuovo punto di controllo", `
     <label class="field">Nome (es. Frigo Latticini)</label><input type="text" id="npName">
     <label class="field">Tipo</label>
@@ -3640,6 +3646,7 @@ function openAddPoint(){
   `);
 }
 async function addPoint(){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può modificare i punti di controllo"); return; }
   const name = document.getElementById("npName").value.trim();
   const type = document.getElementById("npType").value;
   const reparto = document.getElementById("npReparto").value;
@@ -3654,6 +3661,7 @@ async function addPoint(){
   catch(e){ toast("⚠️ Errore nel salvataggio, riprova"); }
 }
 async function deletePoint(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può eliminare punti di controllo"); return; }
   config.points = config.points.filter(p=>p.id!==id);
   saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
   toast("Punto eliminato");
@@ -3661,6 +3669,7 @@ async function deletePoint(id){
   closeSheet();
 }
 function openEditPoint(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può modificare i punti di controllo"); return; }
   const p = config.points.find(x=>x.id===id);
   openSheet(`Modifica — ${p.name}`, `
     <label class="field">Nome</label><input type="text" id="epName" value="${p.name}">
@@ -3684,6 +3693,7 @@ function openEditPoint(id){
   `);
 }
 async function editPoint(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può modificare i punti di controllo"); return; }
   const p = config.points.find(x=>x.id===id);
   const name = document.getElementById("epName").value.trim();
   if(!name){ toast("Inserisci un nome"); return; }
@@ -3698,6 +3708,7 @@ async function editPoint(id){
   closeSheet();
 }
 function openAddSanifItem(freq){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può aggiungere voci di sanificazione"); return; }
   openSheet(`Nuova voce — ${freq}`, `
     <label class="field">Descrizione voce (es. "Cella frigo carni")</label><input type="text" id="siName">
     <label class="field">Reparto (facoltativo)</label>
@@ -3709,6 +3720,7 @@ function openAddSanifItem(freq){
   `);
 }
 async function addSanifItem(freq){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può modificare le voci di sanificazione"); return; }
   const name = document.getElementById("siName").value.trim();
   const reparto = document.getElementById("siReparto").value;
   if(!name){ toast("Inserisci una descrizione"); return; }
@@ -3722,6 +3734,7 @@ async function addSanifItem(freq){
   activeTab=backTo; closeSheet();
 }
 function openEditSanifItem(freq, item){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può modificare le voci di sanificazione"); return; }
   openSheet(`Modifica voce — ${freq}`, `
     <label class="field">Descrizione voce</label><input type="text" id="esiName" value="${item}">
     <label class="field">Reparto (facoltativo)</label>
@@ -3736,6 +3749,7 @@ function openEditSanifItem(freq, item){
   `);
 }
 async function editSanifItem(freq, oldItem){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può modificare le voci di sanificazione"); return; }
   const newName = document.getElementById("esiName").value.trim();
   const reparto = document.getElementById("esiReparto").value;
   if(!newName){ toast("Inserisci una descrizione"); return; }
@@ -3752,6 +3766,7 @@ async function editSanifItem(freq, oldItem){
   closeSheet();
 }
 async function deleteSanifItem(freq, item){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può eliminare voci di sanificazione"); return; }
   config.sanifItems[freq] = config.sanifItems[freq].filter(i=>i!==item);
   if(config.sanifReparti) delete config.sanifReparti[item];
   saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
@@ -4395,7 +4410,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "46";
+const APP_VERSION = "47";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
