@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v52">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v53">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v52</title>
+<title>HACCP Baldoria v53</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 52 · modifica/elimina solo admin · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 53 · fix NOCO + Articoli/Lotti · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1261,7 +1261,7 @@ function renderHaccpMenu(){
     {id:"temperature", label:"🌡️ Temperature", desc:"Controllo frigo, freezer e banchi caldi"},
     {id:"sanificazione", label:"🧽 Sanificazione", desc:"Pulizie giornaliere, settimanali, mensili"},
     {id:"moma", label:"🚚 Matrici in ingresso", desc:"Controllo consegne e bolle"},
-    {id:"produzione", label:"📦 Produzione / Lotti", desc:"Tracciabilità lotti e scadenze"},
+    {id:"produzione", label:"📦 Articoli / Lotti", desc:"Tracciabilità lotti e scadenze"},
     {id:"ricette", label:"🧾 Ricette", desc:"Composizioni, ingredienti e abbattimento"},
     {id:"coai", label:"🐭 Infestanti", desc:"Controllo settimanale (COAI)"},
     {id:"noco", label:"⚠️ Non conformità", desc:"Verbali e azioni correttive"},
@@ -2132,8 +2132,8 @@ function openMomaDetail(id){
     <label class="field">Note</label><textarea id="mdNote">${m.note||''}</textarea>
     <label class="field">Operatore</label><input type="text" id="mdOp" value="${m.operatore}">
     <div class="rowbtns">
-      <button class="btn block" onclick="editMoma('${id}')">Salva modifiche</button>
-      <button class="btn danger" onclick="deleteMoma('${id}')">Elimina consegna</button>
+      ${isAdmin()? `<button class="btn block" onclick="editMoma('${id}')">Salva modifiche</button>
+      <button class="btn danger" onclick="deleteMoma('${id}')">Elimina consegna</button>` : ''}
     </div>
   `, async ()=>{
     if(m.photoKey){
@@ -2154,6 +2154,7 @@ function setMdCheck(key, val, btn){
   btn.classList.add(val==="conforme"?"sel-ok":"sel-bad");
 }
 async function editMoma(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può modificare una registrazione già salvata"); return; }
   const m = logs.moma.find(x=>x.id===id);
   const fornitore = document.getElementById("mdFornitore").value.trim();
   const op = document.getElementById("mdOp").value.trim();
@@ -2169,6 +2170,7 @@ async function editMoma(id){
   activeTab="moma"; closeSheet();
 }
 async function deleteMoma(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può eliminare una registrazione già salvata"); return; }
   const rec = logs.moma.find(x=>x.id===id);
   logs.moma = logs.moma.filter(x=>x.id!==id);
   if(rec && rec.photoKey){ DB.delete(rec.photoKey, true).catch(()=>{}); }
@@ -2434,8 +2436,10 @@ async function saveMoma(){
   if(!allMomaConforme(rec)){
     const badItems = MOMA_CHECKS.filter(c=>checks[c.key]==="non_conforme").map(c=>c.label).join(", ");
     prefillNoco(`Consegna ${fornitore}`, `Riscontrata non conformità in fase di ricevimento merce (${badItems}). DDT: ${ddt||'—'}. ${note||''}`, op);
+    // NON chiudere qui: prefillNoco ha già aperto il modulo di non conformità da compilare e confermare.
+  } else {
+    closeSheet();
   }
-  closeSheet();
 }
 function addDaysISO(iso, days){
   const d = new Date(iso+"T00:00:00");
@@ -2465,7 +2469,7 @@ function renderProduzione(){
 
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Registro produzione e tracciabilità lotti (P1)</h2><div style="display:flex;gap:6px;">${printBtn('produzione')}${saveBtn('produzione')}</div></div>
+      <div class="card-head"><h2>Registro articoli e tracciabilità lotti (P1)</h2><div style="display:flex;gap:6px;">${printBtn('produzione')}${saveBtn('produzione')}</div></div>
       <p class="muted">Le schede vengono create automaticamente leggendo la bolla in "Matrici in ingresso". Scadenza calcolata a 7 giorni dalla consegna — modificabile per ogni prodotto.</p>
       <input type="text" id="produzioneSearchInput" placeholder="🔎 Cerca per prodotto, lotto o fornitore..." oninput="renderProduzioneList(this.value)" style="margin-bottom:10px;">
       <button class="btn block" onclick="openProduzioneForm()">+ Aggiungi prodotto manualmente</button>
@@ -3411,8 +3415,10 @@ async function saveCoai(){
   if(!allCoaiOk(rec)){
     const badItems = COAI_ITEMS.filter(i=>checks[i]==="presente").join(", ");
     prefillNoco("Controllo infestanti", `Rilevata presenza: ${badItems}. Zona: ${zona||'—'}.`, op);
+    // NON chiudere qui: prefillNoco ha già aperto il modulo di non conformità da compilare e confermare.
+  } else {
+    closeSheet();
   }
-  closeSheet();
 }
 
 // ---------- NOCO ----------
@@ -3669,7 +3675,7 @@ function renderImpostazioni(){
         <button class="iconbtn" onclick="exportCsv('moma')">MOMA</button>
         <button class="iconbtn" onclick="exportCsv('coai')">COAI</button>
         <button class="iconbtn" onclick="exportCsv('noco')">NOCO</button>
-        <button class="iconbtn" onclick="exportCsv('produzione')">Produzione / Lotti</button>
+        <button class="iconbtn" onclick="exportCsv('produzione')">Articoli / Lotti</button>
         <button class="iconbtn" onclick="exportCsv('composizioni')">Ricette / Composizioni</button>
       </div>
     </div>
@@ -3697,7 +3703,7 @@ function renderImpostazioni(){
         <button class="printbtn" onclick="printScheda('moma')">🖨️ MOMA</button>
         <button class="printbtn" onclick="printScheda('coai')">🖨️ Infestanti</button>
         <button class="printbtn" onclick="printScheda('noco')">🖨️ NOCO</button>
-        <button class="printbtn" onclick="printScheda('produzione')">🖨️ Produzione / Lotti</button>
+        <button class="printbtn" onclick="printScheda('produzione')">🖨️ Articoli / Lotti</button>
         <button class="printbtn" onclick="printScheda('ricette')">🖨️ Ricette</button>
       </div>
     </div>
@@ -3929,7 +3935,7 @@ function buildSchedaContent(kind){
         esc(m.note), esc(m.operatore)]);
     body = tbl(["Data","Ora","Fornitore","DDT","Verifiche","Note","Operatore"], rows);
   } else if(kind==="produzione"){
-    title = "Registro produzione e tracciabilità lotti (P1)";
+    title = "Registro articoli e tracciabilità lotti (P1)";
     const attivi = logs.produzione.filter(p=>!p.esaurito);
     const rowsOf = list => list.sort((a,b)=>(a.dataScadenza||"").localeCompare(b.dataScadenza||""))
       .map(p=>[esc(p.prodotto), esc(p.lotto), esc(p.quantita), esc(p.fornitore), esc(p.ddt),
@@ -4109,7 +4115,7 @@ function printFascicolo(){
     ["Registro temperature (MOTE)","temperature"],
     ["Registro sanificazione (MOSA)","sanificazione"],
     ["Controllo matrici in ingresso (MOMA)","moma"],
-    ["Produzione e tracciabilità lotti (P1)","produzione"],
+    ["Articoli e tracciabilità lotti (P1)","produzione"],
     ["Ricette e composizioni","ricette"],
     ["Controllo agenti infestanti (COAI)","coai"],
     ["Verbali di non conformità (NOCO)","noco"]
@@ -4478,7 +4484,7 @@ function openOfflineInfo(){
   const elenco = Object.keys(q).map(k=>{
     const nomi = {
       "log-temperature":"Temperature", "log-sanificazione":"Sanificazione", "log-moma":"MOMA",
-      "log-coai":"Infestanti (COAI)", "log-noco":"Non conformità (NOCO)", "log-produzione":"Produzione/Lotti",
+      "log-coai":"Infestanti (COAI)", "log-noco":"Non conformità (NOCO)", "log-produzione":"Articoli/Lotti",
       "log-composizioni":"Ricette/Composizioni", "config":"Configurazione ricette/punti"
     };
     return `<div class="logrow"><div><div class="val">${nomi[k]||k}</div><div class="meta">In attesa dal ${fmtDate(new Date(q[k].ts).toISOString().slice(0,10))}</div></div></div>`;
@@ -4491,7 +4497,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "52";
+const APP_VERSION = "53";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
