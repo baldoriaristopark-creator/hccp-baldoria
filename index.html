@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v36">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v37">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v36</title>
+<title>HACCP Baldoria v37</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -165,7 +165,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 36 · riepilogo home cliccabile · 27/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 37 · operatori PIN + fix critico salvataggio · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -562,17 +562,34 @@ const DEFAULT_CONFIG = {
   recipes: [],
   nocoCounter: 0
 };
+// Traccia, per ogni tipo di dato, se l'ultimo caricamento è fallito per un VERO problema
+// (rete, server) invece che per assenza legittima del dato (prima installazione).
+// Se è fallito per un problema reale, blocchiamo i salvataggi finché non si ricarica con successo:
+// altrimenti rischieremmo di sovrascrivere dati veri con un config/registro vuoto.
+let loadFailures = {};
 async function loadAll(){
   try{
     const c = await DB.get("config", true);
     config = c ? JSON.parse(c.value) : structuredClone(DEFAULT_CONFIG);
-  }catch(e){ config = structuredClone(DEFAULT_CONFIG); }
+    loadFailures.config = false;
+  }catch(e){
+    config = structuredClone(DEFAULT_CONFIG);
+    loadFailures.config = !(e && e.message==="not found"); // "not found" = prima volta, è normale
+  }
 
   for(const key of ["temperature","sanificazione","moma","coai","noco","produzione","composizioni"]){
     try{
       const r = await DB.get("log-"+key, true);
       logs[key] = r ? JSON.parse(r.value) : [];
-    }catch(e){ logs[key] = []; }
+      loadFailures[key] = false;
+    }catch(e){
+      logs[key] = [];
+      loadFailures[key] = !(e && e.message==="not found");
+    }
+  }
+  const problemi = Object.keys(loadFailures).filter(k=>loadFailures[k]);
+  if(problemi.length){
+    setTimeout(()=>toast(`⚠️ Alcuni dati non si sono caricati correttamente (${problemi.join(", ")}) — le modifiche a queste sezioni sono bloccate finché non ricarichi la pagina con connessione attiva, per non rischiare di perdere dati.`), 1500);
   }
   // L'ultimo operatore usato resta legato a QUESTO dispositivo (localStorage puro),
   // non va condiviso tra dispositivi/operatori diversi.
@@ -581,14 +598,154 @@ async function loadAll(){
   await loadAudits();
 }
 async function saveConfig(){
+  if(loadFailures.config){
+    toast("⚠️ Salvataggio bloccato: la configurazione non è stata caricata correttamente. Ricarica la pagina prima di modificare.");
+    throw new Error("blocco di sicurezza: config non caricata correttamente");
+  }
   await DB.set("config", JSON.stringify(config), true);
 }
 async function saveLog(key){
+  if(loadFailures[key]){
+    toast(`⚠️ Salvataggio bloccato: il registro "${key}" non è stato caricato correttamente. Ricarica la pagina prima di modificare.`);
+    throw new Error("blocco di sicurezza: log non caricato correttamente");
+  }
   await DB.set("log-"+key, JSON.stringify(logs[key]), true);
 }
 async function saveOperator(name){
   lastOperator = name;
   LS.set("ui-last-operator-device", name);
+}
+
+// ---------- SISTEMA OPERATORI CON PIN ----------
+const SESSION_KEY = "haccp-baldoria-sessione-operatore";
+let currentOperatorId = null;
+function getCurrentOperator(){
+  if(!currentOperatorId) return null;
+  return (config.operatori||[]).find(o=>o.id===currentOperatorId) || null;
+}
+function isAdmin(){
+  const op = getCurrentOperator();
+  return !!(op && op.ruolo==="admin");
+}
+function renderLoginGate(){
+  $tabs.innerHTML = "";
+  const nessunOperatore = !(config.operatori && config.operatori.length);
+  if(nessunOperatore){
+    $main.innerHTML = `
+      <div class="card">
+        <h2>👋 Benvenuto — primo avvio</h2>
+        <p class="muted">Crea il primo account: sarà l'amministratore, e da qui potrai aggiungere gli altri operatori con il loro PIN personale.</p>
+        <label class="field">Nome</label><input type="text" id="setupNome" placeholder="Il tuo nome">
+        <label class="field">PIN (4-6 cifre)</label><input type="password" inputmode="numeric" maxlength="6" id="setupPin" placeholder="1234">
+        <label class="field">Conferma PIN</label><input type="password" inputmode="numeric" maxlength="6" id="setupPinConferma" placeholder="1234">
+        <div id="setupError" style="color:var(--red);font-size:13px;margin-top:6px;"></div>
+        <div class="rowbtns"><button class="btn block" onclick="creaPrimoAdmin()">Crea account amministratore</button></div>
+      </div>
+    `;
+  } else {
+    $main.innerHTML = `
+      <div class="card">
+        <h2>🔒 Accesso operatore</h2>
+        <p class="muted">Inserisci il tuo PIN per continuare. Resta memorizzato su questo dispositivo finché non esci.</p>
+        <label class="field">PIN</label><input type="password" inputmode="numeric" maxlength="6" id="loginPin" placeholder="••••">
+        <div id="loginError" style="color:var(--red);font-size:13px;margin-top:6px;"></div>
+        <div class="rowbtns"><button class="btn block" onclick="tentaLogin()">Accedi</button></div>
+      </div>
+    `;
+    setTimeout(()=>{ const el=document.getElementById("loginPin"); if(el) el.focus(); }, 50);
+  }
+}
+async function creaPrimoAdmin(){
+  const nome = document.getElementById("setupNome").value.trim();
+  const pin = document.getElementById("setupPin").value.trim();
+  const pinConferma = document.getElementById("setupPinConferma").value.trim();
+  const errEl = document.getElementById("setupError");
+  if(!nome){ errEl.textContent = "Inserisci il tuo nome."; return; }
+  if(!/^\d{4,6}$/.test(pin)){ errEl.textContent = "Il PIN deve avere da 4 a 6 cifre numeriche."; return; }
+  if(pin!==pinConferma){ errEl.textContent = "I due PIN inseriti non coincidono."; return; }
+  const id = uid();
+  config.operatori = [{id, nome, pin, ruolo:"admin", attivo:true}];
+  await saveConfig();
+  LS.set(SESSION_KEY, id);
+  currentOperatorId = id;
+  lastOperator = nome;
+  LS.set("ui-last-operator-device", nome);
+  toast(`Benvenuto, ${nome}! Sei l'amministratore.`);
+  proceedToApp();
+}
+function tentaLogin(){
+  const pin = document.getElementById("loginPin").value.trim();
+  const errEl = document.getElementById("loginError");
+  const op = (config.operatori||[]).find(o=>o.pin===pin);
+  if(!op){ errEl.textContent = "PIN non riconosciuto."; return; }
+  if(!op.attivo){ errEl.textContent = "Accesso bloccato per questo operatore. Contatta l'amministratore."; return; }
+  LS.set(SESSION_KEY, op.id);
+  currentOperatorId = op.id;
+  lastOperator = op.nome;
+  LS.set("ui-last-operator-device", op.nome);
+  toast(`Bentornato, ${op.nome}!`);
+  proceedToApp();
+}
+function cambiaOperatore(){
+  if(!confirm("Uscire e tornare alla schermata di accesso? Dovrai reinserire il PIN.")) return;
+  LS.remove(SESSION_KEY);
+  currentOperatorId = null;
+  activeTab = "home";
+  renderLoginGate();
+}
+function openAddOperatoreForm(){
+  openSheet("Nuovo operatore", `
+    <label class="field">Nome</label><input type="text" id="newOpNome">
+    <label class="field">PIN (4-6 cifre)</label><input type="password" inputmode="numeric" maxlength="6" id="newOpPin">
+    <label class="field">Ruolo</label>
+    <select id="newOpRuolo"><option value="operatore">Operatore</option><option value="admin">Amministratore</option></select>
+    <div id="newOpError" style="color:var(--red);font-size:13px;margin-top:6px;"></div>
+    <div class="rowbtns"><button class="btn block" onclick="salvaNuovoOperatore()">Aggiungi operatore</button></div>
+  `);
+}
+async function salvaNuovoOperatore(){
+  const nome = document.getElementById("newOpNome").value.trim();
+  const pin = document.getElementById("newOpPin").value.trim();
+  const ruolo = document.getElementById("newOpRuolo").value;
+  const errEl = document.getElementById("newOpError");
+  if(!nome){ errEl.textContent = "Inserisci il nome."; return; }
+  if(!/^\d{4,6}$/.test(pin)){ errEl.textContent = "Il PIN deve avere da 4 a 6 cifre numeriche."; return; }
+  if((config.operatori||[]).some(o=>o.pin===pin)){ errEl.textContent = "PIN già usato da un altro operatore, scegline uno diverso."; return; }
+  config.operatori.push({id:uid(), nome, pin, ruolo, attivo:true});
+  await saveConfig();
+  toast("Operatore aggiunto");
+  activeTab="impostazioni"; closeSheet();
+}
+async function toggleOperatoreAttivo(id){
+  const o = config.operatori.find(x=>x.id===id);
+  if(!o) return;
+  o.attivo = !o.attivo;
+  await saveConfig();
+  toast(o.attivo? `${o.nome} sbloccato ✅` : `${o.nome} bloccato 🔒`);
+  render();
+}
+async function eliminaOperatore(id){
+  const o = config.operatori.find(x=>x.id===id);
+  if(!o) return;
+  if(!confirm(`Eliminare definitivamente l'operatore "${o.nome}"? Le registrazioni già fatte da questa persona restano nello storico.`)) return;
+  config.operatori = config.operatori.filter(x=>x.id!==id);
+  await saveConfig();
+  toast(`${o.nome} eliminato`);
+  render();
+}
+function operatoriListHtml(){
+  const ops = config.operatori||[];
+  if(!ops.length) return `<div class="empty">Nessun operatore configurato.</div>`;
+  return ops.map(o=>`
+    <div class="logrow">
+      <div><div class="val">${o.nome} ${o.ruolo==='admin'?'👑':''}${o.id===currentOperatorId?' <span class="muted" style="font-size:11px;">(tu)</span>':''}</div>
+      <div class="meta">${o.ruolo==='admin'?'Amministratore':'Operatore'} ${!o.attivo? '· <span style="color:var(--red);font-weight:700;">Bloccato</span>':''}</div></div>
+      ${isAdmin() && o.id!==currentOperatorId ? `<div style="display:flex;gap:6px;">
+        <button class="iconbtn" onclick="toggleOperatoreAttivo('${o.id}')">${o.attivo?'🔒 Blocca':'🔓 Sblocca'}</button>
+        <button class="iconbtn" onclick="eliminaOperatore('${o.id}')">🗑️</button>
+      </div>` : ''}
+    </div>
+  `).join("");
 }
 
 // ---------- TIMER / ALLARMI ----------
@@ -1126,7 +1283,8 @@ function quickTemp(){ activeTab="temperature"; render(); }
 // ---------- TEMPERATURE ----------
 function pointStatusToday(p, date){
   const t = date || todayISO();
-  const rec = logs.temperature.filter(r=>r.pointId===p.id && r.data===t).sort((a,b)=>b.ora.localeCompare(a.ora))[0];
+  const filtrate = logs.temperature.filter(r=>r.pointId===p.id && r.data===t);
+  const rec = filtrate.length? filtrate[filtrate.length-1] : null; // l'ultimo inserito, non il "più tardi" per orario testuale (due letture nello stesso minuto altrimenti darebbero un risultato ambiguo)
   if(!rec) return {state:"missing", rec:null};
   if(rec.spento) return {state:"spento", rec};
   return {state: rec.conforme ? "ok":"bad", rec};
@@ -1391,8 +1549,8 @@ async function saveTempManual(pointId){
   const dataEl = document.getElementById("tempData");
   const oraEl = document.getElementById("tempOra");
   const customDateTime = dataEl ? { data: dataEl.value, ora: oraEl.value } : null;
-  await commitTempReading(pointId, val, op, "manuale", customDateTime);
-  closeSheet();
+  const conforme = await commitTempReading(pointId, val, op, "manuale", customDateTime);
+  if(conforme) closeSheet(); // se fuori soglia, resta aperta la scheda azioni correttive appena mostrata
 }
 
 function handlePhoto(e, pointId, p){
@@ -1476,8 +1634,8 @@ async function confirmPhotoReading(pointId){
   const op = document.getElementById("tempOpConfirm").value.trim();
   if(isNaN(val)){ toast("Inserisci un valore valido"); return; }
   if(!op){ toast("Inserisci il nome dell'operatore"); return; }
-  await commitTempReading(pointId, val, op, "foto");
-  closeSheet();
+  const conforme = await commitTempReading(pointId, val, op, "foto");
+  if(conforme) closeSheet();
 }
 
 function timeToMinutes(t){ const [h,m] = (t||"0:0").split(":").map(Number); return h*60+m; }
@@ -1500,6 +1658,7 @@ async function commitTempReading(pointId, val, op, fonte, customDateTime){
   if(!conforme){
     openAzioniCorrettive(p, val, op, fonte, rec);
   }
+  return conforme; // false = è stata aperta la scheda azioni correttive: chi chiama NON deve richiuderla
 }
 
 // ---------- AZIONI CORRETTIVE GUIDATE ----------
@@ -2131,7 +2290,7 @@ function addDaysISO(iso, days){
 function renderProduzione(){
   const t = todayISO();
   const sorted = [...logs.produzione].filter(p=>!p.esaurito).sort((a,b)=>a.dataScadenza.localeCompare(b.dataScadenza));
-  const esauriti = [...logs.produzione].filter(p=>p.esaurito).sort((a,b)=>b.dataConsegna.localeCompare(a.dataConsegna)).slice(0,15);
+  const esauriti = [...logs.produzione].filter(p=>p.esaurito).sort((a,b)=>b.dataConsegna.localeCompare(a.dataConsegna));
 
   function statusOf(p){
     if(p.dataScadenza < t) return "bad";
@@ -2151,30 +2310,73 @@ function renderProduzione(){
     <div class="card">
       <div class="card-head"><h2>Registro produzione e tracciabilità lotti (P1)</h2>${printBtn('produzione')}</div>
       <p class="muted">Le schede vengono create automaticamente leggendo la bolla in "Matrici in ingresso". Scadenza calcolata a 7 giorni dalla consegna — modificabile per ogni prodotto.</p>
+      <input type="text" id="produzioneSearchInput" placeholder="🔎 Cerca per prodotto, lotto o fornitore..." oninput="renderProduzioneList(this.value)" style="margin-bottom:10px;">
       <button class="btn block" onclick="openProduzioneForm()">+ Aggiungi prodotto manualmente</button>
     </div>
     <div class="card">
-      <h2>Prodotti in produzione (${sorted.length})</h2>
-      ${sorted.length? sorted.map(p=>`
-        <div class="logrow" onclick="openProduzioneDetail('${p.id}')" style="cursor:pointer;">
-          <div>
-            <div class="val">${p.semilavorato? '🏷️ ':''}${p.prodotto}</div>
-            <div class="meta">Lotto: ${p.lotto||'—'} · ${p.fornitore} · scade il ${fmtDate(p.dataScadenza)}</div>
-          </div>
-          <span class="chip ${statusOf(p)}">${statusLabel(p)}</span>
-        </div>
-      `).join("") : `<div class="empty">Nessun prodotto in produzione al momento.</div>`}
+      <h2 id="produzioneListTitle">Prodotti in produzione (${sorted.length})</h2>
+      <div id="produzioneListEl">${produzioneListHtml("")}</div>
     </div>
-    ${esauriti.length? `<div class="card">
+    <div class="card" id="produzioneEsauritiCard" style="${esauriti.length? '':'display:none;'}">
       <h2>Storico esauriti</h2>
-      ${esauriti.map(p=>`
-        <div class="logrow" onclick="openProduzioneDetail('${p.id}')" style="cursor:pointer;">
-          <div><div class="val">${p.prodotto}</div>
-          <div class="meta">Lotto: ${p.lotto||'—'} · consegna ${fmtDate(p.dataConsegna)}</div></div>
-        </div>
-      `).join("")}
-    </div>` : ""}
+      <div id="produzioneEsauritiEl">${produzioneEsauritiHtml("")}</div>
+    </div>
   `;
+}
+function produzioneListHtml(query){
+  const q = (query||"").trim();
+  let sorted = [...logs.produzione].filter(p=>!p.esaurito).sort((a,b)=>a.dataScadenza.localeCompare(b.dataScadenza));
+  if(q) sorted = sorted.filter(p=>textMatchesQuery(p.prodotto,q) || textMatchesQuery(p.lotto||"",q) || textMatchesQuery(p.fornitore||"",q));
+  const t = todayISO();
+  function statusOf(p){
+    if(p.dataScadenza < t) return "bad";
+    const diffDays = Math.round((new Date(p.dataScadenza)-new Date(t))/86400000);
+    if(diffDays <= 1) return "missing";
+    return "ok";
+  }
+  function statusLabel(p){
+    const s = statusOf(p);
+    return s==="bad"? "SCADUTO" : s==="missing"? "In scadenza" : "Valido";
+  }
+  if(!sorted.length) return `<div class="empty">${q? `Nessun prodotto trovato per "${esc(query)}".` : "Nessun prodotto in produzione al momento."}</div>`;
+  return sorted.map(p=>`
+    <div class="logrow" onclick="openProduzioneDetail('${p.id}')" style="cursor:pointer;">
+      <div>
+        <div class="val">${p.semilavorato? '🏷️ ':''}${p.prodotto}</div>
+        <div class="meta">Lotto: ${p.lotto||'—'} · ${p.fornitore} · scade il ${fmtDate(p.dataScadenza)}</div>
+      </div>
+      <span class="chip ${statusOf(p)}">${statusLabel(p)}</span>
+    </div>
+  `).join("");
+}
+function produzioneEsauritiHtml(query){
+  const q = (query||"").trim();
+  let esauriti = [...logs.produzione].filter(p=>p.esaurito).sort((a,b)=>b.dataConsegna.localeCompare(a.dataConsegna));
+  if(q) esauriti = esauriti.filter(p=>textMatchesQuery(p.prodotto,q) || textMatchesQuery(p.lotto||"",q) || textMatchesQuery(p.fornitore||"",q));
+  else esauriti = esauriti.slice(0,15);
+  if(!esauriti.length) return `<div class="empty">${q? `Nessun prodotto esaurito trovato per "${esc(query)}".` : "Nessuno storico ancora."}</div>`;
+  return esauriti.map(p=>`
+    <div class="logrow" onclick="openProduzioneDetail('${p.id}')" style="cursor:pointer;">
+      <div><div class="val">${p.prodotto}</div>
+      <div class="meta">Lotto: ${p.lotto||'—'} · consegna ${fmtDate(p.dataConsegna)}</div></div>
+    </div>
+  `).join("");
+}
+function renderProduzioneList(query){
+  const el = document.getElementById("produzioneListEl");
+  if(el) el.innerHTML = produzioneListHtml(query);
+  const esEl = document.getElementById("produzioneEsauritiEl");
+  const esCard = document.getElementById("produzioneEsauritiCard");
+  if(esEl){
+    esEl.innerHTML = produzioneEsauritiHtml(query);
+    if(esCard) esCard.style.display = (query && query.trim()) || logs.produzione.some(p=>p.esaurito) ? "" : "none";
+  }
+  const titleEl = document.getElementById("produzioneListTitle");
+  if(titleEl){
+    const q = (query||"").trim();
+    const count = [...logs.produzione].filter(p=>!p.esaurito && (!q || textMatchesQuery(p.prodotto,q) || textMatchesQuery(p.lotto||"",q) || textMatchesQuery(p.fornitore||"",q))).length;
+    titleEl.textContent = q? `Risultati (${count})` : `Prodotti in produzione (${count})`;
+  }
 }
 
 function openProduzioneForm(){
@@ -3161,7 +3363,15 @@ async function closeNoco(id){
 
 // ---------- IMPOSTAZIONI ----------
 function renderImpostazioni(){
+  const me = getCurrentOperator();
   $main.innerHTML = `
+    <div class="card">
+      <h2>👤 Operatori</h2>
+      ${me? `<p class="muted">Accesso attuale: <b>${me.nome}</b> ${me.ruolo==='admin'?'👑 Amministratore':'Operatore'}</p>`:''}
+      ${operatoriListHtml()}
+      ${isAdmin()? `<div class="rowbtns"><button class="btn secondary block" onclick="openAddOperatoreForm()">+ Aggiungi operatore</button></div>`:''}
+      <div class="rowbtns"><button class="iconbtn block" onclick="cambiaOperatore()">🚪 Cambia operatore / Esci</button></div>
+    </div>
     <div class="card">
       <h2>Punti di controllo temperatura</h2>
       ${config.points.map(p=>`
@@ -3213,6 +3423,7 @@ function renderImpostazioni(){
       <p class="muted">${DB.mode==="supabase"? "Ogni giorno l'app salva automaticamente una copia completa di tutti i registri, così avete sempre un punto a cui tornare in caso di problemi." : "Il backup automatico giornaliero richiede la modalità database condiviso."}</p>
       <div class="rowbtns"><button class="btn secondary block" onclick="downloadFullBackupNow()">⬇️ Scarica backup completo adesso</button></div>
       ${DB.mode==="supabase"? `<div class="rowbtns"><button class="iconbtn block" onclick="openBackupPanel()">📂 Vedi backup automatici disponibili</button></div>`:""}
+      <div class="rowbtns"><button class="btn danger block" onclick="openRestoreBackupForm()">♻️ Ripristina da un file di backup</button></div>
     </div>
     <div class="card">
       <h2>🖨️ Stampa registri (mese corrente)</h2>
@@ -3830,6 +4041,71 @@ async function downloadBackupSnapshot(key){
     toast("💾 Backup scaricato");
   }catch(e){ toast("⚠️ Impossibile scaricare questo backup"); }
 }
+function openRestoreBackupForm(){
+  window._restoreData = null;
+  openSheet("♻️ Ripristina da backup", `
+    <div class="card" style="padding:11px;background:var(--amber-pale);border:none;">
+      <p class="muted" style="margin:0;font-size:13px;"><b>Attenzione:</b> questa operazione sostituisce TUTTA la configurazione e TUTTI i registri attuali con quelli contenuti nel file caricato. Usala solo per recuperare da un problema — non è normalmente necessaria, e non si può annullare (a meno di ripristinare un altro backup).</p>
+    </div>
+    <label class="field">File di backup (.json, scaricato in precedenza da questa stessa sezione)</label>
+    <input type="file" accept="application/json" id="restoreFileInput">
+    <div id="restorePreview" style="margin-top:8px;"></div>
+    <div class="rowbtns"><button class="btn danger block" id="restoreConfirmBtn" disabled onclick="eseguiRipristino()">Ripristina questi dati (sovrascrive tutto)</button></div>
+  `, ()=>{
+    document.getElementById("restoreFileInput").onchange = (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        const previewEl = document.getElementById("restorePreview");
+        const btnEl = document.getElementById("restoreConfirmBtn");
+        try{
+          const data = JSON.parse(reader.result);
+          if(!data.config && !data.logs){ throw new Error("formato non riconosciuto"); }
+          window._restoreData = data;
+          const nPoints = (data.config && data.config.points || []).length;
+          const nSanifG = (data.config && data.config.sanifItems && data.config.sanifItems.giornaliera || []).length;
+          const nSanifS = (data.config && data.config.sanifItems && data.config.sanifItems.settimanale || []).length;
+          previewEl.innerHTML = `<p class="muted" style="font-size:13px;">✅ File letto correttamente — generato il ${data.generatedAt? fmtDate(data.generatedAt.slice(0,10)):'?'}.<br>Contiene: <b>${nPoints}</b> punti di controllo temperatura, <b>${nSanifG}</b> voci di sanificazione giornaliera, <b>${nSanifS}</b> settimanali.</p>`;
+          btnEl.disabled = false;
+        }catch(err){
+          previewEl.innerHTML = `<p style="color:var(--red);font-size:13px;">⚠️ File non valido o corrotto — impossibile leggerlo.</p>`;
+          window._restoreData = null;
+          btnEl.disabled = true;
+        }
+      };
+      reader.readAsText(file);
+    };
+  });
+}
+async function eseguiRipristino(){
+  const data = window._restoreData;
+  if(!data){ toast("Nessun file valido caricato"); return; }
+  if(!confirm("Sei sicuro? Questo SOSTITUISCE tutti i dati attuali (configurazione e registri) con quelli del file di backup. L'operazione non è reversibile.")) return;
+  try{
+    if(data.config){
+      config = data.config;
+      loadFailures.config = false; // stiamo scrivendo consapevolmente, sblocchiamo il salvataggio
+      await saveConfig();
+    }
+    if(data.logs){
+      for(const key of Object.keys(data.logs)){
+        if(logs.hasOwnProperty(key)){
+          logs[key] = data.logs[key] || [];
+          loadFailures[key] = false;
+          await saveLog(key);
+        }
+      }
+    }
+    migrateReparti();
+    toast("✅ Ripristino completato con successo");
+    window._restoreData = null;
+    activeTab = "impostazioni"; closeSheet();
+    render();
+  }catch(err){
+    toast("⚠️ Errore durante il ripristino: "+(err.message||"riprova"));
+  }
+}
 function openBackupPanel(){
   openSheet("💾 Backup e Ripristino", `
     <div class="card" style="padding:11px;background:var(--green-pale);border:none;">
@@ -3902,30 +4178,43 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
+function proceedToApp(){
+  render();
+  window.__avviata = true;
+  updateOfflineBadge();
+  if(DB.mode==="local" && !LS.available){
+    setTimeout(()=>toast("⚠️ Questo browser non salva i dati: apri l'app da un indirizzo web, non dal file"), 1200);
+  } else if(DB.mode==="local"){
+    setTimeout(()=>toast("📱 Dati salvati solo su questo dispositivo — configurali in Impostazioni"), 1200);
+  }
+  if(pendingSyncCount()>0) setTimeout(()=>toast(`📡 ${pendingSyncCount()} modifica/he in attesa di sincronizzazione`), 1200);
+  setInterval(tickTimers, 1000);
+  setInterval(pollTimersFromStorage, 10000);
+  setInterval(pollAuditsFromStorage, 10000);
+  setInterval(flushPendingSync, 20000);
+  window.addEventListener("online", ()=>{ toast("🌐 Connessione ripristinata, sincronizzo..."); flushPendingSync(); });
+  runAutoBackupIfDue();
+}
 (async function init(){
   try{
     $main.innerHTML = `<div class="empty"><span class="spinner"></span> Caricamento registri...</div>`;
     await loadAll();
     migrateReparti();
-    render();
-    window.__avviata = true;
-    updateOfflineBadge();
-    if(DB.mode==="local" && !LS.available){
-      setTimeout(()=>toast("⚠️ Questo browser non salva i dati: apri l'app da un indirizzo web, non dal file"), 1200);
-    } else if(DB.mode==="local"){
-      setTimeout(()=>toast("📱 Dati salvati solo su questo dispositivo — configurali in Impostazioni"), 1200);
+    const sessId = LS.get(SESSION_KEY);
+    const sessOp = sessId ? (config.operatori||[]).find(o=>o.id===sessId) : null;
+    if(sessOp && sessOp.attivo){
+      currentOperatorId = sessOp.id;
+      lastOperator = sessOp.nome;
+      proceedToApp();
+    } else {
+      if(sessId) LS.remove(SESSION_KEY);
+      renderLoginGate();
     }
-    if(pendingSyncCount()>0) setTimeout(()=>toast(`📡 ${pendingSyncCount()} modifica/he in attesa di sincronizzazione`), 1200);
-    setInterval(tickTimers, 1000);
-    setInterval(pollTimersFromStorage, 10000);
-    setInterval(pollAuditsFromStorage, 10000);
-    setInterval(flushPendingSync, 20000);
-    window.addEventListener("online", ()=>{ toast("🌐 Connessione ripristinata, sincronizzo..."); flushPendingSync(); });
-    runAutoBackupIfDue();
   }catch(err){
     fatalError("Si è verificato un errore durante il caricamento dei registri.", err && (err.stack||err.message));
   }
 })();
 </script>
+
 </body>
 </html>
