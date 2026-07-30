@@ -5,11 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v39">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v40">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v39</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>HACCP Baldoria v40</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -165,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 39 · barra Home/HACCP/Turni · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 40 · auto-aggiornamento · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4295,6 +4298,33 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
+const APP_VERSION = "40";
+async function checkForNewVersion(silentReloadIfChanged){
+  try{
+    const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
+    const r = await fetch(url, {cache:"no-store"});
+    if(!r.ok) return;
+    const text = await r.text();
+    const m = text.match(/versione (\d+) ·/);
+    if(m && m[1] !== APP_VERSION){
+      if(silentReloadIfChanged){
+        toast("🔄 Aggiornamento alla versione più recente...");
+        setTimeout(()=>{ location.reload(); }, 700);
+      } else {
+        showUpdateBanner(m[1]);
+      }
+    }
+  }catch(e){ /* rete assente: si riprova al prossimo controllo, nessun problema */ }
+}
+function showUpdateBanner(nuovaVersione){
+  if(document.getElementById("updateBanner")) return;
+  const b = document.createElement("div");
+  b.id = "updateBanner";
+  b.style.cssText = "position:fixed;bottom:0;left:0;right:0;background:var(--green-dark);color:#fff;padding:14px 16px;text-align:center;font-weight:800;font-size:14px;z-index:9999;cursor:pointer;box-shadow:0 -2px 10px rgba(0,0,0,.2);";
+  b.textContent = `🔄 Nuova versione (${nuovaVersione}) disponibile — tocca per aggiornare`;
+  b.onclick = ()=>{ location.reload(); };
+  document.body.appendChild(b);
+}
 function proceedToApp(){
   render();
   window.__avviata = true;
@@ -4309,6 +4339,10 @@ function proceedToApp(){
   setInterval(pollTimersFromStorage, 10000);
   setInterval(pollAuditsFromStorage, 10000);
   setInterval(flushPendingSync, 20000);
+  setInterval(()=>checkForNewVersion(false), 5*60*1000); // ogni 5 minuti mentre l'app resta aperta: banner discreto
+  document.addEventListener("visibilitychange", ()=>{
+    if(!document.hidden) checkForNewVersion(true); // riapertura app: aggiorna da sola, senza chiedere
+  });
   window.addEventListener("online", ()=>{ toast("🌐 Connessione ripristinata, sincronizzo..."); flushPendingSync(); });
   runAutoBackupIfDue();
 }
