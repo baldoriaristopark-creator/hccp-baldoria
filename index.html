@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v37">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v38">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
-<title>HACCP Baldoria v37</title>
+<title>HACCP Baldoria v38</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -165,7 +165,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 37 · operatori PIN + fix critico salvataggio · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 38 · sezione turni · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -464,6 +464,7 @@ let dateFiltroTemp = "";
 let dateFiltroSanif = "";
 let statoFiltroTemp = "";
 let statoFiltroSanif = "";
+let turniWeekOffset = 0;
 let dateFiltroMoma = "";
 let dateFiltroComposizioni = "";
 function dateFilterHtml(currentValue, onchangeFn){
@@ -1143,6 +1144,7 @@ const TABS = [
   {id:"ricette", label:"🧾 Ricette"},
   {id:"coai", label:"🐭 Infestanti"},
   {id:"noco", label:"⚠️ Non conformità"},
+  {id:"turni", label:"📅 Turni"},
 ];
 
 function renderTabs(){
@@ -1190,6 +1192,7 @@ function render(){
   else if(activeTab==="ricette") renderRicette();
   else if(activeTab==="coai") renderCoai();
   else if(activeTab==="noco") renderNoco();
+  else if(activeTab==="turni") renderTurni();
   else if(activeTab==="impostazioni") renderImpostazioni();
 }
 
@@ -3252,6 +3255,101 @@ async function saveCoai(){
 }
 
 // ---------- NOCO ----------
+// ---------- TURNI (vetrina finale — la pianificazione avviene fuori dall'app) ----------
+function getMondayISO(date){
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day===0? -6 : 1-day);
+  d.setDate(d.getDate()+diff);
+  return toLocalISODate(d);
+}
+function renderTurni(){
+  const me = getCurrentOperator();
+  const monday = new Date(getMondayISO(new Date())+"T00:00:00");
+  monday.setDate(monday.getDate() + turniWeekOffset*7);
+  const giorni = Array.from({length:7}, (_,i)=>{
+    const d = new Date(monday); d.setDate(d.getDate()+i);
+    return toLocalISODate(d);
+  });
+  const turni = config.turni || [];
+  const mieiTurni = me? turni.filter(t=>giorni.includes(t.data) && t.operatore===me.nome).sort((a,b)=>a.data.localeCompare(b.data)) : [];
+  const fasciaLbl = f => f==='mattina'? '☀️ Mattina' : '🌙 Sera lunga';
+  const giornoLbl = iso => WEEKDAY_LOCALE[new Date(iso+"T00:00:00").getDay()];
+
+  $main.innerHTML = `
+    <div class="card">
+      <h2>📅 I tuoi turni questa settimana</h2>
+      <p class="muted">${fmtDate(giorni[0])} – ${fmtDate(giorni[6])}</p>
+      ${mieiTurni.length? mieiTurni.map(t=>`
+        <div class="logrow"><div>
+          <div class="val">${giornoLbl(t.data)} ${fmtDate(t.data)}</div>
+          <div class="meta">${t.reparto} · ${fasciaLbl(t.fascia)}</div>
+        </div></div>
+      `).join("") : `<div class="empty">Nessun turno assegnato per te questa settimana.</div>`}
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Turni del team</h2></div>
+      <div class="rowbtns" style="margin-top:0;">
+        <button class="iconbtn" onclick="cambiaSettimanaTurni(-1)">← Prec.</button>
+        <button class="iconbtn" onclick="cambiaSettimanaTurni('reset')">Questa settimana</button>
+        <button class="iconbtn" onclick="cambiaSettimanaTurni(1)">Succ. →</button>
+      </div>
+      ${giorni.map(g=>{
+        const turniGiorno = turni.filter(t=>t.data===g).sort((a,b)=>(a.reparto+a.fascia).localeCompare(b.reparto+b.fascia));
+        return `<h3>${giornoLbl(g)} ${fmtDate(g)}</h3>
+        ${turniGiorno.length? turniGiorno.map(t=>`
+          <div class="logrow">
+            <div><div class="val">${t.operatore}${me && t.operatore===me.nome?' <span class="muted" style="font-size:11px;">(tu)</span>':''}</div>
+            <div class="meta">${t.reparto} · ${fasciaLbl(t.fascia)}</div></div>
+            ${isAdmin()? `<button class="iconbtn" onclick="eliminaTurno('${t.id}')">🗑️</button>`:''}
+          </div>
+        `).join("") : `<div class="empty" style="padding:6px 0;">Nessun turno assegnato.</div>`}
+        `;
+      }).join("")}
+      ${isAdmin()? `<div class="rowbtns"><button class="btn secondary block" onclick="openAddTurnoForm('${giorni[0]}')">+ Aggiungi turno</button></div>`:''}
+    </div>
+  `;
+}
+function cambiaSettimanaTurni(delta){
+  turniWeekOffset = delta==='reset'? 0 : turniWeekOffset+delta;
+  render();
+}
+function openAddTurnoForm(defaultDate){
+  const ops = config.operatori||[];
+  openSheet("Nuovo turno", `
+    <label class="field">Data</label><input type="date" id="turnoData" value="${defaultDate||todayISO()}">
+    <label class="field">Reparto</label>
+    <select id="turnoReparto">${REPARTI.map(r=>`<option value="${r}">${r}</option>`).join("")}</select>
+    <label class="field">Fascia</label>
+    <select id="turnoFascia">
+      <option value="mattina">☀️ Mattina</option>
+      <option value="seraLunga">🌙 Sera lunga</option>
+    </select>
+    <label class="field">Operatore</label>
+    <select id="turnoOperatore">${ops.length? ops.map(o=>`<option value="${o.nome}">${o.nome}</option>`).join("") : `<option value="">Nessun operatore configurato</option>`}</select>
+    <div class="rowbtns"><button class="btn block" onclick="salvaTurno()">Aggiungi turno</button></div>
+  `);
+}
+async function salvaTurno(){
+  const data = document.getElementById("turnoData").value;
+  const reparto = document.getElementById("turnoReparto").value;
+  const fascia = document.getElementById("turnoFascia").value;
+  const operatore = document.getElementById("turnoOperatore").value;
+  if(!data){ toast("Scegli una data"); return; }
+  if(!operatore){ toast("Scegli un operatore"); return; }
+  if(!config.turni) config.turni = [];
+  config.turni.push({id:uid(), data, reparto, fascia, operatore});
+  await saveConfig();
+  toast("Turno aggiunto");
+  activeTab="turni"; closeSheet();
+}
+async function eliminaTurno(id){
+  config.turni = (config.turni||[]).filter(t=>t.id!==id);
+  await saveConfig();
+  toast("Turno eliminato");
+  render();
+}
+
 function renderNoco(){
   const sorted = [...logs.noco].sort((a,b)=>(b.data).localeCompare(a.data));
   $main.innerHTML = `
