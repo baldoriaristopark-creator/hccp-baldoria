@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v51">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v52">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v51</title>
+<title>HACCP Baldoria v52</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 51 · reparto auto su nuova ricetta · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 52 · modifica/elimina solo admin · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1535,24 +1535,26 @@ function openTempEntryDetail(id){
   if(r.spento){
     openSheet(`Registrazione — ${fmtDate(r.data)}`, `
       <p class="muted">${r.pointName||''} · ${fmtDate(r.data)} · ${r.ora} · ⚫ Segnato come spento/non in uso${tardivaLbl}</p>
+      ${isAdmin()? `
       <label class="field">Operatore</label><input type="text" id="teOp" value="${r.operatore||''}">
       <label class="field">Motivo</label><input type="text" id="teNote" value="${r.note||''}">
       <div class="rowbtns">
         <button class="btn block" onclick="editSpentoEntry('${id}')">Salva modifiche</button>
         <button class="btn danger" onclick="deleteTempEntry('${id}')">Elimina registrazione</button>
-      </div>
+      </div>` : `<p class="muted" style="font-size:12px;">Operatore: <b>${r.operatore||'—'}</b>${r.note? ' · Motivo: '+r.note:''}</p>`}
     `);
     return;
   }
   openSheet(`Registrazione — ${fmtDate(r.data)}`, `
     <p class="muted">${r.pointName||''} · ${fmtDate(r.data)} · ${r.ora}${r.fonte==='foto'?' · 📸 rilevata da foto':''} · ${r.conforme? '✅ Conforme':'🔴 Fuori soglia'}${tardivaLbl}</p>
     ${r.photoKey? `<div id="tempDetailPhoto"><span class="spinner"></span> Carico foto...</div>` : `<p class="muted">Nessuna foto per questa registrazione (inserimento manuale).</p>`}
+    ${isAdmin()? `
     <label class="field">Valore (°C)</label><input type="number" step="0.1" id="teVal" value="${r.valore}">
     <label class="field">Operatore</label><input type="text" id="teOp" value="${r.operatore||''}">
     <div class="rowbtns">
       <button class="btn block" onclick="editTempEntry('${id}')">Salva modifiche</button>
       <button class="btn danger" onclick="deleteTempEntry('${id}')">Elimina registrazione</button>
-    </div>
+    </div>` : `<p class="muted" style="font-size:12px;">Valore: <b>${r.valore}°C</b> · Operatore: <b>${r.operatore||'—'}</b></p>`}
   `, async ()=>{
     if(r.photoKey){
       try{
@@ -1565,6 +1567,7 @@ function openTempEntryDetail(id){
   });
 }
 async function editSpentoEntry(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può modificare una registrazione già salvata"); return; }
   const r = logs.temperature.find(x=>x.id===id);
   const op = document.getElementById("teOp").value.trim();
   if(!op){ toast("Inserisci l'operatore"); return; }
@@ -1575,6 +1578,7 @@ async function editSpentoEntry(id){
   activeTab="temperature"; closeSheet();
 }
 async function editTempEntry(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può modificare una registrazione già salvata"); return; }
   const r = logs.temperature.find(x=>x.id===id);
   const p = config.points.find(x=>x.id===r.pointId);
   const val = parseFloat(document.getElementById("teVal").value);
@@ -1589,6 +1593,7 @@ async function editTempEntry(id){
   activeTab="temperature"; closeSheet();
 }
 async function deleteTempEntry(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può eliminare una registrazione già salvata"); return; }
   const rec = logs.temperature.find(x=>x.id===id);
   logs.temperature = logs.temperature.filter(x=>x.id!==id);
   if(rec && rec.photoKey){ DB.delete(rec.photoKey, true).catch(()=>{}); }
@@ -2058,7 +2063,7 @@ async function openSanifDetail(id){
   openSheet(rec.item, `
     <p class="muted">${rec.frequenza} · ${fmtDate(rec.data)} · ${rec.ora} · <b>${rec.operatore}</b>${tardivaLbl}</p>
     <div id="sanifDetailPhoto"><span class="spinner"></span> Carico foto...</div>
-    <div class="rowbtns"><button class="btn danger" onclick="deleteSanifEntry('${id}')">Elimina registrazione</button></div>
+    ${isAdmin()? `<div class="rowbtns"><button class="btn danger" onclick="deleteSanifEntry('${id}')">Elimina registrazione</button></div>` : ''}
   `, async ()=>{
     try{
       const p = await DB.get(rec.photoKey, true);
@@ -2070,6 +2075,7 @@ async function openSanifDetail(id){
 }
 
 async function deleteSanifEntry(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può eliminare una registrazione già salvata"); return; }
   const rec = logs.sanificazione.find(r=>r.id===id);
   logs.sanificazione = logs.sanificazione.filter(r=>r.id!==id);
   activeTab="sanificazione"; closeSheet();
@@ -3269,7 +3275,7 @@ function openComposizioneDetail(id){
     `).join("")}
     ${c.note? `<p style="font-size:13px;margin-top:8px;">${c.note}</p>`:""}
     ${c.photoKey? `<div id="composizioneDetailPhoto" style="margin-top:10px;"><span class="spinner"></span> Carico foto...</div>` : ""}
-    <div class="rowbtns"><button class="btn danger" onclick="deleteComposizione('${id}')">Elimina registrazione</button></div>
+    ${isAdmin()? `<div class="rowbtns"><button class="btn danger" onclick="deleteComposizione('${id}')">Elimina registrazione</button></div>` : ''}
   `, async ()=>{
     if(!c.photoKey) return;
     try{
@@ -3292,6 +3298,7 @@ async function markComposizioneEsaurita(compId){
   activeTab="ricette"; closeSheet();
 }
 async function deleteComposizione(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può eliminare una registrazione già salvata"); return; }
   const rec = logs.composizioni.find(x=>x.id===id);
   logs.composizioni = logs.composizioni.filter(x=>x.id!==id);
   activeTab="ricette"; closeSheet();
@@ -4484,7 +4491,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "51";
+const APP_VERSION = "52";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
