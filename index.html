@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v42">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v43">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v42</title>
+<title>HACCP Baldoria v43</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 42 · modifica operatore/PIN · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 43 · pulsante salva file · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1389,7 +1389,7 @@ function renderTemperature(){
 
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Punti di controllo ${!isOggi? `— ${fmtDate(dataRif)}`:''}</h2>${printBtn('temperature')}</div>
+      <div class="card-head"><h2>Punti di controllo ${!isOggi? `— ${fmtDate(dataRif)}`:''}</h2><div style="display:flex;gap:6px;">${printBtn('temperature')}${saveBtn('temperature')}</div></div>
       ${repartoFilterHtml(repartoFiltroTemp, "setRepartoFiltroTemp")}
       ${dateFilterHtml(dateFiltroTemp, "setDateFiltroTemp")}
       <select onchange="setStatoFiltroTemp(this.value)" style="margin-bottom:10px;">
@@ -1854,7 +1854,7 @@ function renderSanificazione(){
   items = itemsConRec.map(x=>x.item);
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Sanificazione ${!isOggi? `— ${fmtDate(t)}`:''}</h2>${printBtn('sanificazione')}</div>
+      <div class="card-head"><h2>Sanificazione ${!isOggi? `— ${fmtDate(t)}`:''}</h2><div style="display:flex;gap:6px;">${printBtn('sanificazione')}${saveBtn('sanificazione')}</div></div>
       <div class="rowbtns" style="margin-top:0;">
         ${["giornaliera","settimanale","mensile"].map(f=>`
           <button class="iconbtn" style="${sanifSubTab===f?'background:var(--green);color:#fff;':''}" onclick="sanifSubTab='${f}';render()">${f[0].toUpperCase()+f.slice(1)}</button>`).join("")}
@@ -2375,7 +2375,7 @@ function renderProduzione(){
 
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Registro produzione e tracciabilità lotti (P1)</h2>${printBtn('produzione')}</div>
+      <div class="card-head"><h2>Registro produzione e tracciabilità lotti (P1)</h2><div style="display:flex;gap:6px;">${printBtn('produzione')}${saveBtn('produzione')}</div></div>
       <p class="muted">Le schede vengono create automaticamente leggendo la bolla in "Matrici in ingresso". Scadenza calcolata a 7 giorni dalla consegna — modificabile per ogni prodotto.</p>
       <input type="text" id="produzioneSearchInput" placeholder="🔎 Cerca per prodotto, lotto o fornitore..." oninput="renderProduzioneList(this.value)" style="margin-bottom:10px;">
       <button class="btn block" onclick="openProduzioneForm()">+ Aggiungi prodotto manualmente</button>
@@ -3789,7 +3789,7 @@ function tbl(headers, rows){
   return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
   <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 }
-function printScheda(kind){
+function buildSchedaContent(kind){
   const mk = monthKeyNow();
   const inMonth = r => (r.data||"").startsWith(mk);
   let title = "", body = "";
@@ -3852,7 +3852,46 @@ function printScheda(kind){
         n.stato==="aperta"? `<span class="bad">APERTA</span>`:`<span class="ok">CHIUSA</span>`, esc(n.redattoDa)]);
     body = tbl(["Verbale","Data","Matrice/Oggetto","Descrizione","Azione correttiva","Verifica efficacia","Stato","Redatto da"], rows);
   }
+  return {title, body};
+}
+function printScheda(kind){
+  const {title, body} = buildSchedaContent(kind);
   printWindow(title, body);
+}
+function saveScheda(kind){
+  const {title, body} = buildSchedaContent(kind);
+  const monthLbl = MONTHS[new Date().getMonth()] + " " + new Date().getFullYear();
+  const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>${title}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#222;margin:24px;font-size:12px;}
+    h1{font-size:18px;margin:0 0 2px 0;}
+    .sub{color:#666;font-size:11px;margin-bottom:14px;}
+    h2{font-size:14px;margin:18px 0 6px 0;border-bottom:2px solid #1F6F4A;padding-bottom:3px;color:#155334;}
+    table{width:100%;border-collapse:collapse;margin-bottom:12px;}
+    th,td{border:1px solid #999;padding:4px 6px;text-align:left;font-size:11px;vertical-align:top;}
+    th{background:#E4F1E9;color:#155334;}
+    .ok{color:#1F6F4A;font-weight:bold;}
+    .bad{color:#C0392B;font-weight:bold;}
+    .empty{color:#888;font-style:italic;padding:8px 0;}
+    .firma{margin-top:36px;display:flex;justify-content:space-between;gap:40px;}
+    .firma div{flex:1;border-top:1px solid #222;padding-top:5px;font-size:11px;color:#444;}
+  </style></head><body>
+  <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
+  <div class="sub">${title} · Periodo: ${monthLbl} · Salvato il ${fmtDate(todayISO())} alle ${nowTime()}</div>
+  ${body}
+  <div class="firma"><div>Firma dell'operatore</div><div>Firma del responsabile dell'autocontrollo</div></div>
+  </body></html>`;
+  const blob = new Blob([html], {type:"text/html"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${kind}-${monthKeyNow()}.html`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast("💾 File salvato — controlla la cartella Download del telefono");
+}
+function saveBtn(kind){
+  return `<button class="printbtn" onclick="saveScheda('${kind}')" title="Scarica come file">💾 Salva</button>`;
 }
 function printBtn(kind){
   return `<button class="printbtn" onclick="printScheda('${kind}')" title="Stampa la scheda">🖨️ Stampa</button>`;
@@ -4343,7 +4382,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "42";
+const APP_VERSION = "43";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
