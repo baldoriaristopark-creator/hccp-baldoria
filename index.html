@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v57">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v58">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v57</title>
+<title>HACCP Baldoria v58</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 57 · click fuori soglia da home · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 58 · fuori soglia vista mensile · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1340,7 +1340,7 @@ function renderHome(){
         <div class="point-tile" style="cursor:pointer" onclick="activeTab='temperature';render()">
           <div class="name">🌡️ Temperature</div>
           <div class="chip ${missingPoints.length? 'missing':'ok'}">${missingPoints.length? missingPoints.length+" da registrare" : "Tutte registrate"}</div>
-          ${badToday.length? `<div class="chip bad" style="cursor:pointer;" onclick="event.stopPropagation();activeTab='temperature';statoFiltroTemp='fuorisoglia';render()">${badToday.length} fuori soglia</div>`:""}
+          ${badToday.length? `<div class="chip bad" style="cursor:pointer;" onclick="event.stopPropagation();activeTab='temperature';setStatoFiltroTemp('fuorisoglia')">${badToday.length} fuori soglia</div>`:""}
         </div>
         <div class="point-tile" style="cursor:pointer" onclick="activeTab='sanificazione';sanifSubTab='giornaliera';render()">
           <div class="name">🧽 Sanificazione giornaliera</div>
@@ -1412,14 +1412,20 @@ function pointStatusToday(p, date){
   return {state: rec.conforme ? "ok":"bad", rec};
 }
 
+let meseFuoriSogliaTemp = todayISO().slice(0,7);
 function renderTemperature(){
   const pointsFiltered = (repartoFiltroTemp ? config.points.filter(p=>p.reparto===repartoFiltroTemp) : config.points).filter(p=>hasRepartoAccess(p.reparto));
+
+  if(statoFiltroTemp==="fuorisoglia"){
+    renderTemperatureFuoriSoglia(pointsFiltered);
+    return;
+  }
+
   const dataRif = dateFiltroTemp || todayISO();
   const isOggi = !dateFiltroTemp;
   let pointsConStato = pointsFiltered.map(p=>({p, st: pointStatusToday(p, dataRif)}));
   if(statoFiltroTemp==="confermato") pointsConStato = pointsConStato.filter(x=>x.st.state!=="missing");
   else if(statoFiltroTemp==="daregistrare") pointsConStato = pointsConStato.filter(x=>x.st.state==="missing");
-  else if(statoFiltroTemp==="fuorisoglia") pointsConStato = pointsConStato.filter(x=>x.st.state==="bad");
   let tiles = pointsConStato.map(({p, st})=>{
     const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}° / ${p.max}°C`;
     const noLetturaLbl = isOggi? "Nessuna lettura oggi" : `Nessuna lettura il ${fmtDate(dataRif)}`;
@@ -1452,16 +1458,55 @@ function renderTemperature(){
         <option value="" ${!statoFiltroTemp?'selected':''}>Tutti gli stati</option>
         <option value="confermato" ${statoFiltroTemp==='confermato'?'selected':''}>✅ Confermato (già registrato)</option>
         <option value="daregistrare" ${statoFiltroTemp==='daregistrare'?'selected':''}>⏳ Da registrare</option>
-        <option value="fuorisoglia" ${statoFiltroTemp==='fuorisoglia'?'selected':''}>🔴 Fuori soglia</option>
+        <option value="fuorisoglia">🔴 Fuori soglia</option>
       </select>
       <div class="grid2">${tiles}</div>
       ${isAdmin()? `<div class="rowbtns"><button class="btn secondary block" onclick="openAddPoint()">+ Aggiungi frigo / freezer / banco</button></div>`:""}
     </div>
   `;
 }
+function renderTemperatureFuoriSoglia(pointsFiltered){
+  const idsVisibili = new Set(pointsFiltered.map(p=>p.id));
+  const [anno, mese] = meseFuoriSogliaTemp.split("-");
+  const nomeMese = MONTHS[parseInt(mese,10)-1];
+  const registrazioni = logs.temperature
+    .filter(r=>!r.spento && r.conforme===false && idsVisibili.has(r.pointId) && r.data.startsWith(meseFuoriSogliaTemp))
+    .sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora));
+
+  $main.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h2>🔴 Fuori soglia</h2>${printBtn('temperature')}</div>
+      ${repartoFilterHtml(repartoFiltroTemp, "setRepartoFiltroTemp")}
+      <select onchange="setStatoFiltroTemp(this.value)" style="margin-bottom:10px;">
+        <option value="">Tutti gli stati</option>
+        <option value="confermato">✅ Confermato (già registrato)</option>
+        <option value="daregistrare">⏳ Da registrare</option>
+        <option value="fuorisoglia" selected>🔴 Fuori soglia</option>
+      </select>
+      <label class="field">Mese di riferimento</label>
+      <input type="month" value="${meseFuoriSogliaTemp}" max="${todayISO().slice(0,7)}" onchange="setMeseFuoriSogliaTemp(this.value)">
+      <p class="muted" style="margin-top:10px;">${registrazioni.length} lettura/e fuori soglia in <b>${nomeMese} ${anno}</b>.</p>
+      ${registrazioni.length? registrazioni.map(r=>{
+        const p = config.points.find(pp=>pp.id===r.pointId);
+        return `<div class="logrow" onclick="openTempEntryDetail('${r.id}')" style="cursor:pointer;">
+          <div>
+            <div class="val">${p? (pointIcon(p.type)+' '+p.name) : (r.pointName||'Punto eliminato')} — ${r.valore}°C</div>
+            <div class="meta">${fmtDate(r.data)} · ${r.ora} · ${r.operatore}${r.tardiva?' · ⏱️ in ritardo':''}</div>
+          </div>
+          <span class="chip bad">Fuori soglia</span>
+        </div>`;
+      }).join("") : `<div class="empty">Nessuna lettura fuori soglia in questo mese.</div>`}
+    </div>
+  `;
+}
+function setMeseFuoriSogliaTemp(v){ meseFuoriSogliaTemp = v; render(); }
 function setRepartoFiltroTemp(v){ repartoFiltroTemp = v; render(); }
 function setDateFiltroTemp(v){ dateFiltroTemp = v; render(); }
-function setStatoFiltroTemp(v){ statoFiltroTemp = v; render(); }
+function setStatoFiltroTemp(v){
+  statoFiltroTemp = v;
+  if(v==="fuorisoglia") meseFuoriSogliaTemp = todayISO().slice(0,7);
+  render();
+}
 function pointIcon(type){
   return type==="freezer"?"🧊":type==="caldo"?"🔥":"❄️";
 }
@@ -4545,7 +4590,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "57";
+const APP_VERSION = "58";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
