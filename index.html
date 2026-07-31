@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v56">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v57">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v56</title>
+<title>HACCP Baldoria v57</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 56 · foto facoltativa admin sanificazione · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 57 · click fuori soglia da home · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1340,7 +1340,7 @@ function renderHome(){
         <div class="point-tile" style="cursor:pointer" onclick="activeTab='temperature';render()">
           <div class="name">🌡️ Temperature</div>
           <div class="chip ${missingPoints.length? 'missing':'ok'}">${missingPoints.length? missingPoints.length+" da registrare" : "Tutte registrate"}</div>
-          ${badToday.length? `<div class="chip bad">${badToday.length} fuori soglia</div>`:""}
+          ${badToday.length? `<div class="chip bad" style="cursor:pointer;" onclick="event.stopPropagation();activeTab='temperature';statoFiltroTemp='fuorisoglia';render()">${badToday.length} fuori soglia</div>`:""}
         </div>
         <div class="point-tile" style="cursor:pointer" onclick="activeTab='sanificazione';sanifSubTab='giornaliera';render()">
           <div class="name">🧽 Sanificazione giornaliera</div>
@@ -1419,6 +1419,7 @@ function renderTemperature(){
   let pointsConStato = pointsFiltered.map(p=>({p, st: pointStatusToday(p, dataRif)}));
   if(statoFiltroTemp==="confermato") pointsConStato = pointsConStato.filter(x=>x.st.state!=="missing");
   else if(statoFiltroTemp==="daregistrare") pointsConStato = pointsConStato.filter(x=>x.st.state==="missing");
+  else if(statoFiltroTemp==="fuorisoglia") pointsConStato = pointsConStato.filter(x=>x.st.state==="bad");
   let tiles = pointsConStato.map(({p, st})=>{
     const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}° / ${p.max}°C`;
     const noLetturaLbl = isOggi? "Nessuna lettura oggi" : `Nessuna lettura il ${fmtDate(dataRif)}`;
@@ -1451,6 +1452,7 @@ function renderTemperature(){
         <option value="" ${!statoFiltroTemp?'selected':''}>Tutti gli stati</option>
         <option value="confermato" ${statoFiltroTemp==='confermato'?'selected':''}>✅ Confermato (già registrato)</option>
         <option value="daregistrare" ${statoFiltroTemp==='daregistrare'?'selected':''}>⏳ Da registrare</option>
+        <option value="fuorisoglia" ${statoFiltroTemp==='fuorisoglia'?'selected':''}>🔴 Fuori soglia</option>
       </select>
       <div class="grid2">${tiles}</div>
       ${isAdmin()? `<div class="rowbtns"><button class="btn secondary block" onclick="openAddPoint()">+ Aggiungi frigo / freezer / banco</button></div>`:""}
@@ -4543,7 +4545,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "56";
+const APP_VERSION = "57";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
