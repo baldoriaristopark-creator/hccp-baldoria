@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v55">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v56">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v55</title>
+<title>HACCP Baldoria v56</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 55 · applica retroattivamente · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 56 · foto facoltativa admin sanificazione · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1999,6 +1999,7 @@ function compressImage(dataUrl, maxWidth){
 
 function openSanifConfirm(item){
   const nottePassata = new Date().getHours() < 4;
+  const fotoObbligatoria = !isAdmin();
   openSheet(`Conferma sanificazione`, `
     <p class="muted"><b>${item}</b> — ${sanifSubTab}</p>
     ${nottePassata? `<div class="card" style="padding:10px;background:var(--amber-pale);border:none;margin-bottom:10px;">
@@ -2006,7 +2007,7 @@ function openSanifConfirm(item){
     </div>`:""}
     <label class="field">Operatore</label>
     <input type="text" id="sanifOp" value="${lastOperator}" placeholder="Nome operatore">
-    <label class="field">Foto di conferma (obbligatoria)</label>
+    <label class="field">Foto di conferma ${fotoObbligatoria? '(obbligatoria)':'(facoltativa per amministratore)'}</label>
     <div class="photo-zone" id="sanifPhotoZone">
       <input type="file" accept="image/*" capture="environment" id="sanifPhotoInput" style="display:none">
       <button class="btn secondary block" onclick="document.getElementById('sanifPhotoInput').click()">📷 Scatta / carica foto</button>
@@ -2018,7 +2019,7 @@ function openSanifConfirm(item){
     <input type="time" id="sanifOra" value="${nowTime()}">
     <p class="muted" style="font-size:12px;">Lasciale come sono se stai confermando ora. Cambiale solo se ti sei dimenticato di segnarla prima — verrà indicata come inserita in ritardo, restando comunque valida.</p>
     <div class="rowbtns">
-      <button class="btn block" id="sanifConfirmBtn" disabled onclick="saveSanifConfirm('${item.replace(/'/g,"\\'")}')">✅ Conferma sanificazione</button>
+      <button class="btn block" id="sanifConfirmBtn" ${fotoObbligatoria? 'disabled':''} onclick="saveSanifConfirm('${item.replace(/'/g,"\\'")}')">✅ Conferma sanificazione</button>
     </div>
   `, (body)=>{
     window._sanifPhoto = null;
@@ -2041,18 +2042,21 @@ function openSanifConfirm(item){
 async function saveSanifConfirm(item){
   const op = document.getElementById("sanifOp").value.trim();
   if(!op){ toast("Inserisci il nome dell'operatore"); return; }
-  if(!window._sanifPhoto){ toast("Allega una foto di conferma"); return; }
+  if(!window._sanifPhoto && !isAdmin()){ toast("Allega una foto di conferma"); return; }
   const id = uid();
-  const photoKey = "photo-sanif-"+id;
+  const photoKey = window._sanifPhoto ? "photo-sanif-"+id : null;
   const photoData = window._sanifPhoto;
   const data = document.getElementById("sanifData").value || sanifDateISO();
   const ora = document.getElementById("sanifOra").value || nowTime();
   const tardiva = data!==sanifDateISO() || Math.abs(timeToMinutes(ora)-timeToMinutes(nowTime()))>10;
-  logs.sanificazione.push({id, item, frequenza:sanifSubTab, data, ora, operatore:op, photoKey, tardiva, registratoIl:new Date().toISOString()});
+  const rec = {id, item, frequenza:sanifSubTab, data, ora, operatore:op, tardiva, registratoIl:new Date().toISOString()};
+  if(photoKey) rec.photoKey = photoKey;
+  if(!photoKey) rec.senzaFoto = true;
+  logs.sanificazione.push(rec);
   window._sanifPhoto = null;
   activeTab="sanificazione"; closeSheet();
-  toast("Sanificazione confermata ✅" + (tardiva? " · ⏱️ inserita in ritardo":""));
-  DB.set(photoKey, photoData, true).catch(()=>toast("⚠️ Errore di salvataggio foto, controlla la connessione"));
+  toast("Sanificazione confermata ✅" + (tardiva? " · ⏱️ inserita in ritardo":"") + (!photoKey? " · senza foto":""));
+  if(photoKey) DB.set(photoKey, photoData, true).catch(()=>toast("⚠️ Errore di salvataggio foto, controlla la connessione"));
   saveLog("sanificazione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
   saveOperator(op).catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
 }
@@ -2062,9 +2066,10 @@ async function openSanifDetail(id){
   const tardivaLbl = rec.tardiva? ` · <span class="chip missing" style="font-size:11px;">⏱️ inserita in ritardo</span>${rec.registratoIl? ` (compilata realmente il ${fmtDate(rec.registratoIl.slice(0,10))} alle ${rec.registratoIl.slice(11,16)})`:''}` : '';
   openSheet(rec.item, `
     <p class="muted">${rec.frequenza} · ${fmtDate(rec.data)} · ${rec.ora} · <b>${rec.operatore}</b>${tardivaLbl}</p>
-    <div id="sanifDetailPhoto"><span class="spinner"></span> Carico foto...</div>
+    <div id="sanifDetailPhoto">${rec.photoKey? '<span class="spinner"></span> Carico foto...' : '<p class="muted">📷 Nessuna foto allegata (confermata da amministratore senza foto).</p>'}</div>
     ${isAdmin()? `<div class="rowbtns"><button class="btn danger" onclick="deleteSanifEntry('${id}')">Elimina registrazione</button></div>` : ''}
   `, async ()=>{
+    if(!rec.photoKey) return;
     try{
       const p = await DB.get(rec.photoKey, true);
       document.getElementById("sanifDetailPhoto").innerHTML = p? `<img src="${p.value}" style="max-width:100%;border-radius:10px;">` : `<p class="muted">Foto non disponibile.</p>`;
@@ -4538,7 +4543,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "55";
+const APP_VERSION = "56";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
