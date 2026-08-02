@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v60">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v61">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v60</title>
+<title>HACCP Baldoria v61</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 60 · raggruppamento per reparto · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 61 · fix stampa iOS + selettori mese/anno · 02/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -474,6 +474,22 @@ function dateFilterHtml(currentValue, onchangeFn){
   return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
     <input type="date" value="${currentValue||''}" onchange="${onchangeFn}(this.value)" style="flex:1;margin-bottom:0;">
     ${currentValue? `<button class="iconbtn" onclick="${onchangeFn}('')" style="padding:9px 12px;white-space:nowrap;">✕ Tutte le date</button>`:''}
+  </div>`;
+}
+// Selettore mese/anno con due tendine — più affidabile di <input type="month">,
+// che su Safari/iOS ha un supporto incostante.
+function meseAnnoSelectHtml(valueYYYYMM, idPrefix, onchangeFn){
+  const v = valueYYYYMM || todayISO().slice(0,7);
+  const [annoSel, meseSel] = v.split("-");
+  const annoCorrente = parseInt(todayISO().slice(0,4),10);
+  const anni = [annoCorrente-2, annoCorrente-1, annoCorrente];
+  return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+    <select id="${idPrefix}_mese" onchange="${onchangeFn}(document.getElementById('${idPrefix}_anno').value + '-' + this.value)" style="flex:2;margin-bottom:0;">
+      ${MONTHS.map((m,i)=>{ const mm=String(i+1).padStart(2,'0'); return `<option value="${mm}" ${mm===meseSel?'selected':''}>${m}</option>`; }).join("")}
+    </select>
+    <select id="${idPrefix}_anno" onchange="${onchangeFn}(this.value + '-' + document.getElementById('${idPrefix}_mese').value)" style="flex:1;margin-bottom:0;">
+      ${anni.map(a=>`<option value="${a}" ${String(a)===annoSel?'selected':''}>${a}</option>`).join("")}
+    </select>
   </div>`;
 }
 function guessReparto(text){
@@ -1457,7 +1473,7 @@ function renderTemperature(){
       <div class="card-head"><h2>Punti di controllo ${!isOggi? `— ${fmtDate(dataRif)}`:''}</h2><div style="display:flex;gap:6px;">${printBtn('temperature', meseExportTemp)}${saveBtn('temperature', meseExportTemp)}</div></div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <label class="muted" style="font-size:12px;white-space:nowrap;">Mese scheda 🖨️/💾:</label>
-        <input type="month" value="${meseExportTemp}" max="${todayISO().slice(0,7)}" onchange="setMeseExportTemp(this.value)" style="margin-bottom:0;">
+        ${meseAnnoSelectHtml(meseExportTemp, "meseExportTemp", "setMeseExportTemp")}
       </div>
       ${repartoFilterHtml(repartoFiltroTemp, "setRepartoFiltroTemp")}
       ${dateFilterHtml(dateFiltroTemp, "setDateFiltroTemp")}
@@ -1491,7 +1507,7 @@ function renderTemperatureFuoriSoglia(pointsFiltered){
         <option value="fuorisoglia" selected>🔴 Fuori soglia</option>
       </select>
       <label class="field">Mese di riferimento</label>
-      <input type="month" value="${meseFuoriSogliaTemp}" max="${todayISO().slice(0,7)}" onchange="setMeseFuoriSogliaTemp(this.value)">
+      ${meseAnnoSelectHtml(meseFuoriSogliaTemp, "meseFuoriSogliaTemp", "setMeseFuoriSogliaTemp")}
       <p class="muted" style="margin-top:10px;">${registrazioni.length} lettura/e fuori soglia in <b>${nomeMese} ${anno}</b>.</p>
       ${registrazioni.length? registrazioni.map(r=>{
         const p = config.points.find(pp=>pp.id===r.pointId);
@@ -1974,7 +1990,7 @@ function renderSanificazione(){
       <div class="card-head"><h2>Sanificazione ${!isOggi? `— ${fmtDate(t)}`:''}</h2><div style="display:flex;gap:6px;">${printBtn('sanificazione', meseExportSanif)}${saveBtn('sanificazione', meseExportSanif)}</div></div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <label class="muted" style="font-size:12px;white-space:nowrap;">Mese scheda 🖨️/💾:</label>
-        <input type="month" value="${meseExportSanif}" max="${todayISO().slice(0,7)}" onchange="setMeseExportSanif(this.value)" style="margin-bottom:0;">
+        ${meseAnnoSelectHtml(meseExportSanif, "meseExportSanif", "setMeseExportSanif")}
       </div>
       <div class="rowbtns" style="margin-top:0;">
         ${["giornaliera","settimanale","mensile"].map(f=>`
@@ -2578,7 +2594,7 @@ function renderProduzione(){
       <div class="card-head"><h2>Registro articoli e tracciabilità lotti (P1)</h2><div style="display:flex;gap:6px;">${printBtn('produzione', meseExportProduzione)}${saveBtn('produzione', meseExportProduzione)}</div></div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <label class="muted" style="font-size:12px;white-space:nowrap;">Mese scheda esauriti 🖨️/💾:</label>
-        <input type="month" value="${meseExportProduzione}" max="${todayISO().slice(0,7)}" onchange="setMeseExportProduzione(this.value)" style="margin-bottom:0;">
+        ${meseAnnoSelectHtml(meseExportProduzione, "meseExportProduzione", "setMeseExportProduzione")}
       </div>
       <p class="muted">Le schede vengono create automaticamente leggendo la bolla in "Matrici in ingresso". Scadenza calcolata a 7 giorni dalla consegna (2 anni per gli articoli a lunga conservazione riconosciuti automaticamente) — modificabile per ogni prodotto.</p>
       ${isAdmin()? `<div class="rowbtns"><button class="iconbtn block" onclick="applicaLungaConservazioneRetroattiva()">🔄 Applica riconoscimento lunga conservazione ai prodotti già presenti</button></div>`:""}
@@ -3978,10 +3994,18 @@ function monthKeyNow(){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
 function printWindow(title, bodyHtml){
-  const w = window.open("", "_blank");
-  if(!w){ toast("⚠️ Consenti i popup per stampare"); return; }
+  // Un iframe nascosto è molto più affidabile di window.open() su Safari/iPhone,
+  // dove aprire una nuova finestra per la stampa causa spesso un errore "blob" e la pagina resta vuota.
+  const vecchio = document.getElementById("printFrame");
+  if(vecchio) vecchio.remove();
+  const iframe = document.createElement("iframe");
+  iframe.id = "printFrame";
+  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
+  document.body.appendChild(iframe);
+  const doc = iframe.contentWindow.document;
   const monthLbl = MONTHS[new Date().getMonth()] + " " + new Date().getFullYear();
-  w.document.write(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>${title}</title>
+  doc.open();
+  doc.write(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>${title}</title>
   <style>
     body{font-family:Arial,Helvetica,sans-serif;color:#222;margin:24px;font-size:12px;}
     h1{font-size:18px;margin:0 0 2px 0;}
@@ -3995,19 +4019,19 @@ function printWindow(title, bodyHtml){
     .empty{color:#888;font-style:italic;padding:8px 0;}
     .firma{margin-top:36px;display:flex;justify-content:space-between;gap:40px;}
     .firma div{flex:1;border-top:1px solid #222;padding-top:5px;font-size:11px;color:#444;}
-    @media print{.noprint{display:none;}}
   </style></head><body>
   <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
   <div class="sub">${title} · Periodo: ${monthLbl} · Stampato il ${fmtDate(todayISO())} alle ${nowTime()}</div>
   ${bodyHtml}
   <div class="firma"><div>Firma dell'operatore</div><div>Firma del responsabile dell'autocontrollo</div></div>
-  <div class="noprint" style="margin-top:24px;display:flex;gap:10px;">
-    <button onclick="window.print()" style="padding:10px 18px;font-size:14px;cursor:pointer;">🖨️ Stampa</button>
-    <button onclick="window.close()" style="padding:10px 18px;font-size:14px;cursor:pointer;background:#eee;border:1px solid #ccc;border-radius:6px;">✕ Chiudi</button>
-  </div>
   </body></html>`);
-  w.document.close();
-  setTimeout(()=>{ try{ w.print(); }catch(e){} }, 400);
+  doc.close();
+  setTimeout(()=>{
+    try{
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }catch(e){ toast("⚠️ Impossibile avviare la stampa, riprova"); }
+  }, 400);
 }
 function esc(v){ return (v===undefined||v===null)? "—" : String(v).replace(/</g,"&lt;"); }
 function tbl(headers, rows){
@@ -4334,16 +4358,21 @@ function printFiliera(prodId){
 }
 function printEtichetta(prodId){
   const p = logs.produzione.find(x=>x.id===prodId);
-  const w = window.open("", "_blank");
-  if(!w){ toast("⚠️ Consenti i popup per stampare"); return; }
-  w.document.write(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Etichetta</title>
+  const vecchio = document.getElementById("printFrame");
+  if(vecchio) vecchio.remove();
+  const iframe = document.createElement("iframe");
+  iframe.id = "printFrame";
+  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
+  document.body.appendChild(iframe);
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Etichetta</title>
   <style>body{font-family:Arial,sans-serif;margin:0;padding:14px;}
   .lab{border:2px solid #000;border-radius:8px;padding:12px;width:280px;}
   .n{font-size:17px;font-weight:bold;margin-bottom:6px;}
   .r{font-size:12px;margin-bottom:3px;}
   .abb{display:inline-block;font-size:11px;font-weight:bold;border:1.5px solid #000;border-radius:5px;padding:2px 7px;margin-bottom:6px;}
-  .sc{font-size:15px;font-weight:bold;border-top:1px solid #000;margin-top:8px;padding-top:6px;}
-  @media print{.noprint{display:none;}}</style></head><body>
+  .sc{font-size:15px;font-weight:bold;border-top:1px solid #000;margin-top:8px;padding-top:6px;}</style></head><body>
   <div class="lab">
     ${p.abbattuto? `<div class="abb">❄️ ABBATTUTO${p.abbattimento? ' — '+(p.abbattimento.tipo==='negativo'?'negativo':'positivo'):''}</div>`:""}
     <div class="n">${esc(p.prodotto)}</div>
@@ -4353,13 +4382,14 @@ function printEtichetta(prodId){
     ${p.operatore? `<div class="r"><b>Operatore:</b> ${esc(p.operatore)}</div>`:""}
     <div class="sc">DA CONSUMARSI ENTRO IL ${fmtDate(p.dataScadenza)}</div>
   </div>
-  <div class="noprint" style="margin-top:16px;display:flex;gap:10px;">
-    <button onclick="window.print()" style="padding:9px 16px;">🖨️ Stampa etichetta</button>
-    <button onclick="window.close()" style="padding:9px 16px;background:#eee;border:1px solid #ccc;border-radius:6px;">✕ Chiudi</button>
-  </div>
   </body></html>`);
-  w.document.close();
-  setTimeout(()=>{ try{ w.print(); }catch(e){} }, 300);
+  doc.close();
+  setTimeout(()=>{
+    try{
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }catch(e){ toast("⚠️ Impossibile avviare la stampa, riprova"); }
+  }, 300);
 }
 
 // ---------- CONFIGURAZIONE DATABASE ----------
@@ -4628,7 +4658,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "60";
+const APP_VERSION = "61";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
