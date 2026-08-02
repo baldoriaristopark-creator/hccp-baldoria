@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v58">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v59">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v58</title>
+<title>HACCP Baldoria v59</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 58 · fuori soglia vista mensile · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 59 · selettore mese stampa/salva · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1413,6 +1413,9 @@ function pointStatusToday(p, date){
 }
 
 let meseFuoriSogliaTemp = todayISO().slice(0,7);
+let meseExportTemp = todayISO().slice(0,7);
+let meseExportSanif = todayISO().slice(0,7);
+let meseExportProduzione = todayISO().slice(0,7);
 function renderTemperature(){
   const pointsFiltered = (repartoFiltroTemp ? config.points.filter(p=>p.reparto===repartoFiltroTemp) : config.points).filter(p=>hasRepartoAccess(p.reparto));
 
@@ -1451,7 +1454,11 @@ function renderTemperature(){
 
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Punti di controllo ${!isOggi? `— ${fmtDate(dataRif)}`:''}</h2><div style="display:flex;gap:6px;">${printBtn('temperature')}${saveBtn('temperature')}</div></div>
+      <div class="card-head"><h2>Punti di controllo ${!isOggi? `— ${fmtDate(dataRif)}`:''}</h2><div style="display:flex;gap:6px;">${printBtn('temperature', meseExportTemp)}${saveBtn('temperature', meseExportTemp)}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <label class="muted" style="font-size:12px;white-space:nowrap;">Mese scheda 🖨️/💾:</label>
+        <input type="month" value="${meseExportTemp}" max="${todayISO().slice(0,7)}" onchange="setMeseExportTemp(this.value)" style="margin-bottom:0;">
+      </div>
       ${repartoFilterHtml(repartoFiltroTemp, "setRepartoFiltroTemp")}
       ${dateFilterHtml(dateFiltroTemp, "setDateFiltroTemp")}
       <select onchange="setStatoFiltroTemp(this.value)" style="margin-bottom:10px;">
@@ -1500,6 +1507,9 @@ function renderTemperatureFuoriSoglia(pointsFiltered){
   `;
 }
 function setMeseFuoriSogliaTemp(v){ meseFuoriSogliaTemp = v; render(); }
+function setMeseExportTemp(v){ meseExportTemp = v; render(); }
+function setMeseExportSanif(v){ meseExportSanif = v; render(); }
+function setMeseExportProduzione(v){ meseExportProduzione = v; render(); }
 function setRepartoFiltroTemp(v){ repartoFiltroTemp = v; render(); }
 function setDateFiltroTemp(v){ dateFiltroTemp = v; render(); }
 function setStatoFiltroTemp(v){
@@ -1961,7 +1971,11 @@ function renderSanificazione(){
   items = itemsConRec.map(x=>x.item);
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Sanificazione ${!isOggi? `— ${fmtDate(t)}`:''}</h2><div style="display:flex;gap:6px;">${printBtn('sanificazione')}${saveBtn('sanificazione')}</div></div>
+      <div class="card-head"><h2>Sanificazione ${!isOggi? `— ${fmtDate(t)}`:''}</h2><div style="display:flex;gap:6px;">${printBtn('sanificazione', meseExportSanif)}${saveBtn('sanificazione', meseExportSanif)}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <label class="muted" style="font-size:12px;white-space:nowrap;">Mese scheda 🖨️/💾:</label>
+        <input type="month" value="${meseExportSanif}" max="${todayISO().slice(0,7)}" onchange="setMeseExportSanif(this.value)" style="margin-bottom:0;">
+      </div>
       <div class="rowbtns" style="margin-top:0;">
         ${["giornaliera","settimanale","mensile"].map(f=>`
           <button class="iconbtn" style="${sanifSubTab===f?'background:var(--green);color:#fff;':''}" onclick="sanifSubTab='${f}';render()">${f[0].toUpperCase()+f.slice(1)}</button>`).join("")}
@@ -2561,7 +2575,11 @@ function renderProduzione(){
 
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Registro articoli e tracciabilità lotti (P1)</h2><div style="display:flex;gap:6px;">${printBtn('produzione')}${saveBtn('produzione')}</div></div>
+      <div class="card-head"><h2>Registro articoli e tracciabilità lotti (P1)</h2><div style="display:flex;gap:6px;">${printBtn('produzione', meseExportProduzione)}${saveBtn('produzione', meseExportProduzione)}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <label class="muted" style="font-size:12px;white-space:nowrap;">Mese scheda esauriti 🖨️/💾:</label>
+        <input type="month" value="${meseExportProduzione}" max="${todayISO().slice(0,7)}" onchange="setMeseExportProduzione(this.value)" style="margin-bottom:0;">
+      </div>
       <p class="muted">Le schede vengono create automaticamente leggendo la bolla in "Matrici in ingresso". Scadenza calcolata a 7 giorni dalla consegna (2 anni per gli articoli a lunga conservazione riconosciuti automaticamente) — modificabile per ogni prodotto.</p>
       ${isAdmin()? `<div class="rowbtns"><button class="iconbtn block" onclick="applicaLungaConservazioneRetroattiva()">🔄 Applica riconoscimento lunga conservazione ai prodotti già presenti</button></div>`:""}
       <input type="text" id="produzioneSearchInput" placeholder="🔎 Cerca per prodotto, lotto o fornitore..." oninput="renderProduzioneList(this.value)" style="margin-bottom:10px;">
@@ -3997,8 +4015,8 @@ function tbl(headers, rows){
   return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
   <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 }
-function buildSchedaContent(kind){
-  const mk = monthKeyNow();
+function buildSchedaContent(kind, mese){
+  const mk = mese || monthKeyNow();
   const inMonth = r => (r.data||"").startsWith(mk);
   let title = "", body = "";
   if(kind==="temperature"){
@@ -4062,13 +4080,14 @@ function buildSchedaContent(kind){
   }
   return {title, body};
 }
-function printScheda(kind){
-  const {title, body} = buildSchedaContent(kind);
+function printScheda(kind, mese){
+  const {title, body} = buildSchedaContent(kind, mese);
   printWindow(title, body);
 }
-function saveScheda(kind){
-  const {title, body} = buildSchedaContent(kind);
-  const monthLbl = MONTHS[new Date().getMonth()] + " " + new Date().getFullYear();
+function saveScheda(kind, mese){
+  const {title, body} = buildSchedaContent(kind, mese);
+  const mk = mese || monthKeyNow();
+  const monthLbl = MONTHS[parseInt(mk.slice(5,7),10)-1] + " " + mk.slice(0,4);
   const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>${title}</title>
   <style>
     body{font-family:Arial,Helvetica,sans-serif;color:#222;margin:24px;font-size:12px;}
@@ -4093,16 +4112,16 @@ function saveScheda(kind){
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${kind}-${monthKeyNow()}.html`;
+  a.download = `${kind}-${mk}.html`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
   toast("💾 File salvato — controlla la cartella Download del telefono");
 }
-function saveBtn(kind){
-  return `<button class="printbtn" onclick="saveScheda('${kind}')" title="Scarica come file">💾 Salva</button>`;
+function saveBtn(kind, mese){
+  return `<button class="printbtn" onclick="saveScheda('${kind}'${mese? `,'${mese}'`:''})" title="Scarica come file">💾 Salva</button>`;
 }
-function printBtn(kind){
-  return `<button class="printbtn" onclick="printScheda('${kind}')" title="Stampa la scheda">🖨️ Stampa</button>`;
+function printBtn(kind, mese){
+  return `<button class="printbtn" onclick="printScheda('${kind}'${mese? `,'${mese}'`:''})" title="Stampa la scheda">🖨️ Stampa</button>`;
 }
 
 // ---------- FASCICOLO COMPLETO PER ISPEZIONE ----------
@@ -4590,7 +4609,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "58";
+const APP_VERSION = "59";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
