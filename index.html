@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v59">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v60">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v59</title>
+<title>HACCP Baldoria v60</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 59 · selettore mese stampa/salva · 30/07/2026</div>
+        <div class="sub" style="opacity:.85;">versione 60 · raggruppamento per reparto · 30/07/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4015,28 +4015,47 @@ function tbl(headers, rows){
   return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
   <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 }
+function raggruppaPerReparto(items, getReparto){
+  const gruppi = {};
+  items.forEach(it=>{
+    const r = getReparto(it) || "Senza reparto";
+    if(!gruppi[r]) gruppi[r] = [];
+    gruppi[r].push(it);
+  });
+  const ordine = [...REPARTI, "Senza reparto"];
+  return ordine.filter(r=>gruppi[r]).map(r=>({reparto:r, items:gruppi[r]}));
+}
 function buildSchedaContent(kind, mese){
   const mk = mese || monthKeyNow();
   const inMonth = r => (r.data||"").startsWith(mk);
   let title = "", body = "";
   if(kind==="temperature"){
     title = "Scheda temperature (MOTE)";
-    body = config.points.map(p=>{
-      const rows = logs.temperature.filter(r=>r.pointId===p.id && inMonth(r))
-        .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
-        .map(r=> r.spento
-          ? [fmtDate(r.data), r.ora, "⚫ Spento", esc(r.note)||"—", esc(r.operatore), "—"]
-          : [fmtDate(r.data), r.ora, esc(r.valore)+" °C", r.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`, esc(r.operatore), r.fonte==="foto"?"📸 foto":"manuale"]);
-      const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}°C / ${p.max}°C`;
-      return `<h2>${esc(p.name)} — soglia ${rangeLbl}</h2>` + tbl(["Data","Ora","Valore","Esito","Operatore","Fonte"], rows);
+    const gruppi = raggruppaPerReparto(config.points, p=>p.reparto);
+    body = gruppi.map(g=>{
+      const sezione = g.items.map(p=>{
+        const rows = logs.temperature.filter(r=>r.pointId===p.id && inMonth(r))
+          .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
+          .map(r=> r.spento
+            ? [fmtDate(r.data), r.ora, "⚫ Spento", esc(r.note)||"—", esc(r.operatore), "—"]
+            : [fmtDate(r.data), r.ora, esc(r.valore)+" °C", r.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`, esc(r.operatore), r.fonte==="foto"?"📸 foto":"manuale"]);
+        const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}°C / ${p.max}°C`;
+        return `<h2>${esc(p.name)} — soglia ${rangeLbl}</h2>` + tbl(["Data","Ora","Valore","Esito","Operatore","Fonte"], rows);
+      }).join("");
+      return `<h1 style="margin-top:24px;border-bottom:3px solid #1F6F4A;padding-bottom:4px;">🏷️ Reparto: ${esc(g.reparto)}</h1>` + sezione;
     }).join("");
   } else if(kind==="sanificazione"){
     title = "Scheda sanificazione (MOSA)";
     body = ["giornaliera","settimanale","mensile"].map(freq=>{
-      const rows = logs.sanificazione.filter(r=>r.frequenza===freq && inMonth(r))
-        .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
-        .map(r=>[fmtDate(r.data), r.ora, esc(r.item), esc(r.operatore)]);
-      return `<h2>Sanificazione ${freq}</h2>` + tbl(["Data","Ora","Voce","Operatore"], rows);
+      const itemsFreq = config.sanifItems[freq]||[];
+      const gruppi = raggruppaPerReparto(itemsFreq, item=>config.sanifReparti[item]);
+      const sezioneFreq = gruppi.map(g=>{
+        const rows = logs.sanificazione.filter(r=>r.frequenza===freq && inMonth(r) && g.items.includes(r.item))
+          .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
+          .map(r=>[fmtDate(r.data), r.ora, esc(r.item), esc(r.operatore)]);
+        return `<h3>🏷️ ${esc(g.reparto)}</h3>` + tbl(["Data","Ora","Voce","Operatore"], rows);
+      }).join("");
+      return `<h2>Sanificazione ${freq}</h2>` + sezioneFreq;
     }).join("");
   } else if(kind==="moma"){
     title = "Controllo matrici in ingresso (MOMA)";
@@ -4609,7 +4628,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "59";
+const APP_VERSION = "60";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
