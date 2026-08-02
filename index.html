@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v61">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v62">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v61</title>
+<title>HACCP Baldoria v62</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 61 · fix stampa iOS + selettori mese/anno · 02/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 62 · fix download iOS + mese/anno ovunque · 02/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1432,6 +1432,10 @@ let meseFuoriSogliaTemp = todayISO().slice(0,7);
 let meseExportTemp = todayISO().slice(0,7);
 let meseExportSanif = todayISO().slice(0,7);
 let meseExportProduzione = todayISO().slice(0,7);
+let meseExportMoma = todayISO().slice(0,7);
+let meseExportRicette = todayISO().slice(0,7);
+let meseExportCoai = todayISO().slice(0,7);
+let meseExportNoco = todayISO().slice(0,7);
 function renderTemperature(){
   const pointsFiltered = (repartoFiltroTemp ? config.points.filter(p=>p.reparto===repartoFiltroTemp) : config.points).filter(p=>hasRepartoAccess(p.reparto));
 
@@ -1498,7 +1502,7 @@ function renderTemperatureFuoriSoglia(pointsFiltered){
 
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>🔴 Fuori soglia</h2>${printBtn('temperature')}</div>
+      <div class="card-head"><h2>🔴 Fuori soglia</h2><div style="display:flex;gap:6px;">${printBtn('temperature', meseFuoriSogliaTemp)}${saveBtn('temperature', meseFuoriSogliaTemp)}</div></div>
       ${repartoFilterHtml(repartoFiltroTemp, "setRepartoFiltroTemp")}
       <select onchange="setStatoFiltroTemp(this.value)" style="margin-bottom:10px;">
         <option value="">Tutti gli stati</option>
@@ -1526,6 +1530,10 @@ function setMeseFuoriSogliaTemp(v){ meseFuoriSogliaTemp = v; render(); }
 function setMeseExportTemp(v){ meseExportTemp = v; render(); }
 function setMeseExportSanif(v){ meseExportSanif = v; render(); }
 function setMeseExportProduzione(v){ meseExportProduzione = v; render(); }
+function setMeseExportMoma(v){ meseExportMoma = v; render(); }
+function setMeseExportRicette(v){ meseExportRicette = v; render(); }
+function setMeseExportCoai(v){ meseExportCoai = v; render(); }
+function setMeseExportNoco(v){ meseExportNoco = v; render(); }
 function setRepartoFiltroTemp(v){ repartoFiltroTemp = v; render(); }
 function setDateFiltroTemp(v){ dateFiltroTemp = v; render(); }
 function setStatoFiltroTemp(v){
@@ -2175,7 +2183,11 @@ function renderMoma(){
   else history = history.slice(0,20);
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Controllo matrici alimentari in ingresso (MOMA)</h2>${printBtn('moma')}</div>
+      <div class="card-head"><h2>Controllo matrici alimentari in ingresso (MOMA)</h2><div style="display:flex;gap:6px;">${printBtn('moma', meseExportMoma)}${saveBtn('moma', meseExportMoma)}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <label class="muted" style="font-size:12px;white-space:nowrap;">Mese scheda 🖨️/💾:</label>
+        ${meseAnnoSelectHtml(meseExportMoma, "meseExportMoma", "setMeseExportMoma")}
+      </div>
       <p class="muted">Registra ogni consegna: fornitore, documento di trasporto e verifica dei parametri di conformità.</p>
       <button class="btn block" onclick="openMomaForm()">+ Nuova consegna</button>
     </div>
@@ -2809,7 +2821,11 @@ function findLottiForIngredient(nomeIngrediente){
 function renderRicette(){
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Ricette base</h2>${printBtn('ricette')}</div>
+      <div class="card-head"><h2>Ricette base</h2><div style="display:flex;gap:6px;">${printBtn('ricette', meseExportRicette)}${saveBtn('ricette', meseExportRicette)}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <label class="muted" style="font-size:12px;white-space:nowrap;">Mese composizioni 🖨️/💾:</label>
+        ${meseAnnoSelectHtml(meseExportRicette, "meseExportRicette", "setMeseExportRicette")}
+      </div>
       <p class="muted">Definisci gli ingredienti di ogni ricetta. Quando componi un piatto, l'app recupera automaticamente il lotto più recente di ogni ingrediente dalle schede di Produzione (alimentate dalle bolle MOMA). Tocca "🔍 Tracciabilità" su una ricetta per vedere tutte le composizioni fatte e i lotti usati.</p>
       <input type="text" id="ricetteBaseSearchInput" placeholder="🔎 Cerca una ricetta per nome o ingrediente..." oninput="renderRicetteBaseList(this.value)" style="margin-bottom:10px;">
       ${repartoFilterHtml(repartoFiltroRicette, "setRepartoFiltroRicette")}
@@ -3448,7 +3464,11 @@ function renderCoai(){
   const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
   $main.innerHTML = `
     <div class="card ${auditCls}">
-      <div class="card-head"><h2>Controllo settimanale agenti infestanti (COAI)</h2>${printBtn('coai')}</div>
+      <div class="card-head"><h2>Controllo settimanale agenti infestanti (COAI)</h2><div style="display:flex;gap:6px;">${printBtn('coai', meseExportCoai)}${saveBtn('coai', meseExportCoai)}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <label class="muted" style="font-size:12px;white-space:nowrap;">Mese scheda 🖨️/💾:</label>
+        ${meseAnnoSelectHtml(meseExportCoai, "meseExportCoai", "setMeseExportCoai")}
+      </div>
       ${auditSt==='escalated'? `<div class="chip bad">🚨 Controllo settimanale non ancora fatto</div>`: auditSt==='notice'? `<div class="chip missing">⚠️ Da fare questa settimana</div>`:""}
       <button class="btn block" onclick="openCoaiForm()">+ Nuovo controllo</button>
     </div>
@@ -3648,7 +3668,11 @@ function renderNoco(){
   const sorted = [...logs.noco].sort((a,b)=>(b.data).localeCompare(a.data));
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Verbali di non conformità (NOCO)</h2>${printBtn('noco')}</div>
+      <div class="card-head"><h2>Verbali di non conformità (NOCO)</h2><div style="display:flex;gap:6px;">${printBtn('noco', meseExportNoco)}${saveBtn('noco', meseExportNoco)}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <label class="muted" style="font-size:12px;white-space:nowrap;">Mese scheda 🖨️/💾:</label>
+        ${meseAnnoSelectHtml(meseExportNoco, "meseExportNoco", "setMeseExportNoco")}
+      </div>
       <button class="btn danger block" onclick="openNocoForm()">+ Nuovo verbale</button>
     </div>
     <div class="card">
@@ -4127,6 +4151,17 @@ function printScheda(kind, mese){
   const {title, body} = buildSchedaContent(kind, mese);
   printWindow(title, body);
 }
+// I download basati su blob: URL falliscono spesso su Safari/iPhone (errore "WebKitBlobResource").
+// Un data: URI è molto più affidabile per attivare il download di un file.
+function triggerDataDownload(filename, content, mime){
+  const dataUri = "data:" + mime + ";charset=utf-8," + encodeURIComponent(content);
+  const a = document.createElement("a");
+  a.href = dataUri;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
 function saveScheda(kind, mese){
   const {title, body} = buildSchedaContent(kind, mese);
   const mk = mese || monthKeyNow();
@@ -4151,13 +4186,7 @@ function saveScheda(kind, mese){
   ${body}
   <div class="firma"><div>Firma dell'operatore</div><div>Firma del responsabile dell'autocontrollo</div></div>
   </body></html>`;
-  const blob = new Blob([html], {type:"text/html"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${kind}-${mk}.html`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  triggerDataDownload(`${kind}-${mk}.html`, html, "text/html");
   toast("💾 File salvato — controlla la cartella Download del telefono");
 }
 function saveBtn(kind, mese){
@@ -4503,12 +4532,7 @@ async function pruneOldBackups(){
   }
 }
 function triggerJsonDownload(filename, dataStr){
-  const blob = new Blob([dataStr], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  triggerDataDownload(filename, dataStr, "application/json");
 }
 function downloadFullBackupNow(){
   triggerJsonDownload(`haccp-baldoria-backup-${todayISO()}.json`, JSON.stringify(buildFullSnapshot(), null, 2));
@@ -4620,11 +4644,7 @@ function exportCsv(kind){
     const flat = flatten(r);
     lines.push(keys.map(k=>JSON.stringify(flat[k]!==undefined?flat[k]:"")).join(";"));
   });
-  const blob = new Blob([lines.join("\n")], {type:"text/csv"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = `haccp_${kind}_${todayISO()}.csv`;
-  document.body.appendChild(a); a.click(); a.remove();
+  triggerDataDownload(`haccp_${kind}_${todayISO()}.csv`, lines.join("\n"), "text/csv");
 }
 function flatten(obj, prefix=""){
   let out = {};
@@ -4658,7 +4678,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "61";
+const APP_VERSION = "62";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
