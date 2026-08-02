@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v62">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v63">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v62</title>
+<title>HACCP Baldoria v63</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 62 · fix download iOS + mese/anno ovunque · 02/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 63 · articoli riorganizzati · 02/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -855,7 +855,7 @@ function operatoriListHtml(){
   return ops.map(o=>`
     <div class="logrow">
       <div><div class="val">${o.nome} ${o.ruolo==='admin'?'👑':''}${o.id===currentOperatorId?' <span class="muted" style="font-size:11px;">(tu)</span>':''}</div>
-      <div class="meta">${o.ruolo==='admin'?'Amministratore':'Operatore'} ${o.reparti&&o.reparti.length? '· 🏷️ '+o.reparti.join(', ') : (o.ruolo!=='admin'? '· tutti i reparti':'')} ${!o.attivo? '· <span style="color:var(--red);font-weight:700;">Bloccato</span>':''}</div></div>
+      <div class="meta">${o.ruolo==='admin'?'Amministratore':'Operatore'} ${o.reparti&&o.reparti.length? '· 📍 '+o.reparti.join(', ') : (o.ruolo!=='admin'? '· tutti i reparti':'')} ${!o.attivo? '· <span style="color:var(--red);font-weight:700;">Bloccato</span>':''}</div></div>
       ${isAdmin() ? `<div style="display:flex;gap:6px;">
         <button class="iconbtn" onclick="openEditOperatoreForm('${o.id}')">✏️ Modifica</button>
         ${o.id!==currentOperatorId ? `<button class="iconbtn" onclick="toggleOperatoreAttivo('${o.id}')">${o.attivo?'🔒 Blocca':'🔓 Sblocca'}</button>
@@ -1436,6 +1436,8 @@ let meseExportMoma = todayISO().slice(0,7);
 let meseExportRicette = todayISO().slice(0,7);
 let meseExportCoai = todayISO().slice(0,7);
 let meseExportNoco = todayISO().slice(0,7);
+let repartoFiltroProduzione = "";
+let tipoFiltroProduzione = "";
 function renderTemperature(){
   const pointsFiltered = (repartoFiltroTemp ? config.points.filter(p=>p.reparto===repartoFiltroTemp) : config.points).filter(p=>hasRepartoAccess(p.reparto));
 
@@ -1460,7 +1462,7 @@ function renderTemperature(){
     return `<div class="point-tile ${auditCls}" onclick="openPointDetail('${p.id}')" style="position:relative;">
       ${isAdmin()? `<button class="iconbtn" style="position:absolute;top:8px;right:8px;font-size:15px;padding:6px 9px;" onclick="event.stopPropagation();openEditPoint('${p.id}')" title="Modifica o elimina">✏️</button>`:""}
       <div class="name">${pointIcon(p.type)} ${p.name}</div>
-      ${p.reparto? `<div class="muted" style="font-size:11px;">🏷️ ${p.reparto}</div>`:""}
+      ${p.reparto? `<div class="muted" style="font-size:11px;">📍 ${p.reparto}</div>`:""}
       <div class="range">Soglia: ${rangeLbl}</div>
       <div class="muted">${valLbl}</div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
@@ -2018,7 +2020,7 @@ function renderSanificazione(){
         const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
         const reparto = config.sanifReparti[item];
         return `<div class="checklist-item ${auditCls}" style="flex-wrap:wrap;">
-          <div class="lbl" onclick="openSanifItemDetail('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" style="cursor:pointer;">${item} ${reparto? `<span class="muted" style="font-size:11px;">🏷️ ${reparto}</span>`:""} ${isOggi && timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}</div>
+          <div class="lbl" onclick="openSanifItemDetail('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" style="cursor:pointer;">${item} ${reparto? `<span class="muted" style="font-size:11px;">📍 ${reparto}</span>`:""} ${isOggi && timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}</div>
           <div style="display:flex;gap:8px;align-items:center;">
             ${isOggi && isAdmin()? `<button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openEditSanifItem('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>
             <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openTimerForm('sanificazione','${timerKey}','${item.replace(/'/g,"\\'")}')" title="Imposta timer">⏱️</button>` : ""}
@@ -2488,8 +2490,12 @@ const PAROLE_LUNGA_CONSERVAZIONE = [
   "tè ","biscotti","cioccolato","cacao","lievito","topping","dado","spezie","spezia","zafferano",
   "miele","marmellata","confettura","gallette","cereali","farro","couscous","quinoa","zucch"
 ];
+// Prodotti freschi che condividono l'inizio del nome con una parola chiave "lunga conservazione"
+// (es. "zucchine" inizia come "zucchero") — vanno esclusi esplicitamente per non generare falsi positivi.
+const PAROLE_ESCLUSE_FRESCHI = ["zucchin"]; // zucchine/zucchina: deperibili, non vanno confuse con lo zucchero
 function isLungaConservazione(nome){
   const n = (nome||"").toLowerCase();
+  if(PAROLE_ESCLUSE_FRESCHI.some(k => n.includes(k))) return false;
   return PAROLE_LUNGA_CONSERVAZIONE.some(k => n.includes(k));
 }
 async function applicaLungaConservazioneRetroattiva(){
@@ -2611,6 +2617,12 @@ function renderProduzione(){
       <p class="muted">Le schede vengono create automaticamente leggendo la bolla in "Matrici in ingresso". Scadenza calcolata a 7 giorni dalla consegna (2 anni per gli articoli a lunga conservazione riconosciuti automaticamente) — modificabile per ogni prodotto.</p>
       ${isAdmin()? `<div class="rowbtns"><button class="iconbtn block" onclick="applicaLungaConservazioneRetroattiva()">🔄 Applica riconoscimento lunga conservazione ai prodotti già presenti</button></div>`:""}
       <input type="text" id="produzioneSearchInput" placeholder="🔎 Cerca per prodotto, lotto o fornitore..." oninput="renderProduzioneList(this.value)" style="margin-bottom:10px;">
+      ${repartoFilterHtml(repartoFiltroProduzione, "setRepartoFiltroProduzione")}
+      <select onchange="setTipoFiltroProduzione(this.value)" style="margin-bottom:10px;">
+        <option value="" ${!tipoFiltroProduzione?'selected':''}>Tutti i tipi</option>
+        <option value="semilavorato" ${tipoFiltroProduzione==='semilavorato'?'selected':''}>🏷️ Solo preparati internamente (semilavorati)</option>
+        <option value="esterno" ${tipoFiltroProduzione==='esterno'?'selected':''}>📦 Solo con lotto da fornitore esterno</option>
+      </select>
       <button class="btn block" onclick="openProduzioneForm()">+ Aggiungi prodotto manualmente</button>
     </div>
     <div class="card">
@@ -2627,6 +2639,9 @@ function produzioneListHtml(query){
   const q = (query||"").trim();
   let sorted = [...logs.produzione].filter(p=>!p.esaurito).sort((a,b)=>a.dataScadenza.localeCompare(b.dataScadenza));
   if(q) sorted = sorted.filter(p=>textMatchesQuery(p.prodotto,q) || textMatchesQuery(p.lotto||"",q) || textMatchesQuery(p.fornitore||"",q));
+  if(repartoFiltroProduzione) sorted = sorted.filter(p=>p.reparto===repartoFiltroProduzione);
+  if(tipoFiltroProduzione==="semilavorato") sorted = sorted.filter(p=>p.semilavorato);
+  else if(tipoFiltroProduzione==="esterno") sorted = sorted.filter(p=>!p.semilavorato);
   const t = todayISO();
   function statusOf(p){
     if(p.dataScadenza < t) return "bad";
@@ -2638,17 +2653,25 @@ function produzioneListHtml(query){
     const s = statusOf(p);
     return s==="bad"? "SCADUTO" : s==="missing"? "In scadenza" : "Valido";
   }
-  if(!sorted.length) return `<div class="empty">${q? `Nessun prodotto trovato per "${esc(query)}".` : "Nessun prodotto in produzione al momento."}</div>`;
-  return sorted.map(p=>`
+  if(!sorted.length) return `<div class="empty">${q||repartoFiltroProduzione||tipoFiltroProduzione? `Nessun prodotto trovato.` : "Nessun prodotto in produzione al momento."}</div>`;
+  const rigaProdotto = p => `
     <div class="logrow" onclick="openProduzioneDetail('${p.id}')" style="cursor:pointer;">
       <div>
         <div class="val">${p.semilavorato? '🏷️ ':''}${p.lungaConservazione? '🗄️ ':''}${p.prodotto}</div>
         <div class="meta">Lotto: ${p.lotto||'—'} · ${p.fornitore} · scade il ${fmtDate(p.dataScadenza)}</div>
       </div>
       <span class="chip ${statusOf(p)}">${statusLabel(p)}</span>
-    </div>
+    </div>`;
+  // Se è attivo un filtro reparto specifico, la lista è già di un solo reparto: niente titoli ripetuti.
+  if(repartoFiltroProduzione) return sorted.map(rigaProdotto).join("");
+  const gruppi = raggruppaPerReparto(sorted, p=>p.reparto);
+  return gruppi.map(g=>`
+    <div style="margin-top:14px;font-weight:800;font-size:13px;color:var(--green-dark);border-bottom:2px solid var(--green);padding-bottom:4px;">📍 ${g.reparto}</div>
+    ${g.items.map(rigaProdotto).join("")}
   `).join("");
 }
+function setRepartoFiltroProduzione(v){ repartoFiltroProduzione = v; renderProduzioneList(document.getElementById("produzioneSearchInput")? document.getElementById("produzioneSearchInput").value : ""); }
+function setTipoFiltroProduzione(v){ tipoFiltroProduzione = v; renderProduzioneList(document.getElementById("produzioneSearchInput")? document.getElementById("produzioneSearchInput").value : ""); }
 function produzioneEsauritiHtml(query){
   const q = (query||"").trim();
   let esauriti = [...logs.produzione].filter(p=>p.esaurito).sort((a,b)=>b.dataConsegna.localeCompare(a.dataConsegna));
@@ -2736,10 +2759,19 @@ function openProduzioneDetail(id){
       <div><label class="field">N. DDT</label><input type="text" id="pdDdt" value="${p.ddt||''}"></div>
     </div>
     <label class="field">Quantità</label><input type="text" id="pdQuantita" value="${p.quantita||''}">
+    <label class="field">Reparto (facoltativo)</label>
+    <select id="pdReparto">
+      <option value="" ${!p.reparto?'selected':''}>Nessuno</option>
+      ${REPARTI.map(r=>`<option value="${r}" ${p.reparto===r?'selected':''}>${r}</option>`).join("")}
+    </select>
     <div class="grid2">
       <div><label class="field">Data consegna</label><input type="date" id="pdConsegna" value="${p.dataConsegna}"></div>
       <div><label class="field">Data scadenza</label><input type="date" id="pdScadenza" value="${p.dataScadenza}"></div>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;margin:12px 0;font-size:13px;cursor:pointer;">
+      <input type="checkbox" id="pdLungaConservazione" ${p.lungaConservazione?'checked':''} onchange="if(this.checked){ document.getElementById('pdScadenza').value = addDaysISO(document.getElementById('pdConsegna').value||todayISO(), 730); }">
+      🗄️ Articolo a lunga conservazione (spunta per aggiornare la scadenza a 2 anni dalla consegna — puoi comunque correggerla a mano sotto)
+    </label>
     <label class="field">Note</label><textarea id="pdNote">${p.note||''}</textarea>
     <label class="field">Data esaurimento prodotto</label>
     <input type="date" id="pzEsaurimento" value="${p.dataEsaurimento||''}">
@@ -2759,6 +2791,8 @@ async function editProduzione(id){
   p.fornitore = document.getElementById("pdFornitore").value.trim();
   p.ddt = document.getElementById("pdDdt").value.trim();
   p.quantita = document.getElementById("pdQuantita").value.trim();
+  p.reparto = document.getElementById("pdReparto").value;
+  p.lungaConservazione = document.getElementById("pdLungaConservazione").checked;
   p.dataConsegna = document.getElementById("pdConsegna").value;
   p.dataScadenza = document.getElementById("pdScadenza").value;
   p.note = document.getElementById("pdNote").value.trim();
@@ -2894,7 +2928,7 @@ function ricetteBaseListHtml(query){
     return `
     <div class="point-tile" style="cursor:default;">
       <div class="name">🍽️ ${r.nome} ${r.photoKey? '📷':''}</div>
-      ${r.reparti&&r.reparti.length? `<div class="muted" style="font-size:11px;">🏷️ ${r.reparti.join(', ')}</div>`:""}
+      ${r.reparti&&r.reparti.length? `<div class="muted" style="font-size:11px;">📍 ${r.reparti.join(', ')}</div>`:""}
       <div class="muted">${r.ingredienti.length} ingredienti: ${r.ingredienti.join(', ')}</div>
       ${r.procedimento? `<div class="muted" style="margin-top:4px;">📝 Procedimento trascritto disponibile</div>`:''}
       <div class="rowbtns" style="margin-top:8px;">
@@ -4090,7 +4124,7 @@ function buildSchedaContent(kind, mese){
         const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}°C / ${p.max}°C`;
         return `<h2>${esc(p.name)} — soglia ${rangeLbl}</h2>` + tbl(["Data","Ora","Valore","Esito","Operatore","Fonte"], rows);
       }).join("");
-      return `<h1 style="margin-top:24px;border-bottom:3px solid #1F6F4A;padding-bottom:4px;">🏷️ Reparto: ${esc(g.reparto)}</h1>` + sezione;
+      return `<h1 style="margin-top:24px;border-bottom:3px solid #1F6F4A;padding-bottom:4px;">📍 Reparto: ${esc(g.reparto)}</h1>` + sezione;
     }).join("");
   } else if(kind==="sanificazione"){
     title = "Scheda sanificazione (MOSA)";
@@ -4101,7 +4135,7 @@ function buildSchedaContent(kind, mese){
         const rows = logs.sanificazione.filter(r=>r.frequenza===freq && inMonth(r) && g.items.includes(r.item))
           .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
           .map(r=>[fmtDate(r.data), r.ora, esc(r.item), esc(r.operatore)]);
-        return `<h3>🏷️ ${esc(g.reparto)}</h3>` + tbl(["Data","Ora","Voce","Operatore"], rows);
+        return `<h3>📍 ${esc(g.reparto)}</h3>` + tbl(["Data","Ora","Voce","Operatore"], rows);
       }).join("");
       return `<h2>Sanificazione ${freq}</h2>` + sezioneFreq;
     }).join("");
@@ -4678,7 +4712,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "62";
+const APP_VERSION = "63";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
