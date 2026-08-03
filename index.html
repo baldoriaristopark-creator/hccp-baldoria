@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v63">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v64">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v63</title>
+<title>HACCP Baldoria v64</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 63 · articoli riorganizzati · 02/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 64 · inserimento retroattivo solo admin · 02/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1590,10 +1590,12 @@ function openSpentoForm(pointId){
     <input type="text" id="spentoOp" value="${lastOperator}" placeholder="Nome operatore">
     <label class="field">Motivo (facoltativo)</label>
     <input type="text" id="spentoNote" placeholder="es. sbrinamento, manutenzione, fuori servizio">
+    ${isAdmin()? `
     <label class="field">Data</label>
     <input type="date" id="spentoData" value="${todayISO()}" max="${todayISO()}">
     <label class="field">Ora</label>
     <input type="time" id="spentoOra" value="${nowTime()}">
+    ` : ''}
     <div class="rowbtns"><button class="btn block" onclick="saveSpento('${pointId}')">Conferma spento</button></div>
   `);
 }
@@ -1602,8 +1604,10 @@ async function saveSpento(pointId){
   const note = document.getElementById("spentoNote").value.trim();
   if(!op){ toast("Inserisci il nome dell'operatore"); return; }
   const p = config.points.find(x=>x.id===pointId);
-  const data = document.getElementById("spentoData").value || todayISO();
-  const ora = document.getElementById("spentoOra").value || nowTime();
+  const dataEl = document.getElementById("spentoData");
+  const oraEl = document.getElementById("spentoOra");
+  const data = dataEl ? (dataEl.value || todayISO()) : todayISO();
+  const ora = oraEl ? (oraEl.value || nowTime()) : nowTime();
   const tardiva = data!==todayISO() || Math.abs(timeToMinutes(ora)-timeToMinutes(nowTime()))>10;
   const rec = { id:uid(), pointId, pointName:p.name, data, ora, operatore:op, spento:true, note, conforme:null, tardiva, registratoIl:new Date().toISOString() };
   logs.temperature.push(rec);
@@ -1727,11 +1731,13 @@ function openTempEntry(pointId, mode){
       <input type="number" step="0.1" id="tempVal" placeholder="es. 3.5">
       <label class="field">Operatore</label>
       <input type="text" id="tempOp" value="${lastOperator}" placeholder="Nome operatore">
+      ${isAdmin()? `
       <label class="field">Data</label>
       <input type="date" id="tempData" value="${todayISO()}" max="${todayISO()}">
       <label class="field">Ora</label>
       <input type="time" id="tempOra" value="${nowTime()}">
       <p class="muted" style="font-size:12px;">Lasciale come sono se stai registrando ora. Cambiale solo se ti sei dimenticato di segnare una lettura fatta prima — verrà segnalata come inserita in ritardo, restando comunque valida.</p>
+      ` : ''}
       <div class="rowbtns">
         <button class="btn block" onclick="saveTempManual('${pointId}')">Salva registrazione</button>
       </div>
@@ -2100,11 +2106,16 @@ function openSanifConfirm(item){
       <button class="btn secondary block" onclick="document.getElementById('sanifPhotoInput').click()">📷 Scatta / carica foto</button>
       <div id="sanifPhotoPreview"></div>
     </div>
+    ${isAdmin()? `
     <label class="field">Data</label>
     <input type="date" id="sanifData" value="${sanifDateISO()}" max="${todayISO()}">
     <label class="field">Ora</label>
     <input type="time" id="sanifOra" value="${nowTime()}">
     <p class="muted" style="font-size:12px;">Lasciale come sono se stai confermando ora. Cambiale solo se ti sei dimenticato di segnarla prima — verrà indicata come inserita in ritardo, restando comunque valida.</p>
+    ` : `
+    <input type="hidden" id="sanifData" value="${sanifDateISO()}">
+    <input type="hidden" id="sanifOra" value="${nowTime()}">
+    `}
     <div class="rowbtns">
       <button class="btn block" id="sanifConfirmBtn" ${fotoObbligatoria? 'disabled':''} onclick="saveSanifConfirm('${item.replace(/'/g,"\\'")}')">✅ Conferma sanificazione</button>
     </div>
@@ -4712,7 +4723,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "63";
+const APP_VERSION = "64";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
