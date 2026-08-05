@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v66">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v67">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v66</title>
+<title>HACCP Baldoria v67</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 66 · semilavorati spostati in ricette · 02/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 67 · collegamento MOMA-articoli + fix matching · 02/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2221,6 +2221,7 @@ function renderMoma(){
 function setDateFiltroMoma(v){ dateFiltroMoma = v; render(); }
 function openMomaDetail(id){
   const m = logs.moma.find(x=>x.id===id);
+  const articoliCollegati = logs.produzione.filter(p=>p.momaId===id);
   openSheet(`Consegna — ${m.fornitore}`, `
     ${m.photoKey? `<div id="momaDetailPhoto"><span class="spinner"></span> Carico foto bolla...</div>` : ``}
     <label class="field">Fornitore</label><input type="text" id="mdFornitore" value="${m.fornitore}">
@@ -2242,6 +2243,17 @@ function openMomaDetail(id){
       ${isAdmin()? `<button class="btn block" onclick="editMoma('${id}')">Salva modifiche</button>
       <button class="btn danger" onclick="deleteMoma('${id}')">Elimina consegna</button>` : ''}
     </div>
+    ${articoliCollegati.length? `
+    <h3>Articoli letti da questa bolla (${articoliCollegati.length})</h3>
+    <p class="muted" style="font-size:12px;margin-top:-6px;">Se l'AI ha letto male un nome o un lotto, tocca l'articolo per correggerlo.</p>
+    ${articoliCollegati.map(p=>`
+      <div class="logrow" onclick="closeSheet();openProduzioneDetail('${p.id}')" style="cursor:pointer;">
+        <div><div class="val">${p.prodotto}</div>
+        <div class="meta">Lotto: ${p.lotto||'—'}</div></div>
+        <span class="muted">✏️</span>
+      </div>
+    `).join("")}
+    ` : ''}
   `, async ()=>{
     if(m.photoKey){
       try{
@@ -2599,6 +2611,12 @@ function addDaysISO(iso, days){
 }
 
 // ---------- PRODUZIONE (P1 - lotti e tracciabilità) ----------
+function cercaIngredienteInArticoli(nomeIngrediente){
+  window._produzionePresearch = nomeIngrediente;
+  closeSheet();
+  activeTab = "produzione";
+  render();
+}
 function renderProduzione(){
   const t = todayISO();
   const sorted = [...logs.produzione].filter(p=>!p.esaurito && !p.semilavorato).sort((a,b)=>a.dataScadenza.localeCompare(b.dataScadenza));
@@ -2640,6 +2658,12 @@ function renderProduzione(){
       <div id="produzioneEsauritiEl">${produzioneEsauritiHtml("")}</div>
     </div>
   `;
+  if(window._produzionePresearch){
+    const val = window._produzionePresearch;
+    window._produzionePresearch = null;
+    const inp = document.getElementById("produzioneSearchInput");
+    if(inp){ inp.value = val; renderProduzioneList(val); }
+  }
 }
 function produzioneListHtml(query){
   const q = (query||"").trim();
@@ -2746,6 +2770,7 @@ async function saveProduzioneManuale(){
 
 function openProduzioneDetail(id){
   const p = logs.produzione.find(x=>x.id===id);
+  const momaEsiste = p.momaId && logs.moma.some(m=>m.id===p.momaId);
   openSheet(p.prodotto, `
     ${p.semilavorato? `<div class="card" style="padding:11px;background:var(--yellow-pale);border:none;margin-bottom:10px;">
       <div style="font-weight:800;font-size:13px;">🏷️ Preparato internamente</div>
@@ -2755,6 +2780,7 @@ function openProduzioneDetail(id){
         <button class="printbtn" onclick="printFiliera('${id}')">🔗 Catena di tracciabilità</button>
       </div>
     </div>`:""}
+    ${momaEsiste? `<div class="rowbtns"><button class="iconbtn block" onclick="closeSheet();openMomaDetail('${p.momaId}')">↩️ Vai alla bolla di ingresso (MOMA)</button></div>` : ''}
     <label class="field">Prodotto</label><input type="text" id="pdNome" value="${p.prodotto}">
     <label class="field">Lotto</label><input type="text" id="pdLotto" value="${p.lotto||''}">
     <div class="grid2">
@@ -2832,12 +2858,23 @@ function meaningfulTokens(s){
   return normalizeTokens(s).filter(t=>!MATCH_STOPWORDS.has(t) && !/^\d+([.,]\d+)?$/.test(t));
 }
 function tokenMatchScore(ingTokens, prodTokens){
-  if(!ingTokens.length) return 0;
+  if(!ingTokens.length || !prodTokens.length) return 0;
   let matched = 0;
   ingTokens.forEach(tok=>{
     if(prodTokens.includes(tok) || prodTokens.some(p=> (p.length>=4 && tok.length>=4) && (p.startsWith(tok)||tok.startsWith(p)) )) matched++;
   });
-  return matched/ingTokens.length;
+  if(matched===0) return 0;
+  // Se il prodotto INIZIA con le stesse parole dell'ingrediente (es. "Latte" → "Latte intero"),
+  // è un'ottima corrispondenza anche se il prodotto ha altre parole dopo.
+  const iniziaUguale = ingTokens.every((tok,idx)=>{
+    const p = prodTokens[idx];
+    return p && (p===tok || (p.length>=4 && tok.length>=4 && (p.startsWith(tok)||tok.startsWith(p))));
+  });
+  if(iniziaUguale) return 1;
+  // Altrimenti punteggio simmetrico: penalizza le parole extra del prodotto, che di solito
+  // indicano un prodotto diverso — es. "Fior di latte" per l'ingrediente "Latte".
+  const unione = ingTokens.length + Math.max(0, prodTokens.length - matched);
+  return unione? matched/unione : 0;
 }
 function findLottoForIngredient(nomeIngrediente){
   const c = findLottiForIngredient(nomeIngrediente);
@@ -3229,19 +3266,20 @@ function openComponiForm(recipeId){
         <p class="muted" style="font-size:12px;margin-top:8px;">Riferimento (da manuale di autocontrollo Baldoria): positivo ≤ +3°C entro 110 min · negativo ≤ -18°C entro 240 min. Fuori da questi valori la preparazione viene comunque salvata, ma segnalata come da verificare.</p>
       </div>
     </div>
-    <label class="field">Quantità preparata</label>
+    <label class="field">Quantità preparata (obbligatorio)</label>
     <input type="text" id="componiQta" placeholder="es. 5 kg, 20 porzioni">
     <label class="field">Operatore</label>
     <input type="text" id="componiOp" value="${lastOperator}">
-    <label class="field">Note</label>
-    <textarea id="componiNote"></textarea>
-    <label class="field">Foto del preparato (facoltativa)</label>
+    <label class="field">Note (facoltativo)</label>
+    <textarea id="componiNote" placeholder="es. procedimento seguito, eventuali variazioni"></textarea>
+    <label class="field">Foto del preparato (obbligatoria)</label>
     <div class="photo-zone" id="componiPhotoZone">
       <input type="file" accept="image/*" capture="environment" id="componiPhotoInput" style="display:none">
       <button class="btn secondary block" onclick="document.getElementById('componiPhotoInput').click()">📷 Scatta / carica foto</button>
       <div id="componiPhotoPreview"></div>
     </div>
-    <div class="rowbtns"><button class="btn block" onclick="saveComposizione('${recipeId}')">✅ Registra preparazione</button></div>
+    <div id="componiErrore" style="color:var(--red);font-size:13px;margin-top:4px;"></div>
+    <div class="rowbtns"><button class="btn block" id="componiSaveBtn" disabled onclick="saveComposizione('${recipeId}')">✅ Registra preparazione</button></div>
   `, ()=>{
     renderComponiRows();
     renderComponiScadenzaCard(recipeId, progrPrev, giorniR, giorniRAbbattuto);
@@ -3255,6 +3293,7 @@ function openComponiForm(recipeId){
         const compressed = await compressImage(reader.result, 480);
         window._composizionePhoto = compressed;
         document.getElementById("componiPhotoPreview").innerHTML = `<img src="${compressed}">`;
+        document.getElementById("componiSaveBtn").disabled = false;
       };
       reader.readAsDataURL(file);
     };
@@ -3310,7 +3349,7 @@ function renderComponiRows(){
     }
     return `<div class="card" style="padding:10px;margin-bottom:8px;${row.lotto? '':'border:2px solid var(--amber);'}">
       <div style="font-weight:800;font-size:13px;">${row.ingrediente} ${row.lotto? (row.semilavorato? '🏷️ semilavorato interno':'✅'):'⚠️ lotto non trovato'}</div>
-      ${row.lotto ? `<div class="muted" style="font-size:12px;">Trovato: ${row.prodottoTrovato} · ${row.semilavorato? 'preparato il':'consegna'} ${fmtDate(row.dataConsegna)} da ${row.fornitore}</div>` : ''}
+      ${row.lotto ? `<div class="muted" style="font-size:12px;">Trovato: ${row.prodottoTrovato} · ${row.semilavorato? 'preparato il':'consegna'} ${fmtDate(row.dataConsegna)} da ${row.fornitore}</div>` : `<button class="iconbtn" style="margin:4px 0 2px;" onclick="cercaIngredienteInArticoli('${row.ingrediente.replace(/'/g,"\\'")}')">🔍 Cerca "${row.ingrediente}" in Articoli/Lotti</button>`}
       <div class="grid2" style="margin-top:6px;">
         <div><label class="field" style="margin-top:4px;">Lotto</label><input type="text" value="${row.lotto}" oninput="window._componiIngredienti[${i}].lotto=this.value"></div>
         <div><label class="field" style="margin-top:4px;">Fornitore</label><input type="text" value="${row.fornitore}" oninput="window._componiIngredienti[${i}].fornitore=this.value"></div>
@@ -3342,7 +3381,11 @@ async function saveComposizione(recipeId){
   const r = config.recipes.find(x=>x.id===recipeId);
   const op = document.getElementById("componiOp").value.trim();
   const note = document.getElementById("componiNote").value.trim();
+  const qtaVal = document.getElementById("componiQta").value.trim();
+  const errEl = document.getElementById("componiErrore");
   if(!op){ toast("Inserisci l'operatore"); return; }
+  if(!qtaVal){ errEl.textContent = "⚠️ Campo obbligatorio mancante: indica la quantità preparata."; return; }
+  if(!window._composizionePhoto){ errEl.textContent = "⚠️ Campo obbligatorio mancante: allega una foto del preparato."; return; }
   const daScegliere = window._componiIngredienti.filter(x=>x.candidati && x.candidati.length && !x.produzioneId);
   if(daScegliere.length){ toast(`❓ Scegli il lotto per: ${daScegliere.map(x=>x.ingrediente).join(", ")}`); return; }
   const abb = window._componiAbbattuto || {attivo:false};
@@ -4725,7 +4768,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "66";
+const APP_VERSION = "67";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
