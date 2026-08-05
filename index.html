@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v67">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v68">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v67</title>
+<title>HACCP Baldoria v68</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 67 · collegamento MOMA-articoli + fix matching · 02/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 68 · filtri data/fornitore in P1 · 02/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1436,7 +1436,8 @@ let meseExportMoma = todayISO().slice(0,7);
 let meseExportRicette = todayISO().slice(0,7);
 let meseExportCoai = todayISO().slice(0,7);
 let meseExportNoco = todayISO().slice(0,7);
-let repartoFiltroProduzione = "";
+let dateFiltroProduzione = "";
+let fornitoreFiltroProduzione = "";
 let tipoFiltroProduzione = "";
 function renderTemperature(){
   const pointsFiltered = (repartoFiltroTemp ? config.points.filter(p=>p.reparto===repartoFiltroTemp) : config.points).filter(p=>hasRepartoAccess(p.reparto));
@@ -2646,7 +2647,8 @@ function renderProduzione(){
       <p class="muted">Solo articoli ricevuti da fornitore (bolle in "Matrici in ingresso"). I preparati interni (semilavorati) si trovano ora nella scheda di ogni singola ricetta, sezione "🔍 Tracciabilità". Scadenza calcolata a 7 giorni dalla consegna (2 anni per gli articoli a lunga conservazione riconosciuti automaticamente) — modificabile per ogni prodotto.</p>
       ${isAdmin()? `<div class="rowbtns"><button class="iconbtn block" onclick="applicaLungaConservazioneRetroattiva()">🔄 Applica riconoscimento lunga conservazione ai prodotti già presenti</button></div>`:""}
       <input type="text" id="produzioneSearchInput" placeholder="🔎 Cerca per prodotto, lotto o fornitore..." oninput="renderProduzioneList(this.value)" style="margin-bottom:10px;">
-      ${repartoFilterHtml(repartoFiltroProduzione, "setRepartoFiltroProduzione")}
+      ${dateFilterHtml(dateFiltroProduzione, "setDateFiltroProduzione")}
+      ${fornitoreFilterHtml()}
       <button class="btn block" onclick="openProduzioneForm()">+ Aggiungi prodotto manualmente</button>
     </div>
     <div class="card">
@@ -2665,11 +2667,22 @@ function renderProduzione(){
     if(inp){ inp.value = val; renderProduzioneList(val); }
   }
 }
+function fornitoreFilterHtml(){
+  const fornitori = [...new Set(logs.produzione.filter(p=>!p.semilavorato && p.fornitore).map(p=>p.fornitore))].sort();
+  if(!fornitori.length) return "";
+  return `<select onchange="setFornitoreFiltroProduzione(this.value)" style="margin-bottom:10px;">
+    <option value="" ${!fornitoreFiltroProduzione?'selected':''}>Tutti i fornitori</option>
+    ${fornitori.map(f=>`<option value="${esc(f)}" ${fornitoreFiltroProduzione===f?'selected':''}>${f}</option>`).join("")}
+  </select>`;
+}
+function setDateFiltroProduzione(v){ dateFiltroProduzione = v; renderProduzioneList(document.getElementById("produzioneSearchInput")? document.getElementById("produzioneSearchInput").value : ""); }
+function setFornitoreFiltroProduzione(v){ fornitoreFiltroProduzione = v; renderProduzioneList(document.getElementById("produzioneSearchInput")? document.getElementById("produzioneSearchInput").value : ""); }
 function produzioneListHtml(query){
   const q = (query||"").trim();
   let sorted = [...logs.produzione].filter(p=>!p.esaurito && !p.semilavorato).sort((a,b)=>a.dataScadenza.localeCompare(b.dataScadenza));
   if(q) sorted = sorted.filter(p=>textMatchesQuery(p.prodotto,q) || textMatchesQuery(p.lotto||"",q) || textMatchesQuery(p.fornitore||"",q));
-  if(repartoFiltroProduzione) sorted = sorted.filter(p=>p.reparto===repartoFiltroProduzione);
+  if(dateFiltroProduzione) sorted = sorted.filter(p=>p.dataConsegna===dateFiltroProduzione);
+  if(fornitoreFiltroProduzione) sorted = sorted.filter(p=>p.fornitore===fornitoreFiltroProduzione);
   const t = todayISO();
   function statusOf(p){
     if(p.dataScadenza < t) return "bad";
@@ -2681,22 +2694,15 @@ function produzioneListHtml(query){
     const s = statusOf(p);
     return s==="bad"? "SCADUTO" : s==="missing"? "In scadenza" : "Valido";
   }
-  if(!sorted.length) return `<div class="empty">${q||repartoFiltroProduzione? `Nessun prodotto trovato.` : "Nessun prodotto in produzione al momento."}</div>`;
-  const rigaProdotto = p => `
+  if(!sorted.length) return `<div class="empty">${q||dateFiltroProduzione||fornitoreFiltroProduzione? `Nessun prodotto trovato.` : "Nessun prodotto in produzione al momento."}</div>`;
+  return sorted.map(p=>`
     <div class="logrow" onclick="openProduzioneDetail('${p.id}')" style="cursor:pointer;">
       <div>
         <div class="val">${p.lungaConservazione? '🗄️ ':''}${p.prodotto}</div>
-        <div class="meta">Lotto: ${p.lotto||'—'} · ${p.fornitore} · scade il ${fmtDate(p.dataScadenza)}</div>
+        <div class="meta">Lotto: ${p.lotto||'—'} · ${p.fornitore} · consegna ${fmtDate(p.dataConsegna)} · scade il ${fmtDate(p.dataScadenza)}</div>
       </div>
       <span class="chip ${statusOf(p)}">${statusLabel(p)}</span>
-    </div>`;
-  // Se è attivo un filtro reparto specifico, la lista è già di un solo reparto: niente titoli ripetuti.
-  if(repartoFiltroProduzione) return sorted.map(rigaProdotto).join("");
-  const gruppi = raggruppaPerReparto(sorted, p=>p.reparto);
-  return gruppi.map(g=>`
-    <div style="margin-top:14px;font-weight:800;font-size:13px;color:var(--green-dark);border-bottom:2px solid var(--green);padding-bottom:4px;">📍 ${g.reparto}</div>
-    ${g.items.map(rigaProdotto).join("")}
-  `).join("");
+    </div>`).join("");
 }
 function setRepartoFiltroProduzione(v){ repartoFiltroProduzione = v; renderProduzioneList(document.getElementById("produzioneSearchInput")? document.getElementById("produzioneSearchInput").value : ""); }
 function produzioneEsauritiHtml(query){
@@ -2724,7 +2730,7 @@ function renderProduzioneList(query){
   const titleEl = document.getElementById("produzioneListTitle");
   if(titleEl){
     const q = (query||"").trim();
-    const count = [...logs.produzione].filter(p=>!p.esaurito && !p.semilavorato && (!q || textMatchesQuery(p.prodotto,q) || textMatchesQuery(p.lotto||"",q) || textMatchesQuery(p.fornitore||"",q))).length;
+    const count = [...logs.produzione].filter(p=>!p.esaurito && !p.semilavorato && (!q || textMatchesQuery(p.prodotto,q) || textMatchesQuery(p.lotto||"",q) || textMatchesQuery(p.fornitore||"",q)) && (!dateFiltroProduzione || p.dataConsegna===dateFiltroProduzione) && (!fornitoreFiltroProduzione || p.fornitore===fornitoreFiltroProduzione)).length;
     titleEl.textContent = q? `Risultati (${count})` : `Prodotti in produzione (${count})`;
   }
 }
@@ -4768,7 +4774,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "67";
+const APP_VERSION = "68";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
