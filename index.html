@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v64">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v65">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v64</title>
+<title>HACCP Baldoria v65</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 64 · inserimento retroattivo solo admin · 02/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 65 · giorni conservazione obbligatori · 02/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -3070,12 +3070,13 @@ function openAddRecipe(){
     <textarea id="rcIngredienti" style="min-height:110px;" placeholder="Farina 00&#10;Pomodoro San Marzano&#10;Mozzarella fior di latte"></textarea>
     <label class="field">Procedimento (trascrizione integrale, facoltativo)</label>
     <textarea id="rcProcedimento" style="min-height:110px;" placeholder="Quantità, passaggi e note così come scritti nella ricetta originale"></textarea>
-    <label class="field">Giorni di conservazione del preparato</label>
-    <input type="number" id="rcGiorni" value="3" min="0" max="90">
-    <p class="muted" style="font-size:12px;">Determina la scadenza del semilavorato che verrà creato a ogni preparazione.</p>
-    <label class="field">Giorni di conservazione se abbattuto (facoltativo)</label>
-    <input type="number" id="rcGiorniAbbattuto" placeholder="lascia vuoto se uguale" min="0" max="365">
-    <p class="muted" style="font-size:12px;">Se impostato, verrà usato al posto del valore sopra quando la preparazione viene segnata come abbattuta.</p>
+    <label class="field">Giorni di conservazione — NON abbattuto (obbligatorio)</label>
+    <input type="number" id="rcGiorni" value="1" min="0" max="90">
+    <p class="muted" style="font-size:12px;">Scadenza del semilavorato se preparato SENZA passare dall'abbattitore.</p>
+    <label class="field">Giorni di conservazione — ABBATTUTO (obbligatorio)</label>
+    <input type="number" id="rcGiorniAbbattuto" value="8" min="0" max="365">
+    <p class="muted" style="font-size:12px;">Scadenza del semilavorato quando la preparazione viene abbattuta.</p>
+    <div id="rcErrore" style="color:var(--red);font-size:13px;margin-top:4px;"></div>
     <div class="rowbtns"><button class="btn block" onclick="saveNewRecipe()">Salva ricetta</button></div>
   `, ()=>{
     window._recipePhoto = null;
@@ -3087,14 +3088,16 @@ async function saveNewRecipe(){
   const reparti = readRepartiCheckbox("rcReparti");
   const ingredienti = document.getElementById("rcIngredienti").value.split("\n").map(s=>s.trim()).filter(Boolean);
   const procedimento = document.getElementById("rcProcedimento").value.trim();
-  const giorni = parseInt(document.getElementById("rcGiorni").value) || 0;
+  const giorniRaw = document.getElementById("rcGiorni").value;
   const giorniAbbattutoRaw = document.getElementById("rcGiorniAbbattuto").value;
-  const giorniAbbattuto = giorniAbbattutoRaw!==""? (parseInt(giorniAbbattutoRaw)||0) : undefined;
+  const errEl = document.getElementById("rcErrore");
   if(!nome){ toast("Inserisci il nome del piatto"); return; }
   if(!ingredienti.length){ toast("Inserisci almeno un ingrediente"); return; }
+  if(giorniRaw===""||giorniAbbattutoRaw===""){ errEl.textContent = "⚠️ Campo obbligatorio mancante: indica i giorni di conservazione sia per NON abbattuto che per ABBATTUTO."; return; }
+  const giorni = parseInt(giorniRaw)||0;
+  const giorniAbbattuto = parseInt(giorniAbbattutoRaw)||0;
   if(!config.recipes) config.recipes = [];
-  const rec = {id:uid(), nome, reparti, ingredienti, giorniConservazione:giorni, procedimento};
-  if(giorniAbbattuto!==undefined) rec.giorniConservazioneAbbattuto = giorniAbbattuto;
+  const rec = {id:uid(), nome, reparti, ingredienti, giorniConservazione:giorni, giorniConservazioneAbbattuto:giorniAbbattuto, procedimento};
   if(window._recipePhoto){
     rec.photoKey = "photo-ricetta-"+rec.id;
     DB.set(rec.photoKey, window._recipePhoto, true).catch(()=>toast("⚠️ Errore di salvataggio foto"));
@@ -3121,11 +3124,12 @@ function openEditRecipe(id){
     <textarea id="rcIngredienti" style="min-height:110px;">${r.ingredienti.join("\n")}</textarea>
     <label class="field">Procedimento (trascrizione integrale, facoltativo)</label>
     <textarea id="rcProcedimento" style="min-height:110px;">${r.procedimento||""}</textarea>
-    <label class="field">Giorni di conservazione del preparato</label>
-    <input type="number" id="rcGiorni" value="${r.giorniConservazione!==undefined? r.giorniConservazione : 3}" min="0" max="90">
-    <label class="field">Giorni di conservazione se abbattuto (facoltativo)</label>
-    <input type="number" id="rcGiorniAbbattuto" value="${r.giorniConservazioneAbbattuto!==undefined? r.giorniConservazioneAbbattuto : ''}" placeholder="lascia vuoto se uguale" min="0" max="365">
-    <p class="muted" style="font-size:12px;">Se impostato, verrà usato al posto del valore sopra quando la preparazione viene segnata come abbattuta.</p>
+    <label class="field">Giorni di conservazione — NON abbattuto (obbligatorio)</label>
+    <input type="number" id="rcGiorni" value="${r.giorniConservazione!==undefined? r.giorniConservazione : 1}" min="0" max="90">
+    <label class="field">Giorni di conservazione — ABBATTUTO (obbligatorio)</label>
+    <input type="number" id="rcGiorniAbbattuto" value="${r.giorniConservazioneAbbattuto!==undefined? r.giorniConservazioneAbbattuto : 8}" min="0" max="365">
+    <p class="muted" style="font-size:12px;">Scadenza del semilavorato: senza abbattitore vs. con abbattitore.</p>
+    <div id="rcErrore" style="color:var(--red);font-size:13px;margin-top:4px;"></div>
     <div class="rowbtns">
       <button class="btn block" onclick="editRecipe('${id}')">Salva modifiche</button>
       <button class="btn danger" onclick="deleteRecipe('${id}')">Elimina ricetta</button>
@@ -3147,15 +3151,17 @@ async function editRecipe(id){
   const r = config.recipes.find(x=>x.id===id);
   const nome = document.getElementById("rcNome").value.trim();
   const ingredienti = document.getElementById("rcIngredienti").value.split("\n").map(s=>s.trim()).filter(Boolean);
+  const giorniRaw = document.getElementById("rcGiorni").value;
+  const giorniAbbattutoRaw = document.getElementById("rcGiorniAbbattuto").value;
+  const errEl = document.getElementById("rcErrore");
   if(!nome){ toast("Inserisci il nome del piatto"); return; }
   if(!ingredienti.length){ toast("Inserisci almeno un ingrediente"); return; }
+  if(giorniRaw===""||giorniAbbattutoRaw===""){ errEl.textContent = "⚠️ Campo obbligatorio mancante: indica i giorni di conservazione sia per NON abbattuto che per ABBATTUTO."; return; }
   r.nome = nome; r.ingredienti = ingredienti;
   r.reparti = readRepartiCheckbox("rcReparti");
   r.procedimento = document.getElementById("rcProcedimento").value.trim();
-  r.giorniConservazione = parseInt(document.getElementById("rcGiorni").value) || 0;
-  const giorniAbbattutoRaw = document.getElementById("rcGiorniAbbattuto").value;
-  if(giorniAbbattutoRaw!==""){ r.giorniConservazioneAbbattuto = parseInt(giorniAbbattutoRaw)||0; }
-  else { delete r.giorniConservazioneAbbattuto; }
+  r.giorniConservazione = parseInt(giorniRaw)||0;
+  r.giorniConservazioneAbbattuto = parseInt(giorniAbbattutoRaw)||0;
   if(window._recipePhoto){
     r.photoKey = r.photoKey || ("photo-ricetta-"+r.id);
     DB.set(r.photoKey, window._recipePhoto, true).catch(()=>toast("⚠️ Errore di salvataggio foto"));
@@ -4723,7 +4729,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "64";
+const APP_VERSION = "65";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
