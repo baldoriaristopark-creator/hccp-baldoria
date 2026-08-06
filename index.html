@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v68">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v69">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v68</title>
+<title>HACCP Baldoria v69</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 68 · filtri data/fornitore in P1 · 02/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 69 · fix ricerca e matching lotti · 06/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2694,7 +2694,10 @@ function produzioneListHtml(query){
     const s = statusOf(p);
     return s==="bad"? "SCADUTO" : s==="missing"? "In scadenza" : "Valido";
   }
-  if(!sorted.length) return `<div class="empty">${q||dateFiltroProduzione||fornitoreFiltroProduzione? `Nessun prodotto trovato.` : "Nessun prodotto in produzione al momento."}</div>`;
+  if(!sorted.length) return `<div class="empty">
+    ${q||dateFiltroProduzione||fornitoreFiltroProduzione? `Nessun prodotto trovato.` : "Nessun prodotto in produzione al momento."}
+    ${q? `<div class="rowbtns"><button class="btn secondary block" onclick="openProduzioneForm('${q.replace(/'/g,"\\'")}')">+ Aggiungi "${esc(q)}" come nuovo prodotto</button></div>` : ''}
+  </div>`;
   return sorted.map(p=>`
     <div class="logrow" onclick="openProduzioneDetail('${p.id}')" style="cursor:pointer;">
       <div>
@@ -2735,9 +2738,9 @@ function renderProduzioneList(query){
   }
 }
 
-function openProduzioneForm(){
+function openProduzioneForm(nomePrecompilato){
   openSheet("Nuovo prodotto in produzione", `
-    <label class="field">Prodotto</label><input type="text" id="pzNome">
+    <label class="field">Prodotto</label><input type="text" id="pzNome" value="${nomePrecompilato? esc(nomePrecompilato):''}">
     <label class="field">Lotto</label><input type="text" id="pzLotto">
     <label class="field">Fornitore</label><input type="text" id="pzFornitore">
     <label class="field">N. DDT</label><input type="text" id="pzDdt">
@@ -2851,7 +2854,7 @@ async function deleteProduzione(id){
 }
 
 // ---------- RICETTE / COMPOSIZIONE PRODOTTI ----------
-const MATCH_STOPWORDS = new Set(["kg","g","gr","grammi","l","lt","litri","ml","pz","pezzi","conf","confezione","confezioni","da","di","del","della","dei","delle","tipo","circa","cad","cadauno","x"]);
+const MATCH_STOPWORDS = new Set(["kg","g","gr","grammi","l","lt","litri","ml","pz","pezzi","conf","confezione","confezioni","da","di","del","della","dei","delle","tipo","circa","cad","cadauno","x","per","con","senza","e","ed","a","al","alla","allo","ai","agli","in","nel","nella"]);
 function normalizeTokens(s){
   return (s||"")
     .toLowerCase()
@@ -2923,8 +2926,12 @@ function normalizeForSearch(s){
 }
 function wordsMatchApprox(word, queryWord){
   if(!word || !queryWord) return false;
-  if(word.includes(queryWord) || queryWord.includes(word)) return true;
   const minLen = Math.min(word.length, queryWord.length);
+  // Le parole molto corte (es. articoli/preposizioni come "o", "a", "e") richiedono corrispondenza
+  // esatta: altrimenti "o" "contiene" quasi qualsiasi parola più lunga (es. "macinato"), causando
+  // risultati fuorvianti nella ricerca.
+  if(minLen < 3) return word === queryWord;
+  if(word.includes(queryWord) || queryWord.includes(word)) return true;
   if(minLen < 4) return word === queryWord;
   let common = 0;
   while(common < minLen && word[common]===queryWord[common]) common++;
@@ -4774,7 +4781,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "68";
+const APP_VERSION = "69";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
