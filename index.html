@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v70">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v71">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v70</title>
+<title>HACCP Baldoria v71</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 70 · collega lotto trovato alla ricetta · 06/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 71 · scelta abbattuto obbligatoria · 06/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -3296,7 +3296,7 @@ function openComponiForm(recipeId){
   window._componiDraft = null;
   const giorniR = r.giorniConservazione!==undefined ? r.giorniConservazione : 3;
   const giorniRAbbattuto = r.giorniConservazioneAbbattuto!==undefined ? r.giorniConservazioneAbbattuto : giorniR;
-  window._componiAbbattuto = bozza ? bozza.abbattuto : { attivo:false, tipo:"positivo", temperatura:"", durata:"" };
+  window._componiAbbattuto = bozza ? bozza.abbattuto : { attivo:null, tipo:"positivo", temperatura:"", durata:"" };
   const progrPrev = logs.produzione.filter(p=>p.semilavorato && p.ricettaId===recipeId && p.dataConsegna===todayISO()).length + 1;
   window._componiScadenzaParams = { recipeId, progrPrev, giorniR, giorniRAbbattuto };
   // Lotti precedenti della STESSA ricetta ancora segnati come attivi (non esauriti)
@@ -3317,9 +3317,11 @@ function openComponiForm(recipeId){
       `).join("")}
     </div>`:""}
     <div class="card" style="padding:11px;">
-      <label class="ac-opt" id="componiAbbattutoRow" onclick="toggleComponiAbbattuto(this)">
-        <span class="ac-box">☐</span><span>❄️ Prodotto abbattuto</span>
-      </label>
+      <div class="lbl" style="font-weight:700;font-size:13px;margin-bottom:6px;">Il prodotto è stato abbattuto? (obbligatorio)</div>
+      <div class="conforme-toggle" id="componiAbbattutoToggle">
+        <button type="button" id="componiAbbSiBtn" onclick="setComponiAbbattuto(true)">❄️ Abbattuto</button>
+        <button type="button" id="componiAbbNoBtn" onclick="setComponiAbbattuto(false)">🌡️ Non abbattuto</button>
+      </div>
       <div id="componiAbbattutoFields" style="display:none;margin-top:10px;">
         <label class="field" style="margin-top:0;">Tipo abbattimento</label>
         <select id="componiAbbTipo" onchange="window._componiAbbattuto.tipo=this.value">
@@ -3350,6 +3352,15 @@ function openComponiForm(recipeId){
   `, ()=>{
     renderComponiRows();
     renderComponiScadenzaCard(recipeId, progrPrev, giorniR, giorniRAbbattuto);
+    if(window._componiAbbattuto.attivo===true){
+      document.getElementById("componiAbbSiBtn").className = "sel-ok";
+      document.getElementById("componiAbbattutoFields").style.display = "block";
+      if(window._componiAbbattuto.tipo) document.getElementById("componiAbbTipo").value = window._componiAbbattuto.tipo;
+      if(window._componiAbbattuto.temperatura) document.getElementById("componiAbbTemp").value = window._componiAbbattuto.temperatura;
+      if(window._componiAbbattuto.durata) document.getElementById("componiAbbDurata").value = window._componiAbbattuto.durata;
+    } else if(window._componiAbbattuto.attivo===false){
+      document.getElementById("componiAbbNoBtn").className = "sel-ok";
+    }
     window._composizionePhoto = bozza? bozza.foto : null;
     document.getElementById("componiPhotoInput").onchange = (e)=>{
       const file = e.target.files[0];
@@ -3386,11 +3397,16 @@ function toggleComponiEsaurisciVecchio(prodId, el){
   el.querySelector(".ac-box").textContent = window._componiEsaurisciVecchi[prodId] ? "☑" : "☐";
   el.classList.toggle("sel", window._componiEsaurisciVecchi[prodId]);
 }
-function toggleComponiAbbattuto(el){
-  window._componiAbbattuto.attivo = !window._componiAbbattuto.attivo;
-  el.querySelector(".ac-box").textContent = window._componiAbbattuto.attivo ? "☑" : "☐";
-  el.classList.toggle("sel", window._componiAbbattuto.attivo);
-  document.getElementById("componiAbbattutoFields").style.display = window._componiAbbattuto.attivo ? "block" : "none";
+function setComponiAbbattuto(valore){
+  window._componiAbbattuto.attivo = valore;
+  const btnSi = document.getElementById("componiAbbSiBtn");
+  const btnNo = document.getElementById("componiAbbNoBtn");
+  if(btnSi) btnSi.className = valore===true ? "sel-ok" : "";
+  if(btnNo) btnNo.className = valore===false ? "sel-ok" : "";
+  const fieldsEl = document.getElementById("componiAbbattutoFields");
+  if(fieldsEl) fieldsEl.style.display = valore===true ? "block" : "none";
+  const errEl = document.getElementById("componiErrore");
+  if(errEl) errEl.textContent = "";
   const p = window._componiScadenzaParams;
   if(p) renderComponiScadenzaCard(p.recipeId, p.progrPrev, p.giorniR, p.giorniRAbbattuto);
 }
@@ -3453,6 +3469,7 @@ async function saveComposizione(recipeId){
   if(!op){ toast("Inserisci l'operatore"); return; }
   if(!qtaVal){ errEl.textContent = "⚠️ Campo obbligatorio mancante: indica la quantità preparata."; return; }
   if(!window._composizionePhoto){ errEl.textContent = "⚠️ Campo obbligatorio mancante: allega una foto del preparato."; return; }
+  if(window._componiAbbattuto.attivo!==true && window._componiAbbattuto.attivo!==false){ errEl.textContent = "⚠️ Campo obbligatorio mancante: indica se il prodotto è abbattuto o non abbattuto."; return; }
   const daScegliere = window._componiIngredienti.filter(x=>x.candidati && x.candidati.length && !x.produzioneId);
   if(daScegliere.length){ toast(`❓ Scegli il lotto per: ${daScegliere.map(x=>x.ingrediente).join(", ")}`); return; }
   const abb = window._componiAbbattuto || {attivo:false};
@@ -4835,7 +4852,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "70";
+const APP_VERSION = "71";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
