@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v69">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v70">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v69</title>
+<title>HACCP Baldoria v70</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 69 · fix ricerca e matching lotti · 06/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 70 · collega lotto trovato alla ricetta · 06/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2612,11 +2612,57 @@ function addDaysISO(iso, days){
 }
 
 // ---------- PRODUZIONE (P1 - lotti e tracciabilità) ----------
-function cercaIngredienteInArticoli(nomeIngrediente){
+function cercaIngredienteInArticoli(nomeIngrediente, ingredienteIndex){
+  const recipeId = window._componiScadenzaParams ? window._componiScadenzaParams.recipeId : null;
+  if(recipeId!==null && ingredienteIndex!==undefined){
+    // Salviamo la bozza in corso (quantità, note, foto, tutti i lotti già assegnati) così tornando
+    // dalla ricerca non si perde nulla di quello che era già stato compilato.
+    const qtaEl = document.getElementById("componiQta");
+    const opEl = document.getElementById("componiOp");
+    const noteEl = document.getElementById("componiNote");
+    window._componiDraft = {
+      recipeId,
+      ingredienti: window._componiIngredienti,
+      abbattuto: window._componiAbbattuto,
+      esaurisciVecchi: window._componiEsaurisciVecchi,
+      qta: qtaEl? qtaEl.value : "",
+      op: opEl? opEl.value : lastOperator,
+      note: noteEl? noteEl.value : "",
+      foto: window._composizionePhoto
+    };
+    window._produzioneSelectContext = { recipeId, ingredienteIndex };
+  }
   window._produzionePresearch = nomeIngrediente;
   closeSheet();
   activeTab = "produzione";
   render();
+}
+async function usaArticoloPerComposizione(produzioneId){
+  const ctx = window._produzioneSelectContext;
+  if(!ctx || !window._componiDraft) return;
+  const p = logs.produzione.find(x=>x.id===produzioneId);
+  if(!p) return;
+  const riga = window._componiDraft.ingredienti[ctx.ingredienteIndex];
+  riga.prodottoTrovato = p.prodotto;
+  riga.lotto = p.lotto;
+  riga.fornitore = p.fornitore;
+  riga.ddt = p.ddt;
+  riga.dataConsegna = p.dataConsegna;
+  riga.produzioneId = p.id;
+  riga.semilavorato = !!p.semilavorato;
+  riga.candidati = [];
+  window._produzioneSelectContext = null;
+  toast(`✅ "${riga.ingrediente}" collegato a ${p.prodotto}`);
+  openComponiForm(ctx.recipeId);
+}
+function annullaSelezioneArticolo(){
+  const ctx = window._produzioneSelectContext;
+  window._produzioneSelectContext = null;
+  if(ctx && window._componiDraft && window._componiDraft.recipeId===ctx.recipeId){
+    openComponiForm(ctx.recipeId);
+  } else {
+    render();
+  }
 }
 function renderProduzione(){
   const t = todayISO();
@@ -2640,6 +2686,11 @@ function renderProduzione(){
   $main.innerHTML = `
     <div class="card">
       <div class="card-head"><h2>Registro articoli e tracciabilità lotti (P1)</h2><div style="display:flex;gap:6px;">${printBtn('produzione', meseExportProduzione)}${saveBtn('produzione', meseExportProduzione)}</div></div>
+      ${window._produzioneSelectContext? `<div class="card" style="padding:11px;background:var(--green-pale);border:none;margin-bottom:10px;">
+        <div style="font-weight:800;font-size:13px;">🔍 Stai cercando un lotto da collegare alla ricetta in sospeso</div>
+        <p class="muted" style="margin:4px 0 8px;font-size:12px;">Trova l'articolo giusto e tocca "✅ Usa questo lotto" per riportarlo automaticamente alla composizione, oppure annulla per tornarci senza scegliere.</p>
+        <button class="iconbtn" onclick="annullaSelezioneArticolo()">✕ Annulla e torna alla ricetta</button>
+      </div>` : ''}
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <label class="muted" style="font-size:12px;white-space:nowrap;">Mese scheda esauriti 🖨️/💾:</label>
         ${meseAnnoSelectHtml(meseExportProduzione, "meseExportProduzione", "setMeseExportProduzione")}
@@ -2703,6 +2754,7 @@ function produzioneListHtml(query){
       <div>
         <div class="val">${p.lungaConservazione? '🗄️ ':''}${p.prodotto}</div>
         <div class="meta">Lotto: ${p.lotto||'—'} · ${p.fornitore} · consegna ${fmtDate(p.dataConsegna)} · scade il ${fmtDate(p.dataScadenza)}</div>
+        ${window._produzioneSelectContext? `<button class="btn secondary" style="margin-top:6px;padding:6px 10px;font-size:12px;" onclick="event.stopPropagation();usaArticoloPerComposizione('${p.id}')">✅ Usa questo lotto per la ricetta</button>` : ''}
       </div>
       <span class="chip ${statusOf(p)}">${statusLabel(p)}</span>
     </div>`).join("");
@@ -3227,7 +3279,8 @@ async function deleteRecipe(id){
 }
 function openComponiForm(recipeId){
   const r = config.recipes.find(x=>x.id===recipeId);
-  window._componiIngredienti = r.ingredienti.map(nome=>{
+  const bozza = (window._componiDraft && window._componiDraft.recipeId===recipeId) ? window._componiDraft : null;
+  window._componiIngredienti = bozza ? bozza.ingredienti : r.ingredienti.map(nome=>{
     const candidati = findLottiForIngredient(nome);
     if(candidati.length === 1){
       const f = candidati[0];
@@ -3240,15 +3293,16 @@ function openComponiForm(recipeId){
     }
     return {ingrediente:nome, prodottoTrovato:"", lotto:"", fornitore:"", ddt:"", dataConsegna:"", produzioneId:null, candidati:[]};
   });
+  window._componiDraft = null;
   const giorniR = r.giorniConservazione!==undefined ? r.giorniConservazione : 3;
   const giorniRAbbattuto = r.giorniConservazioneAbbattuto!==undefined ? r.giorniConservazioneAbbattuto : giorniR;
-  window._componiAbbattuto = { attivo:false, tipo:"positivo", temperatura:"", durata:"" };
+  window._componiAbbattuto = bozza ? bozza.abbattuto : { attivo:false, tipo:"positivo", temperatura:"", durata:"" };
   const progrPrev = logs.produzione.filter(p=>p.semilavorato && p.ricettaId===recipeId && p.dataConsegna===todayISO()).length + 1;
   window._componiScadenzaParams = { recipeId, progrPrev, giorniR, giorniRAbbattuto };
   // Lotti precedenti della STESSA ricetta ancora segnati come attivi (non esauriti)
   const lottiPrecedenti = logs.produzione.filter(p=>p.semilavorato && p.ricettaId===recipeId && !p.esaurito);
-  window._componiEsaurisciVecchi = {};
-  lottiPrecedenti.forEach(p=>{ window._componiEsaurisciVecchi[p.id] = true; }); // preselezionati: di solito si fa un nuovo lotto perché il vecchio è finito
+  window._componiEsaurisciVecchi = bozza ? bozza.esaurisciVecchi : {};
+  if(!bozza) lottiPrecedenti.forEach(p=>{ window._componiEsaurisciVecchi[p.id] = true; }); // preselezionati: di solito si fa un nuovo lotto perché il vecchio è finito
   openSheet(`Componi — ${r.nome}`, `
     <p class="muted">Lotti recuperati automaticamente dalle schede di Produzione. Controlla e correggi le righe senza lotto (⚠️) e scegli dove ci sono più fornitori (❓).</p>
     <div id="componiRows"></div>
@@ -3280,23 +3334,23 @@ function openComponiForm(recipeId){
       </div>
     </div>
     <label class="field">Quantità preparata (obbligatorio)</label>
-    <input type="text" id="componiQta" placeholder="es. 5 kg, 20 porzioni">
+    <input type="text" id="componiQta" placeholder="es. 5 kg, 20 porzioni" value="${bozza? esc(bozza.qta) : ''}">
     <label class="field">Operatore</label>
-    <input type="text" id="componiOp" value="${lastOperator}">
+    <input type="text" id="componiOp" value="${bozza? esc(bozza.op) : lastOperator}">
     <label class="field">Note (facoltativo)</label>
-    <textarea id="componiNote" placeholder="es. procedimento seguito, eventuali variazioni"></textarea>
+    <textarea id="componiNote" placeholder="es. procedimento seguito, eventuali variazioni">${bozza? esc(bozza.note) : ''}</textarea>
     <label class="field">Foto del preparato (obbligatoria)</label>
     <div class="photo-zone" id="componiPhotoZone">
       <input type="file" accept="image/*" capture="environment" id="componiPhotoInput" style="display:none">
       <button class="btn secondary block" onclick="document.getElementById('componiPhotoInput').click()">📷 Scatta / carica foto</button>
-      <div id="componiPhotoPreview"></div>
+      <div id="componiPhotoPreview">${bozza && bozza.foto? `<img src="${bozza.foto}">` : ''}</div>
     </div>
     <div id="componiErrore" style="color:var(--red);font-size:13px;margin-top:4px;"></div>
-    <div class="rowbtns"><button class="btn block" id="componiSaveBtn" disabled onclick="saveComposizione('${recipeId}')">✅ Registra preparazione</button></div>
+    <div class="rowbtns"><button class="btn block" id="componiSaveBtn" ${bozza && bozza.foto? '':'disabled'} onclick="saveComposizione('${recipeId}')">✅ Registra preparazione</button></div>
   `, ()=>{
     renderComponiRows();
     renderComponiScadenzaCard(recipeId, progrPrev, giorniR, giorniRAbbattuto);
-    window._composizionePhoto = null;
+    window._composizionePhoto = bozza? bozza.foto : null;
     document.getElementById("componiPhotoInput").onchange = (e)=>{
       const file = e.target.files[0];
       if(!file) return;
@@ -3362,7 +3416,7 @@ function renderComponiRows(){
     }
     return `<div class="card" style="padding:10px;margin-bottom:8px;${row.lotto? '':'border:2px solid var(--amber);'}">
       <div style="font-weight:800;font-size:13px;">${row.ingrediente} ${row.lotto? (row.semilavorato? '🏷️ semilavorato interno':'✅'):'⚠️ lotto non trovato'}</div>
-      ${row.lotto ? `<div class="muted" style="font-size:12px;">Trovato: ${row.prodottoTrovato} · ${row.semilavorato? 'preparato il':'consegna'} ${fmtDate(row.dataConsegna)} da ${row.fornitore}</div>` : `<button class="iconbtn" style="margin:4px 0 2px;" onclick="cercaIngredienteInArticoli('${row.ingrediente.replace(/'/g,"\\'")}')">🔍 Cerca "${row.ingrediente}" in Articoli/Lotti</button>`}
+      ${row.lotto ? `<div class="muted" style="font-size:12px;">Trovato: ${row.prodottoTrovato} · ${row.semilavorato? 'preparato il':'consegna'} ${fmtDate(row.dataConsegna)} da ${row.fornitore}</div>` : `<button class="iconbtn" style="margin:4px 0 2px;" onclick="cercaIngredienteInArticoli('${row.ingrediente.replace(/'/g,"\\'")}', ${i})">🔍 Cerca "${row.ingrediente}" in Articoli/Lotti</button>`}
       <div class="grid2" style="margin-top:6px;">
         <div><label class="field" style="margin-top:4px;">Lotto</label><input type="text" value="${row.lotto}" oninput="window._componiIngredienti[${i}].lotto=this.value"></div>
         <div><label class="field" style="margin-top:4px;">Fornitore</label><input type="text" value="${row.fornitore}" oninput="window._componiIngredienti[${i}].fornitore=this.value"></div>
@@ -4781,7 +4835,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "69";
+const APP_VERSION = "70";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
