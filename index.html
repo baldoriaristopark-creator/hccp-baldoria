@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v71">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v72">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v71</title>
+<title>HACCP Baldoria v72</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 71 · scelta abbattuto obbligatoria · 06/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 72 · unifica fornitori simili · 06/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2697,6 +2697,7 @@ function renderProduzione(){
       </div>
       <p class="muted">Solo articoli ricevuti da fornitore (bolle in "Matrici in ingresso"). I preparati interni (semilavorati) si trovano ora nella scheda di ogni singola ricetta, sezione "🔍 Tracciabilità". Scadenza calcolata a 7 giorni dalla consegna (2 anni per gli articoli a lunga conservazione riconosciuti automaticamente) — modificabile per ogni prodotto.</p>
       ${isAdmin()? `<div class="rowbtns"><button class="iconbtn block" onclick="applicaLungaConservazioneRetroattiva()">🔄 Applica riconoscimento lunga conservazione ai prodotti già presenti</button></div>`:""}
+      ${isAdmin()? `<div class="rowbtns"><button class="iconbtn block" onclick="openUnificaFornitori()">🔗 Unifica fornitori simili</button></div>`:""}
       <input type="text" id="produzioneSearchInput" placeholder="🔎 Cerca per prodotto, lotto o fornitore..." oninput="renderProduzioneList(this.value)" style="margin-bottom:10px;">
       ${dateFilterHtml(dateFiltroProduzione, "setDateFiltroProduzione")}
       ${fornitoreFilterHtml()}
@@ -2717,6 +2718,74 @@ function renderProduzione(){
     const inp = document.getElementById("produzioneSearchInput");
     if(inp){ inp.value = val; renderProduzioneList(val); }
   }
+}
+// Normalizza un nome fornitore per confrontarlo con altre varianti: minuscolo, senza punteggiatura,
+// senza forme societarie comuni (srl, spa, ecc.) e senza spazi doppi — per unificare varianti come
+// "Casearia Agricol Sud S.r.l." e "Casearia AgricolSud srl".
+function normalizzaFornitore(nome){
+  let n = (nome||"").toLowerCase();
+  n = n.replace(/[.,\/\-]/g, " ");
+  n = n.replace(/\b(s\s*r\s*l|s\s*p\s*a|s\s*a\s*s|s\s*n\s*c|s\s*s|di|e\s*c\b|srls)\b/g, " ");
+  n = n.replace(/\s+/g, "");
+  return n;
+}
+function trovaGruppiFornitoriSimili(){
+  const tutti = new Set();
+  logs.produzione.forEach(p=>{ if(p.fornitore) tutti.add(p.fornitore); });
+  logs.moma.forEach(m=>{ if(m.fornitore) tutti.add(m.fornitore); });
+  const gruppi = {};
+  [...tutti].forEach(nome=>{
+    const key = normalizzaFornitore(nome);
+    if(!key) return;
+    if(!gruppi[key]) gruppi[key] = [];
+    gruppi[key].push(nome);
+  });
+  return Object.values(gruppi).filter(varianti=>varianti.length>1);
+}
+function openUnificaFornitori(){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  const gruppi = trovaGruppiFornitoriSimili();
+  if(!gruppi.length){ toast("Nessuna variante di fornitore trovata: sono già tutti distinti."); return; }
+  openSheet("🔗 Unifica fornitori simili", `
+    <p class="muted">Trovat${gruppi.length===1?'o':'i'} ${gruppi.length} gruppo/i di nomi che sembrano lo stesso fornitore scritto in modo diverso. Controlla e correggi il nome definitivo per ciascuno — lascia vuoto un gruppo per NON unificarlo.</p>
+    ${gruppi.map((varianti,gi)=>{
+      // Suggerisco come nome definitivo quello scritto in modo più completo (più lungo)
+      const suggerito = varianti.slice().sort((a,b)=>b.length-a.length)[0];
+      return `
+      <div class="card" style="padding:11px;background:var(--cream);border:1px solid var(--line);margin-bottom:10px;">
+        <div class="muted" style="font-size:12px;margin-bottom:6px;">Varianti trovate:</div>
+        ${varianti.map(v=>`<div style="font-size:13px;">• ${esc(v)}</div>`).join("")}
+        <label class="field" style="margin-top:8px;">Nome definitivo da usare</label>
+        <input type="text" id="unifNome-${gi}" value="${esc(suggerito)}" data-varianti='${esc(JSON.stringify(varianti))}'>
+      </div>`;
+    }).join("")}
+    <div class="rowbtns"><button class="btn block" onclick="applicaUnificaFornitori(${gruppi.length})">Applica le unificazioni</button></div>
+  `);
+}
+async function applicaUnificaFornitori(numGruppi){
+  let totaleModifiche = 0;
+  let gruppiApplicati = 0;
+  for(let gi=0; gi<numGruppi; gi++){
+    const input = document.getElementById(`unifNome-${gi}`);
+    if(!input) continue;
+    const nomeDefinitivo = input.value.trim();
+    if(!nomeDefinitivo) continue; // lasciato vuoto: salta questo gruppo
+    const varianti = JSON.parse(input.dataset.varianti);
+    const daSostituire = varianti.filter(v=>v!==nomeDefinitivo);
+    if(!daSostituire.length) continue;
+    gruppiApplicati++;
+    logs.produzione.forEach(p=>{
+      if(daSostituire.includes(p.fornitore)){ p.fornitore = nomeDefinitivo; totaleModifiche++; }
+    });
+    logs.moma.forEach(m=>{
+      if(daSostituire.includes(m.fornitore)){ m.fornitore = nomeDefinitivo; totaleModifiche++; }
+    });
+  }
+  if(!gruppiApplicati){ toast("Nessuna unificazione da applicare (tutti i campi erano vuoti o invariati)."); return; }
+  await saveLog("produzione");
+  await saveLog("moma");
+  toast(`✅ Unificati ${gruppiApplicati} gruppo/i di fornitori (${totaleModifiche} registrazioni aggiornate)`);
+  activeTab="produzione"; closeSheet();
 }
 function fornitoreFilterHtml(){
   const fornitori = [...new Set(logs.produzione.filter(p=>!p.semilavorato && p.fornitore).map(p=>p.fornitore))].sort();
@@ -4852,7 +4921,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "71";
+const APP_VERSION = "72";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
