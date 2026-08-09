@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v72">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v73">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v72</title>
+<title>HACCP Baldoria v73</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 72 · unifica fornitori simili · 06/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 73 · avviso HACCP per reparto · 06/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -469,6 +469,7 @@ let statoFiltroTemp = "";
 let statoFiltroSanif = "";
 let turniWeekOffset = 0;
 let dateFiltroMoma = "";
+let fornitoreFiltroMoma = "";
 let dateFiltroComposizioni = "";
 function dateFilterHtml(currentValue, onchangeFn){
   return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
@@ -966,19 +967,19 @@ function auditMissingDaily(){
   const tSanif = sanifDateISO();
   const missingTemp = config.points.filter(p=>!logs.temperature.some(r=>r.pointId===p.id && r.data===t));
   const missingSanif = (config.sanifItems.giornaliera||[]).filter(item=>!logs.sanificazione.some(r=>r.item===item && r.frequenza==='giornaliera' && r.data===tSanif));
-  return {missingTemp: missingTemp.map(p=>p.id), missingSanif, missingTempLabels: missingTemp.map(p=>p.name)};
+  return {missingTemp: missingTemp.map(p=>p.id), missingSanif, missingTempLabels: missingTemp.map(p=>p.name), missingTempReparti: missingTemp.map(p=>p.reparto||""), missingSanifReparti: missingSanif.map(item=>config.sanifReparti[item]||"")};
 }
 function auditMissingWeekly(){
   const mondayISO = getMondayOfWeek(new Date());
   const missingSanif = (config.sanifItems.settimanale||[]).filter(item=>!logs.sanificazione.some(r=>r.item===item && r.frequenza==='settimanale' && r.data>=mondayISO));
   const missingCoai = !logs.coai.some(c=>c.data>=mondayISO);
-  return {missingSanif, missingCoai};
+  return {missingSanif, missingCoai, missingSanifReparti: missingSanif.map(item=>config.sanifReparti[item]||"")};
 }
 function auditMissingMonthly(){
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const missingSanif = (config.sanifItems.mensile||[]).filter(item=>!logs.sanificazione.some(r=>r.item===item && r.frequenza==='mensile' && r.data.slice(0,7)===monthKey));
-  return {missingSanif};
+  return {missingSanif, missingSanifReparti: missingSanif.map(item=>config.sanifReparti[item]||"")};
 }
 function auditIsEmpty(type, missing){
   if(type==='daily') return missing.missingTemp.length===0 && missing.missingSanif.length===0;
@@ -991,15 +992,21 @@ function auditComputeMissing(type){
   return auditMissingMonthly();
 }
 function auditNoticeLabel(type, missing){
+  const miei = mieiReparti(); // [] per admin o operatori senza restrizioni: vedono tutto
+  const filtra = (lista, reparti) => miei.length? lista.filter((_,i)=> !reparti[i] || miei.includes(reparti[i])) : lista;
   const parts = [];
   if(type==='daily'){
-    if(missing.missingTempLabels.length) parts.push(`Temperature non registrate: ${missing.missingTempLabels.join(', ')}`);
-    if(missing.missingSanif.length) parts.push(`Sanificazioni giornaliere non fatte: ${missing.missingSanif.join(', ')}`);
+    const templabels = filtra(missing.missingTempLabels, missing.missingTempReparti||[]);
+    const sanifItems = filtra(missing.missingSanif, missing.missingSanifReparti||[]);
+    if(templabels.length) parts.push(`Temperature non registrate: ${templabels.join(', ')}`);
+    if(sanifItems.length) parts.push(`Sanificazioni giornaliere non fatte: ${sanifItems.join(', ')}`);
   } else if(type==='weekly'){
-    if(missing.missingSanif.length) parts.push(`Sanificazioni settimanali non fatte: ${missing.missingSanif.join(', ')}`);
-    if(missing.missingCoai) parts.push(`Controllo infestanti (COAI) non ancora fatto questa settimana`);
+    const sanifItems = filtra(missing.missingSanif, missing.missingSanifReparti||[]);
+    if(sanifItems.length) parts.push(`Sanificazioni settimanali non fatte: ${sanifItems.join(', ')}`);
+    if(missing.missingCoai && isAdmin()) parts.push(`Controllo infestanti (COAI) non ancora fatto questa settimana`);
   } else {
-    if(missing.missingSanif.length) parts.push(`Sanificazioni mensili non fatte: ${missing.missingSanif.join(', ')}`);
+    const sanifItems = filtra(missing.missingSanif, missing.missingSanifReparti||[]);
+    if(sanifItems.length) parts.push(`Sanificazioni mensili non fatte: ${sanifItems.join(', ')}`);
   }
   return parts.join(' · ');
 }
@@ -1101,12 +1108,15 @@ function auditBannerHtml(){
   const items = ['daily','weekly','monthly'].filter(t=>audits[t]).map(t=>{
     const a = audits[t];
     const label = t==='daily'?'Giornaliero':t==='weekly'?'Settimanale':'Mensile';
-    return `<div style="font-size:12px;">${a.escalated?'🚨':'⚠️'} <b>${label}:</b> ${auditNoticeLabel(t, a.missing)}</div>`;
+    const testo = auditNoticeLabel(t, a.missing);
+    if(!testo) return ""; // dopo il filtro per reparto, questo tipo non riguarda l'operatore attuale
+    return `<div style="font-size:12px;">${a.escalated?'🚨':'⚠️'} <b>${label}:</b> ${testo}</div>`;
   }).join("");
+  if(!items) return ""; // nulla di rilevante per il reparto dell'operatore attuale
   return `<div class="card" style="border:2px solid var(--red);background:var(--red-pale);">
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <h2 style="color:var(--red);margin:0;">🔍 Controlli HACCP in sospeso</h2>
-      ${anyAuditEscalated()? `<button class="iconbtn" onclick="muteSiren()">🔇 Silenzia</button>` : ""}
+      ${anyAuditEscalated() && isAdmin()? `<button class="iconbtn" onclick="muteSiren()">🔇 Silenzia</button>` : ""}
     </div>
     ${items}
   </div>`;
@@ -2194,7 +2204,9 @@ async function deleteSanifEntry(id){
 function renderMoma(){
   let history = [...logs.moma].sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora));
   if(dateFiltroMoma) history = history.filter(m=>m.data===dateFiltroMoma);
-  else history = history.slice(0,20);
+  if(fornitoreFiltroMoma) history = history.filter(m=>m.fornitore===fornitoreFiltroMoma);
+  if(!dateFiltroMoma && !fornitoreFiltroMoma) history = history.slice(0,20);
+  const fornitoriMoma = [...new Set(logs.moma.map(m=>m.fornitore).filter(Boolean))].sort();
   $main.innerHTML = `
     <div class="card">
       <div class="card-head"><h2>Controllo matrici alimentari in ingresso (MOMA)</h2><div style="display:flex;gap:6px;">${printBtn('moma', meseExportMoma)}${saveBtn('moma', meseExportMoma)}</div></div>
@@ -2206,8 +2218,12 @@ function renderMoma(){
       <button class="btn block" onclick="openMomaForm()">+ Nuova consegna</button>
     </div>
     <div class="card">
-      <h2>${dateFiltroMoma? `Consegne del ${fmtDate(dateFiltroMoma)}` : "Ultime consegne"}</h2>
+      <h2>${dateFiltroMoma||fornitoreFiltroMoma? `Consegne trovate (${history.length})` : "Ultime consegne"}</h2>
       ${dateFilterHtml(dateFiltroMoma, "setDateFiltroMoma")}
+      ${fornitoriMoma.length? `<select onchange="setFornitoreFiltroMoma(this.value)" style="margin-bottom:10px;">
+        <option value="" ${!fornitoreFiltroMoma?'selected':''}>Tutti i fornitori</option>
+        ${fornitoriMoma.map(f=>`<option value="${esc(f)}" ${fornitoreFiltroMoma===f?'selected':''}>${f}</option>`).join("")}
+      </select>` : ''}
       ${history.length? history.map(m=>`
         <div class="logrow" onclick="openMomaDetail('${m.id}')" style="cursor:pointer;">
           <div>
@@ -2215,11 +2231,12 @@ function renderMoma(){
             <div class="meta">${fmtDate(m.data)} · DDT ${m.ddt||'—'} · ${m.operatore}</div>
           </div>
           <span class="muted">✏️</span>
-        </div>`).join("") : `<div class="empty">${dateFiltroMoma? `Nessuna consegna registrata il ${fmtDate(dateFiltroMoma)}.` : "Nessuna consegna registrata ancora."}</div>`}
+        </div>`).join("") : `<div class="empty">${dateFiltroMoma||fornitoreFiltroMoma? "Nessuna consegna trovata con questi filtri." : "Nessuna consegna registrata ancora."}</div>`}
     </div>
   `;
 }
 function setDateFiltroMoma(v){ dateFiltroMoma = v; render(); }
+function setFornitoreFiltroMoma(v){ fornitoreFiltroMoma = v; render(); }
 function openMomaDetail(id){
   const m = logs.moma.find(x=>x.id===id);
   const articoliCollegati = logs.produzione.filter(p=>p.momaId===id);
@@ -4921,7 +4938,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "72";
+const APP_VERSION = "73";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
