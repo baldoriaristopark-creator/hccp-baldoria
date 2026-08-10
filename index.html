@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v76">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v77">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v76</title>
+<title>HACCP Baldoria v77</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 76 · abbattuto pos/neg, lotti terminati · 10/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 77 · bollino ricetta terminata · 10/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -3106,7 +3106,7 @@ function openRicettaTracciabilita(recipeId){
       <div class="logrow" onclick="openComposizioneDetail('${c.id}')" style="cursor:pointer;">
         <div>
           <div class="val" style="font-size:13px;">${fmtDate(c.data)} · ${c.ora} ${c.ingredientiUsati.some(i=>!i.lotto)? '⚠️':'✅'}${c.abbattuto? ' ❄️':''}</div>
-          ${lotto? `<div class="meta">Lotto: ${lotto.lotto} · Produzione interna · ${lotto.esaurito? `⚫ Non più disponibile dal ${fmtDate(lotto.dataEsaurimento)}` : `scade il ${fmtDate(lotto.dataScadenza)}`}</div>` : ''}
+          ${lotto? `<div class="meta">Lotto: ${lotto.lotto} · Produzione interna · scade il ${fmtDate(lotto.dataScadenza)}</div>` : ''}
           <div class="meta">${c.operatore}</div>
         </div>
         <span class="muted">›</span>
@@ -3128,9 +3128,11 @@ function ricetteBaseListHtml(query){
   }
   return filtered.map(r=>{
     const sueComposizioni = logs.composizioni.filter(c=>c.ricettaId===r.id || (!c.ricettaId && c.ricettaNome===r.nome)).slice().reverse();
+    const terminata = !!r.terminata;
     return `
-    <div class="point-tile" style="cursor:default;">
-      <div class="name">🍽️ ${r.nome} ${r.photoKey? '📷':''}</div>
+    <div class="point-tile" style="cursor:default;${terminata? 'border:2px solid #333;':''}">
+      <div class="name">🍽️ ${r.nome} ${r.photoKey? '📷':''} ${terminata? '⚫':''}</div>
+      ${terminata? `<div class="muted" style="font-size:11px;font-weight:700;">⚫ Ricetta terminata — non più in uso</div>`:''}
       ${r.reparti&&r.reparti.length? `<div class="muted" style="font-size:11px;">📍 ${r.reparti.join(', ')}</div>`:""}
       <div class="muted">${r.ingredienti.length} ingredienti: ${r.ingredienti.join(', ')}</div>
       ${r.procedimento? `<div class="muted" style="margin-top:4px;">📝 Procedimento trascritto disponibile</div>`:''}
@@ -3328,6 +3330,10 @@ function openEditRecipe(id){
     <label class="field">Giorni di conservazione — ABBATTUTO NEGATIVO (obbligatorio)</label>
     <input type="number" id="rcGiorniAbbattutoNeg" value="${r.giorniConservazioneAbbattutoNegativo!==undefined? r.giorniConservazioneAbbattutoNegativo : 20}" min="0" max="365">
     <p class="muted" style="font-size:12px;">Scadenza del semilavorato: senza abbattitore, con abbattitore positivo, con abbattitore negativo/surgelazione.</p>
+    <label style="display:flex;align-items:center;gap:8px;margin:12px 0;font-size:13px;cursor:pointer;">
+      <input type="checkbox" id="rcTerminata" ${r.terminata?'checked':''}>
+      ⚫ Ricetta terminata (non più in uso — resta comunque consultabile nello storico)
+    </label>
     <div id="rcErrore" style="color:var(--red);font-size:13px;margin-top:4px;"></div>
     <div class="rowbtns">
       <button class="btn block" onclick="editRecipe('${id}')">Salva modifiche</button>
@@ -3363,6 +3369,7 @@ async function editRecipe(id){
   r.giorniConservazione = parseInt(giorniRaw)||0;
   r.giorniConservazioneAbbattuto = parseInt(giorniAbbattutoRaw)||0;
   r.giorniConservazioneAbbattutoNegativo = parseInt(giorniAbbattutoNegRaw)||0;
+  r.terminata = document.getElementById("rcTerminata").checked;
   if(window._recipePhoto){
     r.photoKey = r.photoKey || ("photo-ricetta-"+r.id);
     DB.set(r.photoKey, window._recipePhoto, true).catch(()=>toast("⚠️ Errore di salvataggio foto"));
@@ -5108,7 +5115,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "76";
+const APP_VERSION = "77";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
