@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v75">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v76">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v75</title>
+<title>HACCP Baldoria v76</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 75 · ordine settimanale in barra · 10/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 76 · abbattuto pos/neg, lotti terminati · 10/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -3106,7 +3106,7 @@ function openRicettaTracciabilita(recipeId){
       <div class="logrow" onclick="openComposizioneDetail('${c.id}')" style="cursor:pointer;">
         <div>
           <div class="val" style="font-size:13px;">${fmtDate(c.data)} · ${c.ora} ${c.ingredientiUsati.some(i=>!i.lotto)? '⚠️':'✅'}${c.abbattuto? ' ❄️':''}</div>
-          ${lotto? `<div class="meta">Lotto: ${lotto.lotto} · Produzione interna · scade il ${fmtDate(lotto.dataScadenza)}</div>` : ''}
+          ${lotto? `<div class="meta">Lotto: ${lotto.lotto} · Produzione interna · ${lotto.esaurito? `⚫ Non più disponibile dal ${fmtDate(lotto.dataEsaurimento)}` : `scade il ${fmtDate(lotto.dataScadenza)}`}</div>` : ''}
           <div class="meta">${c.operatore}</div>
         </div>
         <span class="muted">›</span>
@@ -3265,9 +3265,12 @@ function openAddRecipe(){
     <label class="field">Giorni di conservazione — NON abbattuto (obbligatorio)</label>
     <input type="number" id="rcGiorni" value="1" min="0" max="90">
     <p class="muted" style="font-size:12px;">Scadenza del semilavorato se preparato SENZA passare dall'abbattitore.</p>
-    <label class="field">Giorni di conservazione — ABBATTUTO (obbligatorio)</label>
+    <label class="field">Giorni di conservazione — ABBATTUTO POSITIVO (obbligatorio)</label>
     <input type="number" id="rcGiorniAbbattuto" value="8" min="0" max="365">
-    <p class="muted" style="font-size:12px;">Scadenza del semilavorato quando la preparazione viene abbattuta.</p>
+    <p class="muted" style="font-size:12px;">Scadenza del semilavorato con abbattimento positivo (nucleo ≤ +3°C).</p>
+    <label class="field">Giorni di conservazione — ABBATTUTO NEGATIVO (obbligatorio)</label>
+    <input type="number" id="rcGiorniAbbattutoNeg" value="20" min="0" max="365">
+    <p class="muted" style="font-size:12px;">Scadenza del semilavorato con abbattimento negativo/surgelazione (nucleo ≤ -18°C).</p>
     <div id="rcErrore" style="color:var(--red);font-size:13px;margin-top:4px;"></div>
     <div class="rowbtns"><button class="btn block" onclick="saveNewRecipe()">Salva ricetta</button></div>
   `, ()=>{
@@ -3282,14 +3285,16 @@ async function saveNewRecipe(){
   const procedimento = document.getElementById("rcProcedimento").value.trim();
   const giorniRaw = document.getElementById("rcGiorni").value;
   const giorniAbbattutoRaw = document.getElementById("rcGiorniAbbattuto").value;
+  const giorniAbbattutoNegRaw = document.getElementById("rcGiorniAbbattutoNeg").value;
   const errEl = document.getElementById("rcErrore");
   if(!nome){ toast("Inserisci il nome del piatto"); return; }
   if(!ingredienti.length){ toast("Inserisci almeno un ingrediente"); return; }
-  if(giorniRaw===""||giorniAbbattutoRaw===""){ errEl.textContent = "⚠️ Campo obbligatorio mancante: indica i giorni di conservazione sia per NON abbattuto che per ABBATTUTO."; return; }
+  if(giorniRaw===""||giorniAbbattutoRaw===""||giorniAbbattutoNegRaw===""){ errEl.textContent = "⚠️ Campo obbligatorio mancante: indica i giorni di conservazione per NON abbattuto, ABBATTUTO POSITIVO e ABBATTUTO NEGATIVO."; return; }
   const giorni = parseInt(giorniRaw)||0;
   const giorniAbbattuto = parseInt(giorniAbbattutoRaw)||0;
+  const giorniAbbattutoNeg = parseInt(giorniAbbattutoNegRaw)||0;
   if(!config.recipes) config.recipes = [];
-  const rec = {id:uid(), nome, reparti, ingredienti, giorniConservazione:giorni, giorniConservazioneAbbattuto:giorniAbbattuto, procedimento};
+  const rec = {id:uid(), nome, reparti, ingredienti, giorniConservazione:giorni, giorniConservazioneAbbattuto:giorniAbbattuto, giorniConservazioneAbbattutoNegativo:giorniAbbattutoNeg, procedimento};
   if(window._recipePhoto){
     rec.photoKey = "photo-ricetta-"+rec.id;
     DB.set(rec.photoKey, window._recipePhoto, true).catch(()=>toast("⚠️ Errore di salvataggio foto"));
@@ -3318,9 +3323,11 @@ function openEditRecipe(id){
     <textarea id="rcProcedimento" style="min-height:110px;">${r.procedimento||""}</textarea>
     <label class="field">Giorni di conservazione — NON abbattuto (obbligatorio)</label>
     <input type="number" id="rcGiorni" value="${r.giorniConservazione!==undefined? r.giorniConservazione : 1}" min="0" max="90">
-    <label class="field">Giorni di conservazione — ABBATTUTO (obbligatorio)</label>
+    <label class="field">Giorni di conservazione — ABBATTUTO POSITIVO (obbligatorio)</label>
     <input type="number" id="rcGiorniAbbattuto" value="${r.giorniConservazioneAbbattuto!==undefined? r.giorniConservazioneAbbattuto : 8}" min="0" max="365">
-    <p class="muted" style="font-size:12px;">Scadenza del semilavorato: senza abbattitore vs. con abbattitore.</p>
+    <label class="field">Giorni di conservazione — ABBATTUTO NEGATIVO (obbligatorio)</label>
+    <input type="number" id="rcGiorniAbbattutoNeg" value="${r.giorniConservazioneAbbattutoNegativo!==undefined? r.giorniConservazioneAbbattutoNegativo : 20}" min="0" max="365">
+    <p class="muted" style="font-size:12px;">Scadenza del semilavorato: senza abbattitore, con abbattitore positivo, con abbattitore negativo/surgelazione.</p>
     <div id="rcErrore" style="color:var(--red);font-size:13px;margin-top:4px;"></div>
     <div class="rowbtns">
       <button class="btn block" onclick="editRecipe('${id}')">Salva modifiche</button>
@@ -3345,15 +3352,17 @@ async function editRecipe(id){
   const ingredienti = document.getElementById("rcIngredienti").value.split("\n").map(s=>s.trim()).filter(Boolean);
   const giorniRaw = document.getElementById("rcGiorni").value;
   const giorniAbbattutoRaw = document.getElementById("rcGiorniAbbattuto").value;
+  const giorniAbbattutoNegRaw = document.getElementById("rcGiorniAbbattutoNeg").value;
   const errEl = document.getElementById("rcErrore");
   if(!nome){ toast("Inserisci il nome del piatto"); return; }
   if(!ingredienti.length){ toast("Inserisci almeno un ingrediente"); return; }
-  if(giorniRaw===""||giorniAbbattutoRaw===""){ errEl.textContent = "⚠️ Campo obbligatorio mancante: indica i giorni di conservazione sia per NON abbattuto che per ABBATTUTO."; return; }
+  if(giorniRaw===""||giorniAbbattutoRaw===""||giorniAbbattutoNegRaw===""){ errEl.textContent = "⚠️ Campo obbligatorio mancante: indica i giorni di conservazione per NON abbattuto, ABBATTUTO POSITIVO e ABBATTUTO NEGATIVO."; return; }
   r.nome = nome; r.ingredienti = ingredienti;
   r.reparti = readRepartiCheckbox("rcReparti");
   r.procedimento = document.getElementById("rcProcedimento").value.trim();
   r.giorniConservazione = parseInt(giorniRaw)||0;
   r.giorniConservazioneAbbattuto = parseInt(giorniAbbattutoRaw)||0;
+  r.giorniConservazioneAbbattutoNegativo = parseInt(giorniAbbattutoNegRaw)||0;
   if(window._recipePhoto){
     r.photoKey = r.photoKey || ("photo-ricetta-"+r.id);
     DB.set(r.photoKey, window._recipePhoto, true).catch(()=>toast("⚠️ Errore di salvataggio foto"));
@@ -3390,9 +3399,10 @@ function openComponiForm(recipeId){
   window._componiDraft = null;
   const giorniR = r.giorniConservazione!==undefined ? r.giorniConservazione : 3;
   const giorniRAbbattuto = r.giorniConservazioneAbbattuto!==undefined ? r.giorniConservazioneAbbattuto : giorniR;
+  const giorniRAbbattutoNeg = r.giorniConservazioneAbbattutoNegativo!==undefined ? r.giorniConservazioneAbbattutoNegativo : giorniRAbbattuto;
   window._componiAbbattuto = bozza ? bozza.abbattuto : { attivo:null, tipo:"positivo", temperatura:"", durata:"" };
   const progrPrev = logs.produzione.filter(p=>p.semilavorato && p.ricettaId===recipeId && p.dataConsegna===todayISO()).length + 1;
-  window._componiScadenzaParams = { recipeId, progrPrev, giorniR, giorniRAbbattuto };
+  window._componiScadenzaParams = { recipeId, progrPrev, giorniR, giorniRAbbattuto, giorniRAbbattutoNeg };
   // Lotti precedenti della STESSA ricetta ancora segnati come attivi (non esauriti)
   const lottiPrecedenti = logs.produzione.filter(p=>p.semilavorato && p.ricettaId===recipeId && !p.esaurito);
   window._componiEsaurisciVecchi = bozza ? bozza.esaurisciVecchi : {};
@@ -3445,7 +3455,7 @@ function openComponiForm(recipeId){
     <div class="rowbtns"><button class="btn block" id="componiSaveBtn" ${bozza && bozza.foto? '':'disabled'} onclick="saveComposizione('${recipeId}')">✅ Registra preparazione</button></div>
   `, ()=>{
     renderComponiRows();
-    renderComponiScadenzaCard(recipeId, progrPrev, giorniR, giorniRAbbattuto);
+    renderComponiScadenzaCard(recipeId, progrPrev, giorniR, giorniRAbbattuto, giorniRAbbattutoNeg);
     if(window._componiAbbattuto.attivo===true){
       document.getElementById("componiAbbSiBtn").className = "sel-ok";
       document.getElementById("componiAbbattutoFields").style.display = "block";
@@ -3471,12 +3481,12 @@ function openComponiForm(recipeId){
     };
   });
 }
-function renderComponiScadenzaCard(recipeId, progrPrev, giorniR, giorniRAbbattuto){
+function renderComponiScadenzaCard(recipeId, progrPrev, giorniR, giorniRAbbattuto, giorniRAbbattutoNeg){
   const el = document.getElementById("componiScadenzaCard");
   if(!el) return;
   const r = config.recipes.find(x=>x.id===recipeId);
   const abb = window._componiAbbattuto||{};
-  const giorniEffettivi = abb.attivo ? giorniRAbbattuto : giorniR;
+  const giorniEffettivi = abb.attivo ? (abb.tipo==="negativo"? giorniRAbbattutoNeg : giorniRAbbattuto) : giorniR;
   el.innerHTML = `
     <div class="card" style="padding:11px;background:var(--green-pale);border:none;">
       <div style="font-weight:800;font-size:13px;">🏷️ Lotto interno che verrà creato</div>
@@ -3502,7 +3512,7 @@ function setComponiAbbattuto(valore){
   const errEl = document.getElementById("componiErrore");
   if(errEl) errEl.textContent = "";
   const p = window._componiScadenzaParams;
-  if(p) renderComponiScadenzaCard(p.recipeId, p.progrPrev, p.giorniR, p.giorniRAbbattuto);
+  if(p) renderComponiScadenzaCard(p.recipeId, p.progrPrev, p.giorniR, p.giorniRAbbattuto, p.giorniRAbbattutoNeg);
 }
 function renderComponiRows(){
   const holder = document.getElementById("componiRows");
@@ -3585,8 +3595,9 @@ async function saveComposizione(recipeId){
   };
   // Lotto interno del preparato + scheda P1 (tracciabilità a cascata)
   const giorniBase = r.giorniConservazione!==undefined ? r.giorniConservazione : 3;
-  const giorniAbbattuto = r.giorniConservazioneAbbattuto!==undefined ? r.giorniConservazioneAbbattuto : giorniBase;
-  const giorni = abb.attivo ? giorniAbbattuto : giorniBase;
+  const giorniAbbattutoPositivo = r.giorniConservazioneAbbattuto!==undefined ? r.giorniConservazioneAbbattuto : giorniBase;
+  const giorniAbbattutoNegativo = r.giorniConservazioneAbbattutoNegativo!==undefined ? r.giorniConservazioneAbbattutoNegativo : giorniAbbattutoPositivo;
+  const giorni = abb.attivo ? (abb.tipo==="negativo"? giorniAbbattutoNegativo : giorniAbbattutoPositivo) : giorniBase;
   const oggi = todayISO();
   const progr = logs.produzione.filter(p=>p.semilavorato && p.ricettaId===recipeId && p.dataConsegna===oggi).length + 1;
   const lottoInterno = `PROD ${fmtDate(oggi)} · ${r.nome} · sett. ${isoWeekOfYear(oggi)} · L${String(progr).padStart(2,'0')}`;
@@ -5097,7 +5108,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "75";
+const APP_VERSION = "76";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
