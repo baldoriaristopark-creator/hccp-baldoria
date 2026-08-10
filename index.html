@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v77">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v78">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v77</title>
+<title>HACCP Baldoria v78</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 77 · bollino ricetta terminata · 10/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 78 · bollino automatico terminata · 10/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -3105,7 +3105,7 @@ function openRicettaTracciabilita(recipeId){
       return `
       <div class="logrow" onclick="openComposizioneDetail('${c.id}')" style="cursor:pointer;">
         <div>
-          <div class="val" style="font-size:13px;">${fmtDate(c.data)} · ${c.ora} ${c.ingredientiUsati.some(i=>!i.lotto)? '⚠️':'✅'}${c.abbattuto? ' ❄️':''}</div>
+          <div class="val" style="font-size:13px;">${fmtDate(c.data)} · ${c.ora} ${lotto && lotto.esaurito? '⚫' : c.ingredientiUsati.some(i=>!i.lotto)? '⚠️':'✅'}${c.abbattuto? ' ❄️':''}</div>
           ${lotto? `<div class="meta">Lotto: ${lotto.lotto} · Produzione interna · scade il ${fmtDate(lotto.dataScadenza)}</div>` : ''}
           <div class="meta">${c.operatore}</div>
         </div>
@@ -3128,11 +3128,16 @@ function ricetteBaseListHtml(query){
   }
   return filtered.map(r=>{
     const sueComposizioni = logs.composizioni.filter(c=>c.ricettaId===r.id || (!c.ricettaId && c.ricettaNome===r.nome)).slice().reverse();
-    const terminata = !!r.terminata;
+    const lottiRicetta = logs.produzione.filter(p=>p.semilavorato && p.ricettaId===r.id);
+    const ultimoLotto = lottiRicetta.length? lottiRicetta[lottiRicetta.length-1] : null;
+    // "Terminata" se: l'amministratore l'ha spuntata a mano, OPPURE l'ultima preparazione fatta
+    // è stata segnata "non più disponibile" dall'operatore e non ne è ancora stata fatta una nuova.
+    const terminataAuto = !!(ultimoLotto && ultimoLotto.esaurito);
+    const terminata = !!r.terminata || terminataAuto;
     return `
     <div class="point-tile" style="cursor:default;${terminata? 'border:2px solid #333;':''}">
       <div class="name">🍽️ ${r.nome} ${r.photoKey? '📷':''} ${terminata? '⚫':''}</div>
-      ${terminata? `<div class="muted" style="font-size:11px;font-weight:700;">⚫ Ricetta terminata — non più in uso</div>`:''}
+      ${terminata? `<div class="muted" style="font-size:11px;font-weight:700;">⚫ ${r.terminata? 'Ricetta terminata — non più in uso' : `Ultima preparazione non più disponibile dal ${fmtDate(ultimoLotto.dataEsaurimento)}`}</div>`:''}
       ${r.reparti&&r.reparti.length? `<div class="muted" style="font-size:11px;">📍 ${r.reparti.join(', ')}</div>`:""}
       <div class="muted">${r.ingredienti.length} ingredienti: ${r.ingredienti.join(', ')}</div>
       ${r.procedimento? `<div class="muted" style="margin-top:4px;">📝 Procedimento trascritto disponibile</div>`:''}
@@ -5115,7 +5120,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "77";
+const APP_VERSION = "78";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
