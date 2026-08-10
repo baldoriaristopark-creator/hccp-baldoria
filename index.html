@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v73">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v74">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v73</title>
+<title>HACCP Baldoria v74</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 73 · avviso HACCP per reparto · 06/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 74 · sezione Ordini · 10/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -453,7 +453,7 @@ const MONTHS = ["GEN","FEB","MAR","APR","MAG","GIU","LUG","AGO","SET","OTT","NOV
 const WEEKDAY_LOCALE = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
 
 let config = null;
-let logs = { temperature: [], sanificazione: [], moma: [], coai: [], noco: [], produzione: [], composizioni: [] };
+let logs = { temperature: [], sanificazione: [], moma: [], coai: [], noco: [], produzione: [], composizioni: [], ordini: [] };
 let activeTab = "home";
 let lastOperator = "";
 let timers = [];
@@ -529,6 +529,11 @@ function migrateReparti(){
       if(config.sanifReparti[item]===undefined){ config.sanifReparti[item] = guessReparto(item); changed = true; }
     });
   });
+  if(!config.ordiniListino || !config.ordiniListino.length){
+    // Importazione una tantum del listino ordini Colonial (fatta al primo caricamento)
+    config.ordiniListino = ["ACCIUGHE", "ACETO MELE", "ACETO PER POSATE", "ACETO VINO", "ARIOSTO", "ARROSTICINI", "BACON", "BANDIDOS", "barattoli miele", "BBQ 2 LT", "BBQ MONODOSE", "BICCHIERI", "BICCHIERI CAFFE'", "BURRO", "CACAO IN POLVERE", "CACIOTTE MIX TAGLIERI", "CANDEGGINA", "CANNELLINI", "CANNUCCE", "CANNUCCE CORTE", "CANNUCCE LUNGE", "capocollo", "CAPOCOLLO", "CAPPERI SALE", "CARCIOFI AL NATURALE", "CECI", "CHEDDAR TONCHETTO", "CICOLI", "CIOCCOLATO FONDENTE", "CONCENTRATO POMODORO", "CONO GELATO", "COPPA DI TESTA", "COTTO", "CRAMBLE LOTUS", "CREM,A PEPERONI", "CREMA DI ZUCCA", "CREMA FRIARIELLI", "crema lotus", "CREMA NOCI", "CREMA PISTACCHIO", "CREMA RADICCHIO", "CRUDO", "CUCCHIAINI GELATO", "DET PAVIMENTI", "DIGESTIVE BISCOTTI", "DUBLESTEACK", "farina 00", "FARINA DI RISO CELIACO", "FETA", "FONDO BRUNO", "FUNGHI D'AMICO", "GLASSA ACETO", "GOCCIE CIOCC", "GRANA PEZZO GRANDE", "granella lotus", "GRANELLA PISTACCHIO", "GRISSINI", "GUANCIALE", "KELLOGS", "KETCHUP 5 KG", "LARDO CUCINA", "LASAGNA", "LATTE INTERO", "LENTICCHIE", "LIEVITO", "LIEVITO DOLCI", "LINGUINE DE CECCO", "maionese 5 kg", "MAIS BARATTOLO", "MANDORLE SGUSCIATE", "mascarpone", "MONODOSE FORMAGGIO", "MONODOSE KETCHUP", "MONODOSE MAIONESE", "MORTADELLA", "noci sgusciate", "NUTELLA", "olio evo", "olio girasole", "olio oliva", "OLIVE  SFIZIOSE", "OLIVE NERE DENOC.", "OLIVE VERDI", "OMOGGENIZZATI", "ORIGANO", "PAN DI STELLE", "PANCARRE", "pancetta arrotolata", "panco", "PANE GRATTUGGIATO", "pane senzaglutine", "panna", "panna dolce", "PANNO MICROFIBRA", "passate per ragu", "pasta bucatini", "pasta mista", "pasta paccheri", "pasta penne bimbi", "PASTA SENZA GLUTINE", "pasta spaghetti", "pasta ziti", "pastina plasmon", "patatine per feste", "patatine puf", "pecorino", "PEPE IN POLVERE", "pepe nero in grani", "PEPE ROSA", "PEPE VERDE", "PEPERONCINO MACINATO", "PEPSI", "PESTO CREMA", "philadelphia", "PISELLI CONGELATI", "PLAY TIME", "POLENTA", "PORCHETTA ARICCIA", "PORCHETTA PROSCUTTATA", "provolone per taglieti", "PURè", "RETINE PER CUCINA", "RIGATONI NAPOLETANI", "RISO VIGNOLA", "salame piccante pizzeria", "salame pizzeria", "salame taglieri", "sale fino", "sale grosso", "sale maldon", "SALE MALDON", "samurai piccoli per buffet", "savoiardi", "SEMOLA RIMACINATA", "SGRASSATORE", "SOTTILETTE CHEDDAR", "SOTTILETTE CLASSICHE", "spianata  piccante", "spianata dolce", "staccante", "stracci pavimenti", "STROFINACCI PER CUCINA", "SUGNA", "svelto per cucina", "SWEET CHILI DEVELY", "TARALLINI", "TONNO", "TOPPIN NOCCIOLA", "TOPPING CARAMELLO", "TOPPING CIOC BIANCO", "TOPPING FRAGOLA AMARENA", "TOPPING FRUTTI DI BOSCO", "TOPPING PISTACCHIO", "tovaglioli", "TOVAGLIOLI NERI", "VANILLINA", "wrustell", "ZAFFERANO", "ZUCCHERO", "ZUCCHERO A VELO", "ZUCCHERO DI CANNA"];
+    changed = true;
+  }
   if(changed) saveConfig().catch(()=>{});
 }
 
@@ -589,6 +594,7 @@ const DEFAULT_CONFIG = {
     mensile: ["Celle frigorifere a fondo","Sistema di areazione","Serbatoi acqua"]
   },
   recipes: [],
+  ordiniListino: [],
   nocoCounter: 0
 };
 // Traccia, per ogni tipo di dato, se l'ultimo caricamento è fallito per un VERO problema
@@ -606,7 +612,7 @@ async function loadAll(){
     loadFailures.config = !(e && e.message==="not found"); // "not found" = prima volta, è normale
   }
 
-  for(const key of ["temperature","sanificazione","moma","coai","noco","produzione","composizioni"]){
+  for(const key of ["temperature","sanificazione","moma","coai","noco","produzione","composizioni","ordini"]){
     try{
       const r = await DB.get("log-"+key, true);
       logs[key] = r ? JSON.parse(r.value) : [];
@@ -1261,7 +1267,7 @@ function stopAlarmSound(){
 }
 
 // ---------- TABS ----------
-const HACCP_GROUP_IDS = ["temperature","sanificazione","moma","produzione","ricette","coai","noco"];
+const HACCP_GROUP_IDS = ["temperature","sanificazione","moma","produzione","ricette","coai","noco","ordini"];
 const TABS = [
   {id:"home", label:"🏠 Home"},
   {id:"haccp", label:"📋 HACCP"},
@@ -1291,6 +1297,7 @@ function renderHaccpMenu(){
     {id:"ricette", label:"🧾 Ricette", desc:"Composizioni, ingredienti e abbattimento"},
     {id:"coai", label:"🐭 Infestanti", desc:"Controllo settimanale (COAI)"},
     {id:"noco", label:"⚠️ Non conformità", desc:"Verbali e azioni correttive"},
+    {id:"ordini", label:"📝 Ordini", desc:"Modulo ordine fornitore, quantità per articolo"},
   ];
   $main.innerHTML = `
     <div class="card">
@@ -1337,6 +1344,7 @@ function render(){
   else if(activeTab==="ricette") renderRicette();
   else if(activeTab==="coai") renderCoai();
   else if(activeTab==="noco") renderNoco();
+  else if(activeTab==="ordini") renderOrdini();
   else if(activeTab==="turni") renderTurni();
   else if(activeTab==="impostazioni") renderImpostazioni();
 }
@@ -3924,6 +3932,145 @@ async function eliminaTurno(id){
   render();
 }
 
+// ---------- ORDINI ----------
+let ordiniSearchQuery = "";
+function getOrdineAperto(){
+  return logs.ordini.find(o=>o.stato==="aperto") || null;
+}
+async function nuovoOrdine(){
+  if(getOrdineAperto()){ toast("C'è già un ordine aperto — chiudilo prima di iniziarne uno nuovo."); return; }
+  logs.ordini.push({id:uid(), data:todayISO(), operatoreApertura:lastOperator, righe:{}, stato:"aperto", creatoIl:new Date().toISOString()});
+  await saveLog("ordini");
+  toast("📝 Nuovo ordine aperto");
+  render();
+}
+function renderOrdini(){
+  const ordine = getOrdineAperto();
+  const listino = (config.ordiniListino||[]).slice().sort((a,b)=>a.localeCompare(b));
+  const q = ordiniSearchQuery.trim();
+  const filtrati = q? listino.filter(a=>textMatchesQuery(a,q)) : listino;
+  const numRighe = ordine? Object.keys(ordine.righe).filter(k=>ordine.righe[k]).length : 0;
+  const storico = logs.ordini.filter(o=>o.stato==="chiuso").sort((a,b)=>(b.chiusoIl||"").localeCompare(a.chiusoIl||"")).slice(0,10);
+  $main.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h2>📝 Ordini</h2>${ordine? `<div style="display:flex;gap:6px;">${printBtn('ordini')}${saveBtn('ordini')}</div>` : ''}</div>
+      <p class="muted">Tocca un articolo per indicare la quantità da ordinare. L'ordine resta aperto e condiviso finché non lo chiudi.</p>
+      ${ordine? `
+        <div class="card" style="padding:10px;background:var(--green-pale);border:none;margin-bottom:10px;">
+          <div style="font-weight:800;font-size:13px;">Ordine aperto da ${ordine.operatoreApertura} il ${fmtDate(ordine.data)}</div>
+          <div class="muted" style="font-size:12px;">${numRighe} articolo/i con quantità indicata.</div>
+        </div>
+        <div class="rowbtns"><button class="btn danger block" onclick="chiudiOrdineCorrente()">✅ Chiudi e salva ordine</button></div>
+      ` : `<div class="rowbtns"><button class="btn block" onclick="nuovoOrdine()">+ Apri nuovo ordine</button></div>`}
+      ${isAdmin()? `<div class="rowbtns"><button class="iconbtn block" onclick="openAddArticoloOrdine()">+ Aggiungi articolo al listino</button></div>`:''}
+    </div>
+    ${ordine? `
+    <div class="card">
+      <input type="text" placeholder="🔎 Cerca un articolo..." value="${esc(ordiniSearchQuery)}" oninput="setOrdiniSearch(this.value)" style="margin-bottom:10px;">
+      ${filtrati.length? filtrati.map(art=>{
+        const qta = ordine.righe[art] || 0;
+        return `<div class="logrow" onclick="openQuantitaOrdine('${art.replace(/'/g,"\\'")}')" style="cursor:pointer;">
+          <div class="val" style="font-size:13px;">${art}</div>
+          ${qta? `<span class="chip ok">${qta}</span>` : `<span class="muted">›</span>`}
+        </div>`;
+      }).join("") : `<div class="empty">Nessun articolo trovato.</div>`}
+    </div>
+    ` : ''}
+    ${storico.length? `
+    <div class="card">
+      <h2>Ordini precedenti</h2>
+      ${storico.map(o=>`
+        <div class="logrow" onclick="openOrdineStorico('${o.id}')" style="cursor:pointer;">
+          <div><div class="val">Ordine del ${fmtDate(o.data)}</div>
+          <div class="meta">${Object.keys(o.righe).filter(k=>o.righe[k]).length} articoli · chiuso da ${o.operatoreChiusura||'—'}</div></div>
+          <span class="muted">›</span>
+        </div>
+      `).join("")}
+    </div>` : ''}
+  `;
+}
+function setOrdiniSearch(v){ ordiniSearchQuery = v; renderOrdiniList(); }
+function renderOrdiniList(){
+  // Ridisegna solo l'elenco articoli, per non far perdere il focus alla tastiera durante la ricerca
+  const holder = document.querySelector("#main .card:nth-child(2)");
+  if(holder) render(); // per semplicità e coerenza dei dati ridisegniamo tutta la vista
+}
+function openQuantitaOrdine(articolo){
+  const ordine = getOrdineAperto();
+  if(!ordine) return;
+  const attuale = ordine.righe[articolo] || "";
+  openSheet(articolo, `
+    <label class="field">Quantità da ordinare</label>
+    <input type="text" id="ordQta" value="${attuale}" placeholder="es. 3 kg, 2 confezioni, 5 pz" inputmode="text">
+    <div class="rowbtns">
+      <button class="btn block" onclick="salvaQuantitaOrdine('${articolo.replace(/'/g,"\\'")}')">Salva</button>
+      ${attuale? `<button class="iconbtn" onclick="salvaQuantitaOrdine('${articolo.replace(/'/g,"\\'")}', true)">🗑️ Rimuovi dall'ordine</button>`:''}
+    </div>
+  `, ()=>{ setTimeout(()=>{ const el=document.getElementById("ordQta"); if(el) el.focus(); }, 50); });
+}
+async function salvaQuantitaOrdine(articolo, rimuovi){
+  const ordine = getOrdineAperto();
+  if(!ordine) return;
+  if(rimuovi){
+    delete ordine.righe[articolo];
+  } else {
+    const val = document.getElementById("ordQta").value.trim();
+    if(!val){ delete ordine.righe[articolo]; }
+    else { ordine.righe[articolo] = val; }
+  }
+  await saveLog("ordini");
+  activeTab="ordini"; closeSheet();
+}
+async function chiudiOrdineCorrente(){
+  const ordine = getOrdineAperto();
+  if(!ordine) return;
+  const numRighe = Object.keys(ordine.righe).filter(k=>ordine.righe[k]).length;
+  if(!numRighe){ toast("Aggiungi almeno un articolo prima di chiudere l'ordine"); return; }
+  if(!confirm(`Chiudere l'ordine con ${numRighe} articolo/i? Potrai comunque consultarlo nello storico.`)) return;
+  ordine.stato = "chiuso";
+  ordine.operatoreChiusura = lastOperator;
+  ordine.chiusoIl = new Date().toISOString();
+  await saveLog("ordini");
+  toast("✅ Ordine chiuso e salvato");
+  render();
+}
+function openOrdineStorico(id){
+  const o = logs.ordini.find(x=>x.id===id);
+  if(!o) return;
+  const righe = Object.entries(o.righe).filter(([,q])=>q).sort((a,b)=>a[0].localeCompare(b[0]));
+  openSheet(`Ordine del ${fmtDate(o.data)}`, `
+    <p class="muted">Aperto da ${o.operatoreApertura} · chiuso da ${o.operatoreChiusura||'—'} il ${o.chiusoIl? fmtDate(o.chiusoIl.slice(0,10)):'—'}</p>
+    ${righe.length? righe.map(([art,qta])=>`
+      <div class="logrow"><div class="val" style="font-size:13px;">${art}</div><span class="chip ok">${qta}</span></div>
+    `).join("") : `<div class="empty">Nessun articolo in questo ordine.</div>`}
+    ${isAdmin()? `<div class="rowbtns"><button class="btn danger" onclick="eliminaOrdineStorico('${id}')">🗑️ Elimina dallo storico</button></div>`:''}
+  `);
+}
+async function eliminaOrdineStorico(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  if(!confirm("Eliminare definitivamente questo ordine dallo storico?")) return;
+  logs.ordini = logs.ordini.filter(o=>o.id!==id);
+  await saveLog("ordini");
+  toast("Ordine eliminato");
+  activeTab="ordini"; closeSheet();
+}
+function openAddArticoloOrdine(){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  openSheet("Nuovo articolo nel listino ordini", `
+    <label class="field">Nome articolo</label><input type="text" id="ordArtNome" placeholder="es. FARINA 00">
+    <div class="rowbtns"><button class="btn block" onclick="salvaArticoloOrdine()">Aggiungi</button></div>
+  `);
+}
+async function salvaArticoloOrdine(){
+  const nome = document.getElementById("ordArtNome").value.trim();
+  if(!nome){ toast("Inserisci il nome dell'articolo"); return; }
+  if(!config.ordiniListino) config.ordiniListino = [];
+  if(config.ordiniListino.some(a=>a.toLowerCase()===nome.toLowerCase())){ toast("Questo articolo è già nel listino"); return; }
+  config.ordiniListino.push(nome);
+  await saveConfig();
+  toast("Articolo aggiunto al listino");
+  activeTab="ordini"; closeSheet();
+}
 function renderNoco(){
   const sorted = [...logs.noco].sort((a,b)=>(b.data).localeCompare(a.data));
   $main.innerHTML = `
@@ -4404,6 +4551,16 @@ function buildSchedaContent(kind, mese){
         esc(n.azioneCorrettiva), esc(n.efficacia),
         n.stato==="aperta"? `<span class="bad">APERTA</span>`:`<span class="ok">CHIUSA</span>`, esc(n.redattoDa)]);
     body = tbl(["Verbale","Data","Matrice/Oggetto","Descrizione","Azione correttiva","Verifica efficacia","Stato","Redatto da"], rows);
+  } else if(kind==="ordini"){
+    title = "Ordine fornitore";
+    const ordine = logs.ordini.find(o=>o.stato==="aperto");
+    if(!ordine){
+      body = `<div class="empty">Nessun ordine aperto al momento.</div>`;
+    } else {
+      const righe = Object.entries(ordine.righe).filter(([,q])=>q).sort((a,b)=>a[0].localeCompare(b[0]))
+        .map(([art,qta])=>[esc(art), esc(qta)]);
+      body = `<p>Ordine aperto da ${esc(ordine.operatoreApertura)} il ${fmtDate(ordine.data)}</p>` + tbl(["Articolo","Quantità"], righe);
+    }
   }
   return {title, body};
 }
@@ -4756,7 +4913,7 @@ async function migraDati(){
   toast("Copia in corso...");
   try{
     await DB.set("config", JSON.stringify(config), true);
-    for(const k of ["temperature","sanificazione","moma","coai","noco","produzione","composizioni"]){
+    for(const k of ["temperature","sanificazione","moma","coai","noco","produzione","composizioni","ordini"]){
       await DB.set("log-"+k, JSON.stringify(logs[k]), true);
     }
     toast("✅ Registri copiati sul database");
@@ -4938,7 +5095,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "73";
+const APP_VERSION = "74";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
