@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v74">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v75">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v74</title>
+<title>HACCP Baldoria v75</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 74 · sezione Ordini · 10/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 75 · ordine settimanale in barra · 10/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1267,10 +1267,11 @@ function stopAlarmSound(){
 }
 
 // ---------- TABS ----------
-const HACCP_GROUP_IDS = ["temperature","sanificazione","moma","produzione","ricette","coai","noco","ordini"];
+const HACCP_GROUP_IDS = ["temperature","sanificazione","moma","produzione","ricette","coai","noco"];
 const TABS = [
   {id:"home", label:"🏠 Home"},
   {id:"haccp", label:"📋 HACCP"},
+  {id:"ordini", label:"📝 Ordini"},
   {id:"turni", label:"📅 Turni"},
 ];
 
@@ -1297,7 +1298,6 @@ function renderHaccpMenu(){
     {id:"ricette", label:"🧾 Ricette", desc:"Composizioni, ingredienti e abbattimento"},
     {id:"coai", label:"🐭 Infestanti", desc:"Controllo settimanale (COAI)"},
     {id:"noco", label:"⚠️ Non conformità", desc:"Verbali e azioni correttive"},
-    {id:"ordini", label:"📝 Ordini", desc:"Modulo ordine fornitore, quantità per articolo"},
   ];
   $main.innerHTML = `
     <div class="card">
@@ -3937,34 +3937,37 @@ let ordiniSearchQuery = "";
 function getOrdineAperto(){
   return logs.ordini.find(o=>o.stato==="aperto") || null;
 }
-async function nuovoOrdine(){
-  if(getOrdineAperto()){ toast("C'è già un ordine aperto — chiudilo prima di iniziarne uno nuovo."); return; }
-  logs.ordini.push({id:uid(), data:todayISO(), operatoreApertura:lastOperator, righe:{}, stato:"aperto", creatoIl:new Date().toISOString()});
+async function apriOrdineSettimanale(){
+  if(getOrdineAperto()) { render(); return; } // già creato (es. da un altro dispositivo nel frattempo)
+  logs.ordini.push({id:uid(), data:todayISO(), operatoreApertura:lastOperator||"Sistema", righe:{}, stato:"aperto", creatoIl:new Date().toISOString()});
   await saveLog("ordini");
-  toast("📝 Nuovo ordine aperto");
   render();
 }
 function renderOrdini(){
   const ordine = getOrdineAperto();
+  if(!ordine){
+    // L'ordine settimanale deve essere sempre disponibile: lo apriamo da soli, senza bisogno di un pulsante.
+    $main.innerHTML = `<div class="empty"><span class="spinner"></span> Apro l'ordine della settimana...</div>`;
+    apriOrdineSettimanale();
+    return;
+  }
   const listino = (config.ordiniListino||[]).slice().sort((a,b)=>a.localeCompare(b));
   const q = ordiniSearchQuery.trim();
   const filtrati = q? listino.filter(a=>textMatchesQuery(a,q)) : listino;
-  const numRighe = ordine? Object.keys(ordine.righe).filter(k=>ordine.righe[k]).length : 0;
+  const numRighe = Object.keys(ordine.righe).filter(k=>ordine.righe[k]).length;
+  const lunedi = getMondayISO(new Date(ordine.creatoIl));
   const storico = logs.ordini.filter(o=>o.stato==="chiuso").sort((a,b)=>(b.chiusoIl||"").localeCompare(a.chiusoIl||"")).slice(0,10);
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>📝 Ordini</h2>${ordine? `<div style="display:flex;gap:6px;">${printBtn('ordini')}${saveBtn('ordini')}</div>` : ''}</div>
-      <p class="muted">Tocca un articolo per indicare la quantità da ordinare. L'ordine resta aperto e condiviso finché non lo chiudi.</p>
-      ${ordine? `
-        <div class="card" style="padding:10px;background:var(--green-pale);border:none;margin-bottom:10px;">
-          <div style="font-weight:800;font-size:13px;">Ordine aperto da ${ordine.operatoreApertura} il ${fmtDate(ordine.data)}</div>
-          <div class="muted" style="font-size:12px;">${numRighe} articolo/i con quantità indicata.</div>
-        </div>
-        <div class="rowbtns"><button class="btn danger block" onclick="chiudiOrdineCorrente()">✅ Chiudi e salva ordine</button></div>
-      ` : `<div class="rowbtns"><button class="btn block" onclick="nuovoOrdine()">+ Apri nuovo ordine</button></div>`}
-      ${isAdmin()? `<div class="rowbtns"><button class="iconbtn block" onclick="openAddArticoloOrdine()">+ Aggiungi articolo al listino</button></div>`:''}
+      <div class="card-head"><h2>📝 Ordine della settimana</h2>${isAdmin()? `<div style="display:flex;gap:6px;">${printBtn('ordini')}${saveBtn('ordini')}</div>` : ''}</div>
+      <p class="muted">Tocca un articolo per indicare la quantità da ordinare. L'ordine resta aperto per tutta la settimana (dal ${fmtDate(lunedi)}) — solo l'amministratore può chiuderlo per farne partire uno nuovo.</p>
+      <div class="card" style="padding:10px;background:var(--green-pale);border:none;margin-bottom:10px;">
+        <div style="font-weight:800;font-size:13px;">Aperto da ${ordine.operatoreApertura} il ${fmtDate(ordine.data)}</div>
+        <div class="muted" style="font-size:12px;">${numRighe} articolo/i con quantità indicata.</div>
+      </div>
+      ${isAdmin()? `<div class="rowbtns"><button class="btn danger block" onclick="chiudiOrdineCorrente()">✅ Chiudi ordine settimanale e aprine uno nuovo</button></div>` : ''}
+      <div class="rowbtns"><button class="iconbtn block" onclick="openAddArticoloOrdine()">+ Aggiungi articolo mancante al listino</button></div>
     </div>
-    ${ordine? `
     <div class="card">
       <input type="text" placeholder="🔎 Cerca un articolo..." value="${esc(ordiniSearchQuery)}" oninput="setOrdiniSearch(this.value)" style="margin-bottom:10px;">
       ${filtrati.length? filtrati.map(art=>{
@@ -3975,7 +3978,6 @@ function renderOrdini(){
         </div>`;
       }).join("") : `<div class="empty">Nessun articolo trovato.</div>`}
     </div>
-    ` : ''}
     ${storico.length? `
     <div class="card">
       <h2>Ordini precedenti</h2>
@@ -4022,17 +4024,18 @@ async function salvaQuantitaOrdine(articolo, rimuovi){
   activeTab="ordini"; closeSheet();
 }
 async function chiudiOrdineCorrente(){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può chiudere l'ordine settimanale"); return; }
   const ordine = getOrdineAperto();
   if(!ordine) return;
   const numRighe = Object.keys(ordine.righe).filter(k=>ordine.righe[k]).length;
   if(!numRighe){ toast("Aggiungi almeno un articolo prima di chiudere l'ordine"); return; }
-  if(!confirm(`Chiudere l'ordine con ${numRighe} articolo/i? Potrai comunque consultarlo nello storico.`)) return;
+  if(!confirm(`Chiudere l'ordine con ${numRighe} articolo/i e aprirne subito uno nuovo per la prossima settimana?`)) return;
   ordine.stato = "chiuso";
   ordine.operatoreChiusura = lastOperator;
   ordine.chiusoIl = new Date().toISOString();
   await saveLog("ordini");
-  toast("✅ Ordine chiuso e salvato");
-  render();
+  toast("✅ Ordine chiuso — ne apro subito uno nuovo");
+  await apriOrdineSettimanale();
 }
 function openOrdineStorico(id){
   const o = logs.ordini.find(x=>x.id===id);
@@ -4055,7 +4058,6 @@ async function eliminaOrdineStorico(id){
   activeTab="ordini"; closeSheet();
 }
 function openAddArticoloOrdine(){
-  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
   openSheet("Nuovo articolo nel listino ordini", `
     <label class="field">Nome articolo</label><input type="text" id="ordArtNome" placeholder="es. FARINA 00">
     <div class="rowbtns"><button class="btn block" onclick="salvaArticoloOrdine()">Aggiungi</button></div>
@@ -5095,7 +5097,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "74";
+const APP_VERSION = "75";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
