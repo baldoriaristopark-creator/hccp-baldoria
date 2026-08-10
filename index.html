@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v78">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v79">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v78</title>
+<title>HACCP Baldoria v79</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 78 · bollino automatico terminata · 10/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 79 · annulla terminata per errore · 10/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -3698,7 +3698,8 @@ function openComposizioneDetail(id){
       </div>`:""}
       ${semilavorato? `<label class="field" style="margin-top:10px;">Data fine disponibilità (non più utilizzabile da)</label>
       <input type="date" id="compEsaurimento" value="${semilavorato.dataEsaurimento||todayISO()}" max="${todayISO()}">
-      <button class="btn secondary block" style="margin-top:8px;" onclick="markComposizioneEsaurita('${id}')">${semilavorato.esaurito? 'Aggiorna data fine disponibilità':'Segna come terminata/non più disponibile'}</button>`:""}
+      <button class="btn secondary block" style="margin-top:8px;" onclick="markComposizioneEsaurita('${id}')">${semilavorato.esaurito? 'Aggiorna data fine disponibilità':'Segna come terminata/non più disponibile'}</button>
+      ${semilavorato.esaurito? `<button class="iconbtn block" style="margin-top:6px;" onclick="annullaComposizioneEsaurita('${id}')">↩️ Errore — segna di nuovo come disponibile</button>`:''}`:""}
     </div>`:""}
     ${c.abbattuto? `<div class="card" style="padding:11px;background:${c.abbattimento && c.abbattimento.conforme? 'var(--green-pale)':'var(--amber-pale)'};border:none;margin-bottom:10px;">
       <div style="font-weight:800;font-size:13px;">❄️ Prodotto abbattuto — ${c.abbattimento && c.abbattimento.tipo==='negativo'? 'Negativo/surgelazione':'Positivo'}</div>
@@ -3733,6 +3734,17 @@ async function markComposizioneEsaurita(compId){
   semilavorato.esaurito = true;
   saveLog("produzione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
   toast(`Segnata come non più disponibile dal ${fmtDate(dataScelta)}`);
+  activeTab="ricette"; closeSheet();
+}
+async function annullaComposizioneEsaurita(compId){
+  const c = logs.composizioni.find(x=>x.id===compId);
+  const semilavorato = logs.produzione.find(p=>p.id===c.semilavoratoId);
+  if(!semilavorato){ toast("⚠️ Lotto collegato non trovato"); return; }
+  if(!confirm("Segnare di nuovo questa preparazione come disponibile? Utile se la marcatura precedente era un errore.")) return;
+  semilavorato.esaurito = false;
+  delete semilavorato.dataEsaurimento;
+  saveLog("produzione").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
+  toast("↩️ Segnata di nuovo come disponibile");
   activeTab="ricette"; closeSheet();
 }
 async function deleteComposizione(id){
@@ -5120,7 +5132,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "78";
+const APP_VERSION = "79";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
