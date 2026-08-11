@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v81">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v82">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v81</title>
+<title>HACCP Baldoria v82</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 81 · celle mensili cliccabili + segnale subito visibile · 11/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 82 · selettore mese nelle schede dettaglio · 11/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1570,6 +1570,8 @@ function openPointDetail(pointId){
   const p = config.points.find(x=>x.id===pointId);
   const history = logs.temperature.filter(r=>r.pointId===pointId).sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora)).slice(0,15);
   const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `da ${p.min}°C a ${p.max}°C`;
+  window._itemDetailMese = todayISO().slice(0,7);
+  window._pointDetailId = pointId;
 
   openSheet(`${pointIcon(p.type)} ${p.name}`, `
     <p class="muted">Soglia di conformità: <b>${rangeLbl}</b></p>
@@ -1583,7 +1585,8 @@ function openPointDetail(pointId){
       <div data-timer-key="temp:${pointId}" class="timer-badge">${timerFor('temp:'+pointId)? '⏱️ '+fmtCountdown(timerFor('temp:'+pointId).endTime-Date.now()) : 'Nessun timer attivo'}</div>
       <button class="iconbtn" onclick="openTimerForm('temperature','temp:${pointId}','${p.name.replace(/'/g,"\\'")}')">Imposta timer</button>
     </div>
-    <h3 style="display:flex;justify-content:space-between;align-items:center;gap:8px;">Scheda mensile — ${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()} <button class="printbtn" onclick="printTempMese('${pointId}')" title="Stampa la scheda mensile">🖨️ Stampa</button></h3>
+    <h3 style="display:flex;justify-content:space-between;align-items:center;gap:8px;">Scheda mensile <button class="printbtn" onclick="printTempMese('${pointId}')" title="Stampa la scheda mensile">🖨️ Stampa</button></h3>
+    <div id="monthSelectHolder"></div>
     <div id="monthGridHolder"></div>
     <h3>Ultime registrazioni</h3>
     <div id="histHolder">
@@ -1597,8 +1600,14 @@ function openPointDetail(pointId){
         </div>`).join("") : `<div class="empty">Nessuna registrazione ancora.</div>`}
     </div>
   `, (body)=>{
-    document.getElementById("monthGridHolder").innerHTML = buildMonthGrid("temperature", pointId, p);
+    document.getElementById("monthSelectHolder").innerHTML = meseAnnoSelectHtml(window._itemDetailMese, "itemDetailMeseTemp", "setItemDetailMeseTemp");
+    document.getElementById("monthGridHolder").innerHTML = buildMonthGrid("temperature", pointId, p, window._itemDetailMese);
   });
+}
+function setItemDetailMeseTemp(v){
+  window._itemDetailMese = v;
+  const holder = document.getElementById("monthGridHolder");
+  if(holder) holder.innerHTML = buildMonthGrid("temperature", window._pointDetailId, null, window._itemDetailMese);
 }
 
 function openSpentoForm(pointId){
@@ -1708,9 +1717,9 @@ async function deleteTempEntry(id){
   activeTab="temperature"; closeSheet();
 }
 
-function buildMonthGrid(kind, filterId, point){
-  const now = new Date();
-  const year = now.getFullYear(), month = now.getMonth();
+function buildMonthGrid(kind, filterId, point, meseYYYYMM){
+  const [yStr, mStr] = (meseYYYYMM || todayISO().slice(0,7)).split("-");
+  const year = parseInt(yStr,10), month = parseInt(mStr,10)-1;
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const t = todayISO();
   let rows = "";
@@ -2089,6 +2098,8 @@ function openSanifItemDetail(freq, item){
   const history = logs.sanificazione.filter(r=>r.item===item && r.frequenza===freq).sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora)).slice(0,15);
   const oggiRec = logs.sanificazione.find(r=>r.item===item && r.frequenza===freq && r.data===sanifDateISO());
   const timerKey = `sanif:${freq}:${item}`;
+  window._itemDetailMese = todayISO().slice(0,7);
+  window._itemDetailContext = {item, freq};
 
   openSheet(`🧽 ${item}`, `
     ${reparto? `<p class="muted">Reparto: <b>${reparto}</b> · Frequenza: <b>${freq}</b></p>` : `<p class="muted">Frequenza: <b>${freq}</b></p>`}
@@ -2101,7 +2112,8 @@ function openSanifItemDetail(freq, item){
       <div data-timer-key="${timerKey}" class="timer-badge">${timerFor(timerKey)? '⏱️ '+fmtCountdown(timerFor(timerKey).endTime-Date.now()) : 'Nessun timer attivo'}</div>
       <button class="iconbtn" onclick="openTimerForm('sanificazione','${timerKey}','${item.replace(/'/g,"\\'")}')">Imposta timer</button>
     </div>
-    <h3 style="display:flex;justify-content:space-between;align-items:center;gap:8px;">Scheda mensile — ${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()} <button class="printbtn" onclick="printSanifItemMese('${freq}','${item.replace(/'/g,"\\'")}')" title="Stampa la scheda mensile">🖨️ Stampa</button></h3>
+    <h3 style="display:flex;justify-content:space-between;align-items:center;gap:8px;">Scheda mensile <button class="printbtn" onclick="printSanifItemMese('${freq}','${item.replace(/'/g,"\\'")}')" title="Stampa la scheda mensile">🖨️ Stampa</button></h3>
+    <div id="monthSelectHolder"></div>
     <div id="monthGridHolder"></div>
     <h3>Ultime registrazioni</h3>
     ${history.length? history.map(r=>`
@@ -2113,8 +2125,16 @@ function openSanifItemDetail(freq, item){
         <span class="muted">✏️</span>
       </div>`).join("") : `<div class="empty">Nessuna registrazione ancora.</div>`}
   `, ()=>{
-    document.getElementById("monthGridHolder").innerHTML = buildMonthGrid("sanif", {item, freq});
+    document.getElementById("monthSelectHolder").innerHTML = meseAnnoSelectHtml(window._itemDetailMese, "itemDetailMese", "setItemDetailMeseSanif");
+    document.getElementById("monthGridHolder").innerHTML = buildMonthGrid("sanif", {item, freq}, null, window._itemDetailMese);
   });
+}
+function setItemDetailMeseSanif(v){
+  window._itemDetailMese = v;
+  const holder = document.getElementById("monthGridHolder");
+  if(holder && window._itemDetailContext){
+    holder.innerHTML = buildMonthGrid("sanif", window._itemDetailContext, null, window._itemDetailMese);
+  }
 }
 function setRepartoFiltroSanif(v){ repartoFiltroSanif = v; render(); }
 function setDateFiltroSanif(v){ dateFiltroSanif = v; render(); }
@@ -5162,7 +5182,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "81";
+const APP_VERSION = "82";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
