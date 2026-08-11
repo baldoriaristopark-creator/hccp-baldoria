@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v79">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v80">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v79</title>
+<title>HACCP Baldoria v80</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 79 · annulla terminata per errore · 10/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 80 · sanificazioni mancanti retroattive · 11/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2038,24 +2038,32 @@ function renderSanificazione(){
         <option value="fatto" ${statoFiltroSanif==='fatto'?'selected':''}>✅ Fatto</option>
         <option value="nonfatto" ${statoFiltroSanif==='nonfatto'?'selected':''}>⏳ Non fatto</option>
       </select>
-      <p class="muted" style="margin-top:10px;">${isOggi? "Per confermare una sanificazione serve indicare l'operatore e allegare una foto. Tocca una voce completata per vederne i dettagli." : `Stai consultando lo storico del ${fmtDate(t)} — per registrare una nuova sanificazione torna alla data odierna.`}</p>
+      <p class="muted" style="margin-top:10px;">${isOggi? "Per confermare una sanificazione serve indicare l'operatore e allegare una foto. Tocca una voce completata per vederne i dettagli." : `Stai consultando lo storico del ${fmtDate(t)}.${isAdmin()? ' Come amministratore puoi aggiungere qui una registrazione mancante.' : ' Per registrare una nuova sanificazione torna alla data odierna.'}`}</p>
       ${itemsConRec.length? itemsConRec.map(({item, rec})=>{
         const timerKey = `sanif:${sanifSubTab}:${item}`;
         const auditSt = isOggi? sanifAuditStatus(sanifSubTab, item) : null;
         const auditCls = auditSt==='escalated' ? 'audit-escalated' : auditSt==='notice' ? 'audit-notice' : '';
         const reparto = config.sanifReparti[item];
+        const mancantePassata = !isOggi && !rec; // data precedente a oggi, senza registrazione
         return `<div class="checklist-item ${auditCls}" style="flex-wrap:wrap;">
-          <div class="lbl" onclick="openSanifItemDetail('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" style="cursor:pointer;">${item} ${reparto? `<span class="muted" style="font-size:11px;">📍 ${reparto}</span>`:""} ${isOggi && timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}</div>
+          <div class="lbl" onclick="openSanifItemDetail('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" style="cursor:pointer;">${mancantePassata? '🔴 ':''}${item} ${reparto? `<span class="muted" style="font-size:11px;">📍 ${reparto}</span>`:""} ${isOggi && timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}</div>
           <div style="display:flex;gap:8px;align-items:center;">
             ${isOggi && isAdmin()? `<button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openEditSanifItem('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>
             <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openTimerForm('sanificazione','${timerKey}','${item.replace(/'/g,"\\'")}')" title="Imposta timer">⏱️</button>` : ""}
-            ${rec? `<button class="togglebtn done" onclick="openSanifDetail('${rec.id}')">✓ ${rec.operatore}${rec.tardiva?' ⏱️':''}</button>` : isOggi? `<button class="togglebtn" onclick="openSanifConfirm('${item.replace(/'/g,"\\'")}')">Segna fatto</button>` : `<span class="muted" style="font-size:13px;">— non registrata</span>`}
+            ${rec? `<button class="togglebtn done" onclick="openSanifDetail('${rec.id}')">✓ ${rec.operatore}${rec.tardiva?' ⏱️':''}</button>`
+              : isOggi? `<button class="togglebtn" onclick="openSanifConfirm('${item.replace(/'/g,"\\'")}')">Segna fatto</button>`
+              : isAdmin()? `<button class="togglebtn" style="background:var(--red);" onclick="openSanifConfirmRetroattivo('${item.replace(/'/g,"\\'")}','${t}')">+ Aggiungi mancante</button>`
+              : `<span class="muted" style="font-size:13px;">— non registrata</span>`}
           </div>
         </div>`;
       }).join("") : `<div class="empty">Nessuna voce corrisponde ai filtri scelti.</div>`}
       ${isAdmin()? `<div class="rowbtns"><button class="btn secondary block" onclick="openAddSanifItem('${sanifSubTab}')">+ Aggiungi punto di sanificazione (${sanifSubTab})</button></div>`:""}
     </div>
   `;
+}
+function openSanifConfirmRetroattivo(item, data){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può aggiungere una registrazione retroattiva"); return; }
+  openSanifConfirm(item, data);
 }
 function openSanifItemDetail(freq, item){
   const reparto = config.sanifReparti[item];
@@ -2109,12 +2117,15 @@ function compressImage(dataUrl, maxWidth){
   });
 }
 
-function openSanifConfirm(item){
+function openSanifConfirm(item, dataPreimpostata){
   const nottePassata = new Date().getHours() < 4;
   const fotoObbligatoria = !isAdmin();
+  const dataIniziale = dataPreimpostata || sanifDateISO();
   openSheet(`Conferma sanificazione`, `
     <p class="muted"><b>${item}</b> — ${sanifSubTab}</p>
-    ${nottePassata? `<div class="card" style="padding:10px;background:var(--amber-pale);border:none;margin-bottom:10px;">
+    ${dataPreimpostata? `<div class="card" style="padding:10px;background:var(--red-pale);border:none;margin-bottom:10px;">
+      <p class="muted" style="margin:0;font-size:12px;">🔴 Stai aggiungendo una registrazione mancante per il <b>${fmtDate(dataPreimpostata)}</b>.</p>
+    </div>` : nottePassata? `<div class="card" style="padding:10px;background:var(--amber-pale);border:none;margin-bottom:10px;">
       <p class="muted" style="margin:0;font-size:12px;">🌙 Sono passate da poco le 00:00 — questa sanificazione verrà registrata come completata per <b>ieri, ${fmtDate(sanifDateISO())}</b> (fino alle 4:00 del mattino le sanificazioni si riferiscono ancora alla giornata precedente).</p>
     </div>`:""}
     <label class="field">Operatore</label>
@@ -2127,12 +2138,12 @@ function openSanifConfirm(item){
     </div>
     ${isAdmin()? `
     <label class="field">Data</label>
-    <input type="date" id="sanifData" value="${sanifDateISO()}" max="${todayISO()}">
+    <input type="date" id="sanifData" value="${dataIniziale}" max="${todayISO()}">
     <label class="field">Ora</label>
     <input type="time" id="sanifOra" value="${nowTime()}">
     <p class="muted" style="font-size:12px;">Lasciale come sono se stai confermando ora. Cambiale solo se ti sei dimenticato di segnarla prima — verrà indicata come inserita in ritardo, restando comunque valida.</p>
     ` : `
-    <input type="hidden" id="sanifData" value="${sanifDateISO()}">
+    <input type="hidden" id="sanifData" value="${dataIniziale}">
     <input type="hidden" id="sanifOra" value="${nowTime()}">
     `}
     <div class="rowbtns">
@@ -5132,7 +5143,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "79";
+const APP_VERSION = "80";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
