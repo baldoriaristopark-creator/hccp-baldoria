@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v94">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v95">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v94</title>
+<title>HACCP Baldoria v95</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 94 · modifica/elimina articoli aperta a tutti · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 95 · icone pulite tabelle mensili · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1811,14 +1811,14 @@ function buildMonthGrid(kind, filterId, point, meseYYYYMM){
           cellHtml = `<span onclick="openTempEntryDetail('${last.id}')" style="cursor:pointer;text-decoration:underline;">🔌 OFF</span>`;
         } else {
           cls = last.conforme?"ok":"bad";
-          cellHtml = `<span onclick="openTempEntryDetail('${last.id}')" style="cursor:pointer;text-decoration:underline;">${last.valore}°${last.photoKey?' 📷':''}</span>`;
+          cellHtml = `<span onclick="openTempEntryDetail('${last.id}')" style="cursor:pointer;text-decoration:underline;">${last.valore}°</span>`;
         }
       } else { cls=""; cellHtml="—"; }
     } else {
       const rec = logs.sanificazione.find(r=>r.item===filterId.item && r.frequenza===filterId.freq && r.data===iso);
       cls = rec?"ok":"";
       if(rec){
-        cellHtml = `<span onclick="openSanifDetail('${rec.id}')" style="cursor:pointer;text-decoration:underline;">✓ 📷</span>`;
+        cellHtml = `<span onclick="openSanifDetail('${rec.id}')" style="cursor:pointer;text-decoration:underline;">✓</span>`;
       } else if(isAdmin() && iso<=t){
         cellHtml = `<span onclick="openSanifConfirmRetroattivo('${filterId.item.replace(/'/g,"\\'")}','${iso}')" style="cursor:pointer;text-decoration:underline;color:var(--red);">— ✏️</span>`;
       } else {
@@ -5424,7 +5424,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "94";
+const APP_VERSION = "95";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
