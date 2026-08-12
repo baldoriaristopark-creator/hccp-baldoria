@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v96">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v97">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v96</title>
+<title>HACCP Baldoria v97</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 96 · tolta icona timer ridondante · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 97 · modifica/elimina articoli listino ordini · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4199,6 +4199,7 @@ function renderOrdini(){
               <button class="iconbtn" style="padding:4px 10px;font-size:16px;" onclick="event.stopPropagation();incrementaArticoloOrdine('${artEsc}')">+</button>
             ` : ''}
             ${riga ? `<button class="iconbtn" style="padding:4px 8px;" onclick="event.stopPropagation();eliminaArticoloOrdine('${artEsc}')" title="Elimina dall'ordine">🗑️</button>`:''}
+            ${isAdmin()? `<button class="iconbtn" style="padding:4px 8px;" onclick="event.stopPropagation();openEditArticoloListino('${artEsc}')" title="Modifica o elimina definitivamente dal listino">✏️</button>`:''}
           </div>
         </div>`;
       }).join("") : `<div class="empty">Nessun articolo trovato.</div>`}
@@ -4367,6 +4368,49 @@ async function eliminaOrdineStorico(id){
   logs.ordini = logs.ordini.filter(o=>o.id!==id);
   await saveLog("ordini");
   toast("Ordine eliminato");
+  activeTab="ordini"; closeSheet();
+}
+function openEditArticoloListino(nomeAttuale){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  openSheet("Modifica articolo del listino", `
+    <label class="field">Nome articolo</label>
+    <input type="text" id="editArtNome" value="${esc(nomeAttuale)}">
+    <p class="muted" style="font-size:12px;">Rinominandolo, il nome cambia anche nell'ordine aperto (se presente). Eliminandolo definitivamente, sparisce dal listino per tutti — non potrà più essere selezionato nei prossimi ordini.</p>
+    <div class="rowbtns">
+      <button class="btn block" onclick="salvaModificaArticoloListino('${nomeAttuale.replace(/'/g,"\\'")}')">Salva modifiche</button>
+      <button class="btn danger block" onclick="eliminaArticoloListinoDefinitivo('${nomeAttuale.replace(/'/g,"\\'")}')">🗑️ Elimina definitivamente dal listino</button>
+    </div>
+  `);
+}
+async function salvaModificaArticoloListino(nomeAttuale){
+  const nuovoNome = document.getElementById("editArtNome").value.trim();
+  if(!nuovoNome){ toast("Inserisci il nome dell'articolo"); return; }
+  if(nuovoNome===nomeAttuale){ closeSheet(); return; }
+  if((config.ordiniListino||[]).some(a=>a.toLowerCase()===nuovoNome.toLowerCase())){ toast("Esiste già un articolo con questo nome"); return; }
+  const idx = config.ordiniListino.indexOf(nomeAttuale);
+  if(idx>=0) config.ordiniListino[idx] = nuovoNome;
+  await saveConfig();
+  // Rinomino anche nell'ordine aperto, se presente, così non si perde nulla di già aggiunto
+  const ordine = getOrdineAperto();
+  if(ordine && ordine.righe[nomeAttuale]!==undefined){
+    ordine.righe[nuovoNome] = ordine.righe[nomeAttuale];
+    delete ordine.righe[nomeAttuale];
+    await saveLog("ordini");
+  }
+  toast("✅ Articolo rinominato");
+  activeTab="ordini"; closeSheet();
+}
+async function eliminaArticoloListinoDefinitivo(nome){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  if(!confirm(`Eliminare definitivamente "${nome}" dal listino? Non sarà più selezionabile nei prossimi ordini. Se è presente nell'ordine aperto, verrà rimosso anche da lì.`)) return;
+  config.ordiniListino = (config.ordiniListino||[]).filter(a=>a!==nome);
+  await saveConfig();
+  const ordine = getOrdineAperto();
+  if(ordine && ordine.righe[nome]!==undefined){
+    delete ordine.righe[nome];
+    await saveLog("ordini");
+  }
+  toast("🗑️ Articolo eliminato definitivamente dal listino");
   activeTab="ordini"; closeSheet();
 }
 function openAddArticoloOrdine(){
@@ -5423,7 +5467,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "96";
+const APP_VERSION = "97";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
