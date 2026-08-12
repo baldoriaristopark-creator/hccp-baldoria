@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v84">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v85">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v84</title>
+<title>HACCP Baldoria v85</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 84 · chiedi mese a stampa/salva · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 85 · click diretto badge mancanza · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1517,7 +1517,7 @@ function renderTemperature(){
       <div class="lbl">
         ${pointIcon(p.type)} ${p.name} ${p.reparto? `<span class="muted" style="font-size:11px;">📍 ${p.reparto}</span>`:""}
         <div class="muted" style="font-size:12px;font-weight:400;">Soglia: ${rangeLbl} · ${valLbl}</div>
-        ${pregressaMancante? `<span class="timer-badge expired" style="cursor:pointer;" onclick="event.stopPropagation();setDateFiltroTemp('${pregressaMancante}')">🔴 TEMPERATURA MANCANTE PER IL GIORNO ${fmtDate(pregressaMancante)}</span>`:''}
+        ${pregressaMancante? `<span class="timer-badge expired" style="cursor:pointer;" onclick="event.stopPropagation();${isAdmin()? `openTempEntry('${p.id}','manuale','${pregressaMancante}')` : `setDateFiltroTemp('${pregressaMancante}')`}">🔴 TEMPERATURA MANCANTE PER IL GIORNO ${fmtDate(pregressaMancante)}</span>`:''}
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         ${isAdmin()? `<button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="event.stopPropagation();openEditPoint('${p.id}')" title="Modifica o elimina">✏️</button>`:""}
@@ -1789,17 +1789,20 @@ function buildMonthGrid(kind, filterId, point, meseYYYYMM){
   </table></div>`;
 }
 
-function openTempEntry(pointId, mode){
+function openTempEntry(pointId, mode, dataPreimpostata){
   const p = config.points.find(x=>x.id===pointId);
   if(mode==="manuale"){
     openSheet(`Registra temperatura — ${p.name}`, `
+      ${dataPreimpostata? `<div class="card" style="padding:10px;background:var(--red-pale);border:none;margin-bottom:10px;">
+        <p class="muted" style="margin:0;font-size:12px;">🔴 Stai aggiungendo una registrazione mancante per il <b>${fmtDate(dataPreimpostata)}</b>.</p>
+      </div>` : ''}
       <label class="field">Valore (°C)</label>
       <input type="number" step="0.1" id="tempVal" placeholder="es. 3.5">
       <label class="field">Operatore</label>
       <input type="text" id="tempOp" value="${lastOperator}" placeholder="Nome operatore">
       ${isAdmin()? `
       <label class="field">Data</label>
-      <input type="date" id="tempData" value="${todayISO()}" max="${todayISO()}">
+      <input type="date" id="tempData" value="${dataPreimpostata||todayISO()}" max="${todayISO()}">
       <label class="field">Ora</label>
       <input type="time" id="tempOra" value="${nowTime()}">
       <p class="muted" style="font-size:12px;">Lasciale come sono se stai registrando ora. Cambiale solo se ti sei dimenticato di segnare una lettura fatta prima — verrà segnalata come inserita in ritardo, restando comunque valida.</p>
@@ -5263,7 +5266,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "84";
+const APP_VERSION = "85";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
