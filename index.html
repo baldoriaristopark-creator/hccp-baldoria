@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v87">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v88">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v87</title>
+<title>HACCP Baldoria v88</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 87 · ordinato admin + ultimo chiuso · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 88 · icone uniformate X/OFF · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1509,7 +1509,7 @@ function renderTemperature(){
   let tiles = pointsConStato.map(({p, st})=>{
     const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}° / ${p.max}°C`;
     const noLetturaLbl = isOggi? "Nessuna lettura oggi" : `Nessuna lettura il ${fmtDate(dataRif)}`;
-    const valLbl = !st.rec ? noLetturaLbl : st.state==="spento" ? `⚫ Spento alle ${st.rec.ora}${st.rec.tardiva?' ⏱️':''}` : `${st.rec.valore}°C alle ${st.rec.ora}${st.rec.tardiva?' ⏱️':''}`;
+    const valLbl = !st.rec ? noLetturaLbl : st.state==="spento" ? `🔌 OFF alle ${st.rec.ora}${st.rec.tardiva?' ⏱️':''}` : `${st.rec.valore}°C alle ${st.rec.ora}${st.rec.tardiva?' ⏱️':''}`;
     const chipCls = st.state==="ok"?"ok":st.state==="bad"?"bad":st.state==="spento"?"spento":"missing";
     const chipTxt = st.state==="ok"?"Conforme":st.state==="bad"?"Fuori soglia":st.state==="spento"?"Spento":"Da registrare";
     const auditSt = isOggi? pointAuditStatus(p.id) : null;
@@ -1612,7 +1612,7 @@ function openPointDetail(pointId){
     <div class="rowbtns">
       <button class="btn block" onclick="openTempEntry('${pointId}','foto')">📸 Rileva da foto (lettura automatica)</button>
       <button class="btn secondary block" onclick="openTempEntry('${pointId}','manuale')">✍️ Inserisci manualmente</button>
-      <button class="iconbtn block" onclick="openSpentoForm('${pointId}')">⚫ Segna come spento / non in uso</button>
+      <button class="iconbtn block" onclick="openSpentoForm('${pointId}')">🔌 OFF — segna come spento / non in uso</button>
     </div>
     <h3>⏱️ Promemoria / Timer</h3>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
@@ -1627,7 +1627,7 @@ function openPointDetail(pointId){
       ${history.length? history.map(r=>`
         <div class="logrow" onclick="openTempEntryDetail('${r.id}')" style="cursor:pointer;">
           <div>
-            <div class="val">${r.spento? '⚫ Spento' : r.valore+'°C '+(r.conforme? '✅':'🔴')} ${r.tardiva? '<span class="chip missing" style="font-size:10px;">⏱️ in ritardo</span>':''}</div>
+            <div class="val">${r.spento? '🔌 OFF' : r.valore+'°C '+(r.conforme? '✅':'🔴')} ${r.tardiva? '<span class="chip missing" style="font-size:10px;">⏱️ in ritardo</span>':''}</div>
             <div class="meta">${fmtDate(r.data)} · ${r.ora} · ${r.operatore||"—"} ${r.fonte==='foto'?'· 📸 foto':''}</div>
           </div>
           <span class="muted">✏️</span>
@@ -1675,7 +1675,7 @@ async function saveSpento(pointId){
   logs.temperature.push(rec);
   saveLog("temperature").catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
   saveOperator(op).catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
-  toast("⚫ Segnato come spento" + (tardiva? " · ⏱️ inserito in ritardo":""));
+  toast("🔌 OFF — segnato come spento" + (tardiva? " · ⏱️ inserito in ritardo":""));
   activeTab="temperature"; closeSheet();
 }
 function openTempEntryDetail(id){
@@ -1683,7 +1683,7 @@ function openTempEntryDetail(id){
   const tardivaLbl = r.tardiva? ` · <span class="chip missing" style="font-size:11px;">⏱️ inserita in ritardo</span>${r.registratoIl? ` (compilata realmente il ${fmtDate(r.registratoIl.slice(0,10))} alle ${r.registratoIl.slice(11,16)})`:''}` : '';
   if(r.spento){
     openSheet(`Registrazione — ${fmtDate(r.data)}`, `
-      <p class="muted">${r.pointName||''} · ${fmtDate(r.data)} · ${r.ora} · ⚫ Segnato come spento/non in uso${tardivaLbl}</p>
+      <p class="muted">${r.pointName||''} · ${fmtDate(r.data)} · ${r.ora} · 🔌 OFF — segnato come spento/non in uso${tardivaLbl}</p>
       ${isAdmin()? `
       <label class="field">Operatore</label><input type="text" id="teOp" value="${r.operatore||''}">
       <label class="field">Motivo</label><input type="text" id="teNote" value="${r.note||''}">
@@ -1766,7 +1766,7 @@ function buildMonthGrid(kind, filterId, point, meseYYYYMM){
         const last = recs[recs.length-1];
         if(last.spento){
           cls = "spento";
-          cellHtml = `<span onclick="openTempEntryDetail('${last.id}')" style="cursor:pointer;text-decoration:underline;">⚫ Spento</span>`;
+          cellHtml = `<span onclick="openTempEntryDetail('${last.id}')" style="cursor:pointer;text-decoration:underline;">🔌 OFF</span>`;
         } else {
           cls = last.conforme?"ok":"bad";
           cellHtml = `<span onclick="openTempEntryDetail('${last.id}')" style="cursor:pointer;text-decoration:underline;">${last.valore}°${last.photoKey?' 📷':''}</span>`;
@@ -2818,7 +2818,7 @@ function renderProduzione(){
         <option value="ok" ${statoFiltroProduzione==='ok'?'selected':''}>✅ Valido</option>
         <option value="missing" ${statoFiltroProduzione==='missing'?'selected':''}>🟠 In scadenza</option>
         <option value="bad" ${statoFiltroProduzione==='bad'?'selected':''}>🔴 Scaduto</option>
-        <option value="esaurito" ${statoFiltroProduzione==='esaurito'?'selected':''}>⚫ Esaurito</option>
+        <option value="esaurito" ${statoFiltroProduzione==='esaurito'?'selected':''}>❌ Esaurito</option>
       </select>
       <button class="btn block" onclick="openProduzioneForm()">+ Aggiungi prodotto manualmente</button>
     </div>
@@ -3215,7 +3215,7 @@ function openRicettaTracciabilita(recipeId){
       return `
       <div class="logrow" onclick="openComposizioneDetail('${c.id}')" style="cursor:pointer;">
         <div>
-          <div class="val" style="font-size:13px;">${fmtDate(c.data)} · ${c.ora} ${lotto && lotto.esaurito? '⚫' : c.ingredientiUsati.some(i=>!i.lotto)? '⚠️':'✅'}${c.abbattuto? ' ❄️':''}</div>
+          <div class="val" style="font-size:13px;">${fmtDate(c.data)} · ${c.ora} ${lotto && lotto.esaurito? '❌' : c.ingredientiUsati.some(i=>!i.lotto)? '⚠️':'✅'}${c.abbattuto? ' ❄️':''}</div>
           ${lotto? `<div class="meta">Lotto: ${lotto.lotto} · Produzione interna · scade il ${fmtDate(lotto.dataScadenza)}</div>` : ''}
           <div class="meta">${c.operatore}</div>
         </div>
@@ -3461,7 +3461,7 @@ function openEditRecipe(id){
     <p class="muted" style="font-size:12px;">Scadenza del semilavorato: senza abbattitore, con abbattitore positivo, con abbattitore negativo/surgelazione.</p>
     <label style="display:flex;align-items:center;gap:8px;margin:12px 0;font-size:13px;cursor:pointer;">
       <input type="checkbox" id="rcTerminata" ${r.terminata?'checked':''}>
-      ⚫ Ricetta terminata (non più in uso — resta comunque consultabile nello storico)
+      ❌ Ricetta terminata (non più in uso — resta comunque consultabile nello storico)
     </label>
     <div id="rcErrore" style="color:var(--red);font-size:13px;margin-top:4px;"></div>
     <div class="rowbtns">
@@ -3814,7 +3814,7 @@ function openComposizioneDetail(id){
       <div style="font-weight:800;font-size:13px;">🏷️ Lotto interno prodotto</div>
       <div class="muted" style="font-size:12px;margin-top:4px;">${c.lottoProdotto}</div>
       ${semilavorato? `<div class="muted" style="font-size:12px;margin-top:4px;">
-        ${semilavorato.esaurito? `⚫ Non più disponibile dal ${fmtDate(semilavorato.dataEsaurimento)}` : `Scadenza prevista: ${fmtDate(semilavorato.dataScadenza)}`}
+        ${semilavorato.esaurito? `❌ Non più disponibile dal ${fmtDate(semilavorato.dataEsaurimento)}` : `Scadenza prevista: ${fmtDate(semilavorato.dataScadenza)}`}
       </div>`:""}
       ${c.semilavoratoId && semilavorato? `<div class="rowbtns" style="margin-top:8px;">
         <button class="printbtn" onclick="printEtichetta('${c.semilavoratoId}')">🏷️ Etichetta</button>
@@ -4705,7 +4705,7 @@ function buildSchedaContent(kind, mese){
         const rows = logs.temperature.filter(r=>r.pointId===p.id && inMonth(r))
           .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
           .map(r=> r.spento
-            ? [fmtDate(r.data), r.ora, "⚫ Spento", esc(r.note)||"—", esc(r.operatore), "—"]
+            ? [fmtDate(r.data), r.ora, "🔌 OFF", esc(r.note)||"—", esc(r.operatore), "—"]
             : [fmtDate(r.data), r.ora, esc(r.valore)+" °C", r.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`, esc(r.operatore), r.fonte==="foto"?"📸 foto":"manuale"]);
         const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : `${p.min}°C / ${p.max}°C`;
         return `<h2>${esc(p.name)} — soglia ${rangeLbl}</h2>` + tbl(["Data","Ora","Valore","Esito","Operatore","Fonte"], rows);
@@ -4853,7 +4853,7 @@ function schedaBody(kind){
       const rows = logs.temperature.filter(r=>r.pointId===p.id && inMonth(r))
         .sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
         .map(r=> r.spento
-          ? [fmtDate(r.data), r.ora, "⚫ Spento", esc(r.note)||"—", esc(r.operatore), "—"]
+          ? [fmtDate(r.data), r.ora, "🔌 OFF", esc(r.note)||"—", esc(r.operatore), "—"]
           : [fmtDate(r.data), r.ora, esc(r.valore)+" °C", r.conforme? `<span class="ok">Conforme</span>`:`<span class="bad">NON conforme</span>`, esc(r.operatore), r.fonte==="foto"?"foto":"manuale"]);
       const rangeLbl = p.type==="freezer" ? `≤ ${p.max}°C` : p.type==="hot" ? `≥ ${p.min}°C` : `${p.min}°C / ${p.max}°C`;
       return `<h2>${esc(p.name)} — soglia ${rangeLbl}</h2>` + tbl(["Data","Ora","Valore","Esito","Operatore","Fonte"], rows);
@@ -4968,7 +4968,7 @@ function printTempMese(pointId){
     if(recs.length){
       const last = recs[recs.length-1];
       if(last.spento){
-        rows += `<tr><td>${d}</td><td>⚫ Spento</td>
+        rows += `<tr><td>${d}</td><td>🔌 OFF</td>
           <td>${last.ora}</td><td>${esc(last.operatore)}</td>
           <td>${esc(last.note)||'—'}</td></tr>`;
       } else {
@@ -5326,7 +5326,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "87";
+const APP_VERSION = "88";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
