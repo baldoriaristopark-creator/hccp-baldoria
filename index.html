@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v95">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v96">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v95</title>
+<title>HACCP Baldoria v96</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 95 · icone pulite tabelle mensili · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 96 · tolta icona timer ridondante · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2152,8 +2152,7 @@ function renderSanificazione(){
         return `<div class="checklist-item ${auditCls}" style="flex-wrap:wrap;">
           <div class="lbl" onclick="openSanifItemDetail('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" style="cursor:pointer;">${mancantePassata? '🔴 ':''}${item} ${reparto? `<span class="muted" style="font-size:11px;">📍 ${reparto}</span>`:""} ${isOggi && timerFor(timerKey)? `<span class="timer-badge" data-timer-key="${timerKey}">⏱️ ${fmtCountdown(timerFor(timerKey).endTime-Date.now())}</span>`:""} ${auditSt==='escalated'?'<span class="timer-badge expired">🚨 MANCANTE</span>':auditSt==='notice'?'<span class="timer-badge">⚠️ da fare</span>':''}${pregressaMancante? `<span class="timer-badge expired" style="cursor:pointer;" onclick="event.stopPropagation();setDateFiltroSanif('${pregressaMancante}')">🔴 manca il ${fmtDate(pregressaMancante)}</span>`:''}</div>
           <div style="display:flex;gap:8px;align-items:center;">
-            ${isOggi && isAdmin()? `<button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openEditSanifItem('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>
-            <button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openTimerForm('sanificazione','${timerKey}','${item.replace(/'/g,"\\'")}')" title="Imposta timer">⏱️</button>` : ""}
+            ${isOggi && isAdmin()? `<button class="iconbtn" style="font-size:15px;padding:6px 9px;" onclick="openEditSanifItem('${sanifSubTab}','${item.replace(/'/g,"\\'")}')" title="Modifica o elimina">✏️</button>` : ""}
             ${rec? `<button class="togglebtn done" onclick="openSanifDetail('${rec.id}')">✓ ${rec.operatore}${rec.tardiva?' ⏱️':''}</button>`
               : isOggi? `<button class="togglebtn" onclick="openSanifConfirm('${item.replace(/'/g,"\\'")}')">Segna fatto</button>`
               : isAdmin()? `<button class="togglebtn" style="background:var(--red);" onclick="openSanifConfirmRetroattivo('${item.replace(/'/g,"\\'")}','${t}')">+ Aggiungi mancante</button>`
@@ -5424,7 +5423,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "95";
+const APP_VERSION = "96";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
