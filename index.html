@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v86">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v87">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v86</title>
+<title>HACCP Baldoria v87</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 86 · filtri MOMA/P1/Ricette · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 87 · ordinato admin + ultimo chiuso · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2299,6 +2299,7 @@ function renderMoma(){
   if(meseFiltroMoma) history = history.filter(m=>m.data.startsWith(meseFiltroMoma));
   if(!dateFiltroMoma && !fornitoreFiltroMoma && !meseFiltroMoma) history = history.slice(0,20);
   const fornitoriMoma = [...new Set(logs.moma.map(m=>m.fornitore).filter(Boolean))].sort();
+  const mesiMoma = [...new Set(logs.moma.map(m=>m.data.slice(0,7)))].sort().reverse();
   $main.innerHTML = `
     <div class="card">
       <div class="card-head"><h2>Controllo matrici alimentari in ingresso (MOMA)</h2><div style="display:flex;gap:6px;">${printBtn('moma', meseExportMoma)}${saveBtn('moma', meseExportMoma)}</div></div>
@@ -2312,10 +2313,10 @@ function renderMoma(){
         <option value="" ${!fornitoreFiltroMoma?'selected':''}>Tutti i fornitori</option>
         ${fornitoriMoma.map(f=>`<option value="${esc(f)}" ${fornitoreFiltroMoma===f?'selected':''}>${f}</option>`).join("")}
       </select>` : ''}
-      ${meseFiltroMoma? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        ${meseAnnoSelectHtml(meseFiltroMoma, "meseFiltroMoma", "setMeseFiltroMoma")}
-        <button class="iconbtn" onclick="setMeseFiltroMoma('')">✕ Tutti i mesi</button>
-      </div>` : `<button class="iconbtn block" style="margin-bottom:10px;" onclick="setMeseFiltroMoma(todayISO().slice(0,7))">📅 Filtra per mese/anno</button>`}
+      ${mesiMoma.length? `<select onchange="setMeseFiltroMoma(this.value)" style="margin-bottom:10px;">
+        <option value="" ${!meseFiltroMoma?'selected':''}>Tutti i mesi</option>
+        ${mesiMoma.map(m=>`<option value="${m}" ${meseFiltroMoma===m?'selected':''}>${MONTHS[parseInt(m.slice(5,7),10)-1]} ${m.slice(0,4)}</option>`).join("")}
+      </select>` : ''}
       ${history.length? Object.entries(history.reduce((acc,m)=>{ (acc[m.data]=acc[m.data]||[]).push(m); return acc; }, {}))
         .sort((a,b)=>b[0].localeCompare(a[0]))
         .map(([data, consegne])=>`
@@ -4123,11 +4124,17 @@ function renderOrdini(){
     <div class="card">
       <div class="card-head"><h2>📝 Ordine della settimana</h2>${isAdmin()? `<div style="display:flex;gap:6px;">${printBtn('ordini')}${saveBtn('ordini')}</div>` : ''}</div>
       <p class="muted">Tocca un articolo per aggiungerlo alla lista — ogni tocco aggiunge 1 quantità. L'ordine resta aperto per tutta la settimana (dal ${fmtDate(lunedi)}) — solo l'amministratore può chiuderlo per farne partire uno nuovo.</p>
+      ${isAdmin()? `<p class="muted">👑 Come amministratore, toccando il nome di un articolo lo evidenzi come "ordinato" (es. mentre lo comunichi al fornitore) invece di aggiungerne quantità — usa i pulsanti +/- per la quantità.</p>`:''}
       <div class="card" style="padding:10px;background:var(--green-pale);border:none;margin-bottom:10px;">
         <div style="font-weight:800;font-size:13px;">Aperto da ${ordine.operatoreApertura} il ${fmtDate(ordine.data)}</div>
         <div class="muted" style="font-size:12px;">${numRighe} articolo/i in lista.</div>
         <div id="ordineCountdown" data-countdown-until="${scadenzaMs}" style="font-size:12px;font-weight:700;margin-top:4px;"></div>
       </div>
+      ${storico.length? `
+      <div class="card" style="padding:10px;background:var(--cream);border:1px solid var(--line);margin-bottom:10px;cursor:pointer;" onclick="openOrdineStorico('${storico[0].id}')">
+        <div style="font-weight:800;font-size:13px;">📦 Ultimo ordine chiuso — ${fmtDate(storico[0].data)}</div>
+        <div class="muted" style="font-size:12px;">${Object.keys(storico[0].righe).filter(k=>storico[0].righe[k]).length} articoli · chiuso da ${storico[0].operatoreChiusura||'—'} · tocca per i dettagli</div>
+      </div>` : ''}
       ${isAdmin()? `<div class="rowbtns"><button class="btn danger block" onclick="chiudiOrdineCorrente()">✅ Chiudi ordine settimanale e aprine uno nuovo</button></div>` : ''}
       <div class="rowbtns"><button class="iconbtn block" onclick="openAddArticoloOrdine()">+ Aggiungi articolo mancante al listino</button></div>
     </div>
@@ -4136,10 +4143,11 @@ function renderOrdini(){
       ${filtrati.length? filtrati.map(art=>{
         const riga = leggiRigaOrdine(ordine.righe[art]);
         const artEsc = art.replace(/'/g,"\\'");
-        return `<div class="logrow" style="flex-wrap:wrap;">
-          <div class="lbl" onclick="incrementaArticoloOrdine('${artEsc}')" style="cursor:pointer;flex:1;">
-            ${art}
-            ${riga && !riga.legacy && riga.operatore? `<div class="muted" style="font-size:11px;">aggiunto da ${riga.operatore}</div>`:''}
+        const ordinato = riga && !riga.legacy && riga.ordinato;
+        return `<div class="logrow" style="flex-wrap:wrap;${ordinato? 'background:var(--green-pale);':''}">
+          <div class="lbl" onclick="${isAdmin()? `toggleOrdinatoArticolo('${artEsc}')` : `incrementaArticoloOrdine('${artEsc}')`}" style="cursor:pointer;flex:1;${ordinato? 'text-decoration:line-through;':''}">
+            ${ordinato? '✅ ':''}${art}
+            ${riga && !riga.legacy && riga.operatore? `<div class="muted" style="font-size:11px;text-decoration:none;">aggiunto da ${riga.operatore}</div>`:''}
             ${riga && riga.legacy? `<div class="muted" style="font-size:11px;">${riga.qta} (registrazione precedente a testo libero)</div>`:''}
           </div>
           <div style="display:flex;gap:6px;align-items:center;">
@@ -4152,6 +4160,7 @@ function renderOrdini(){
           </div>
         </div>`;
       }).join("") : `<div class="empty">Nessun articolo trovato.</div>`}
+      ${isAdmin() && filtrati.length? `<div class="rowbtns"><button class="btn block" onclick="salvaOrdineCorrente()">💾 Salva</button></div>`:''}
     </div>
     ${storico.length? `
     <div class="card">
@@ -4193,6 +4202,23 @@ async function decrementaArticoloOrdine(articolo){
   await saveLog("ordini");
   renderOrdiniList();
 }
+async function toggleOrdinatoArticolo(articolo){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  const ordine = getOrdineAperto();
+  if(!ordine) return;
+  const riga = leggiRigaOrdine(ordine.righe[articolo]);
+  if(!riga || riga.legacy) return;
+  riga.ordinato = !riga.ordinato;
+  ordine.righe[articolo] = riga;
+  await saveLog("ordini");
+  renderOrdiniList();
+}
+async function salvaOrdineCorrente(){
+  const ordine = getOrdineAperto();
+  if(!ordine) return;
+  await saveLog("ordini");
+  toast("💾 Ordine salvato");
+}
 async function eliminaArticoloOrdine(articolo){
   if(!isAdmin()){ toast("⛔ Solo l'amministratore può eliminare una voce dall'ordine"); return; }
   const ordine = getOrdineAperto();
@@ -4222,12 +4248,21 @@ function openOrdineStorico(id){
   const righe = Object.entries(o.righe).filter(([,q])=>q).sort((a,b)=>a[0].localeCompare(b[0]));
   openSheet(`Ordine del ${fmtDate(o.data)}`, `
     <p class="muted">Aperto da ${o.operatoreApertura} · chiuso da ${o.operatoreChiusura||'—'} il ${o.chiusoIl? fmtDate(o.chiusoIl.slice(0,10)):'—'}</p>
+    <div class="rowbtns"><button class="iconbtn block" onclick="stampaOrdineStorico('${id}')">🖨️ Stampa</button></div>
     ${righe.length? righe.map(([art,val])=>{
       const r = leggiRigaOrdine(val);
       return `<div class="logrow"><div><div class="val" style="font-size:13px;">${art}</div>${isAdmin() && r.operatore? `<div class="meta">aggiunto da ${r.operatore}</div>`:''}</div><span class="chip ok">${r.qta}</span></div>`;
     }).join("") : `<div class="empty">Nessun articolo in questo ordine.</div>`}
     ${isAdmin()? `<div class="rowbtns"><button class="btn danger" onclick="eliminaOrdineStorico('${id}')">🗑️ Elimina dallo storico</button></div>`:''}
   `);
+}
+function stampaOrdineStorico(id){
+  const o = logs.ordini.find(x=>x.id===id);
+  if(!o) return;
+  const righe = Object.entries(o.righe).filter(([,q])=>q).sort((a,b)=>a[0].localeCompare(b[0]))
+    .map(([art,val])=>{ const r = leggiRigaOrdine(val); return [esc(art), esc(r.qta), esc(r.operatore||'—')]; });
+  const body = `<p>Aperto da ${esc(o.operatoreApertura)} il ${fmtDate(o.data)} · chiuso da ${esc(o.operatoreChiusura||'—')} il ${o.chiusoIl? fmtDate(o.chiusoIl.slice(0,10)):'—'}</p>` + tbl(["Articolo","Quantità","Aggiunto da"], righe);
+  printWindow(`Ordine del ${fmtDate(o.data)}`, body);
 }
 async function eliminaOrdineStorico(id){
   if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
@@ -5291,7 +5326,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "86";
+const APP_VERSION = "87";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
