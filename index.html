@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v89">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v90">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v89</title>
+<title>HACCP Baldoria v90</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 89 · filtro mese Temperature · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 90 · etichetta tendina Mese · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1498,7 +1498,7 @@ function meseFilterTempHtml(){
   const mesi = [...new Set(logs.temperature.map(r=>r.data.slice(0,7)))].sort().reverse();
   if(!mesi.length) return "";
   return `<select onchange="setMeseFiltroTemp(this.value)" style="margin-bottom:10px;">
-    <option value="" ${!meseFiltroTemp?'selected':''}>Tutti i mesi</option>
+    <option value="" ${!meseFiltroTemp?'selected':''}>Mese</option>
     ${mesi.map(m=>`<option value="${m}" ${meseFiltroTemp===m?'selected':''}>${MONTHS[parseInt(m.slice(5,7),10)-1]} ${m.slice(0,4)}</option>`).join("")}
   </select>`;
 }
@@ -2356,7 +2356,7 @@ function renderMoma(){
         ${fornitoriMoma.map(f=>`<option value="${esc(f)}" ${fornitoreFiltroMoma===f?'selected':''}>${f}</option>`).join("")}
       </select>` : ''}
       ${mesiMoma.length? `<select onchange="setMeseFiltroMoma(this.value)" style="margin-bottom:10px;">
-        <option value="" ${!meseFiltroMoma?'selected':''}>Tutti i mesi</option>
+        <option value="" ${!meseFiltroMoma?'selected':''}>Mese</option>
         ${mesiMoma.map(m=>`<option value="${m}" ${meseFiltroMoma===m?'selected':''}>${MONTHS[parseInt(m.slice(5,7),10)-1]} ${m.slice(0,4)}</option>`).join("")}
       </select>` : ''}
       ${history.length? Object.entries(history.reduce((acc,m)=>{ (acc[m.data]=acc[m.data]||[]).push(m); return acc; }, {}))
@@ -5368,7 +5368,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "89";
+const APP_VERSION = "90";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
