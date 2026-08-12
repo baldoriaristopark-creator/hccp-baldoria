@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v97">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v98">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v97</title>
+<title>HACCP Baldoria v98</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 97 · modifica/elimina articoli listino ordini · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 98 · salva ordine per tutti · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4168,8 +4168,13 @@ function renderOrdini(){
       <p class="muted">Tocca un articolo per aggiungerlo alla lista — ogni tocco aggiunge 1 quantità. L'ordine resta aperto per tutta la settimana (dal ${fmtDate(lunedi)}) — solo l'amministratore può chiuderlo per farne partire uno nuovo.</p>
       ${isAdmin()? `<p class="muted">👑 Come amministratore, tocca ✅ accanto a un articolo già in lista per evidenziarlo come "ordinato" (es. mentre lo comunichi al fornitore).</p>`:''}
       <div class="card" style="padding:10px;background:var(--green-pale);border:none;margin-bottom:10px;">
-        <div style="font-weight:800;font-size:13px;">Ordine aperto da ${ordine.operatoreApertura} il ${fmtDate(ordine.data)}</div>
-        <div class="muted" style="font-size:12px;">${numRighe} articolo/i in lista.</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <div style="font-weight:800;font-size:13px;">Ordine aperto da ${ordine.operatoreApertura} il ${fmtDate(ordine.data)}</div>
+            <div class="muted" style="font-size:12px;">${numRighe} articolo/i in lista.</div>
+          </div>
+          <button class="iconbtn" style="white-space:nowrap;" onclick="salvaOrdineCorrente()">💾 Salva</button>
+        </div>
         <div id="ordineCountdown" data-countdown-until="${scadenzaMs}" style="font-size:12px;font-weight:700;margin-top:4px;color:var(--red);"></div>
       </div>
       ${storico.length? `
@@ -4203,7 +4208,6 @@ function renderOrdini(){
           </div>
         </div>`;
       }).join("") : `<div class="empty">Nessun articolo trovato.</div>`}
-      ${isAdmin() && filtrati.length? `<div class="rowbtns"><button class="btn block" onclick="salvaOrdineCorrente()">💾 Salva</button></div>`:''}
     </div>
     ${storico.length? `
     <div class="card">
@@ -5467,7 +5471,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "97";
+const APP_VERSION = "98";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
