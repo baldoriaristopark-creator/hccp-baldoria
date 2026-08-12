@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v88">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v89">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v88</title>
+<title>HACCP Baldoria v89</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 88 · icone uniformate X/OFF · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 89 · filtro mese Temperature · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -467,6 +467,7 @@ let statoFiltroRicette = "";
 let dateFiltroTemp = "";
 let dateFiltroSanif = "";
 let statoFiltroTemp = "";
+let meseFiltroTemp = "";
 let statoFiltroSanif = "";
 let turniWeekOffset = 0;
 let dateFiltroMoma = "";
@@ -1493,11 +1494,51 @@ function dataPregressaMancanteTemp(pointId){
   }
   return null;
 }
+function meseFilterTempHtml(){
+  const mesi = [...new Set(logs.temperature.map(r=>r.data.slice(0,7)))].sort().reverse();
+  if(!mesi.length) return "";
+  return `<select onchange="setMeseFiltroTemp(this.value)" style="margin-bottom:10px;">
+    <option value="" ${!meseFiltroTemp?'selected':''}>Tutti i mesi</option>
+    ${mesi.map(m=>`<option value="${m}" ${meseFiltroTemp===m?'selected':''}>${MONTHS[parseInt(m.slice(5,7),10)-1]} ${m.slice(0,4)}</option>`).join("")}
+  </select>`;
+}
+function setMeseFiltroTemp(v){ meseFiltroTemp = v; render(); }
+function renderTemperatureMese(pointsFiltered){
+  const idsVisibili = new Set(pointsFiltered.map(p=>p.id));
+  const [anno, mese] = meseFiltroTemp.split("-");
+  const nomeMese = MONTHS[parseInt(mese,10)-1];
+  const registrazioni = logs.temperature
+    .filter(r=>idsVisibili.has(r.pointId) && r.data.startsWith(meseFiltroTemp))
+    .sort((a,b)=>(b.data+b.ora).localeCompare(a.data+a.ora));
+  $main.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h2>📅 ${nomeMese} ${anno}</h2><div style="display:flex;gap:6px;">${printBtn('temperature', meseFiltroTemp)}${saveBtn('temperature', meseFiltroTemp)}</div></div>
+      ${repartoFilterHtml(repartoFiltroTemp, "setRepartoFiltroTemp")}
+      ${meseFilterTempHtml()}
+      ${registrazioni.length? registrazioni.map(r=>{
+        const p = config.points.find(x=>x.id===r.pointId);
+        const chipCls = r.spento? "spento" : r.conforme? "ok" : "bad";
+        const chipTxt = r.spento? "🔌 OFF" : r.conforme? "Conforme" : "Fuori soglia";
+        return `<div class="logrow" onclick="openTempEntryDetail('${r.id}')" style="cursor:pointer;">
+          <div>
+            <div class="val">${p? p.name : '—'} ${r.spento? '' : `— ${r.valore}°C`}</div>
+            <div class="meta">${fmtDate(r.data)} · ${r.ora} · ${r.operatore||'—'}${r.tardiva? ' · ⏱️ in ritardo':''}</div>
+          </div>
+          <span class="chip ${chipCls}">${chipTxt}</span>
+        </div>`;
+      }).join("") : `<div class="empty">Nessuna registrazione in questo mese.</div>`}
+    </div>
+  `;
+}
 function renderTemperature(){
   const pointsFiltered = (repartoFiltroTemp ? config.points.filter(p=>p.reparto===repartoFiltroTemp) : config.points).filter(p=>hasRepartoAccess(p.reparto));
 
   if(statoFiltroTemp==="fuorisoglia"){
     renderTemperatureFuoriSoglia(pointsFiltered);
+    return;
+  }
+  if(meseFiltroTemp){
+    renderTemperatureMese(pointsFiltered);
     return;
   }
 
@@ -1536,6 +1577,7 @@ function renderTemperature(){
       <div class="card-head"><h2>Punti di controllo ${!isOggi? `— ${fmtDate(dataRif)}`:''}</h2><div style="display:flex;gap:6px;">${printBtn('temperature', meseExportTemp)}${saveBtn('temperature', meseExportTemp)}</div></div>
       ${repartoFilterHtml(repartoFiltroTemp, "setRepartoFiltroTemp")}
       ${dateFilterHtml(dateFiltroTemp, "setDateFiltroTemp")}
+      ${meseFilterTempHtml()}
       <select onchange="setStatoFiltroTemp(this.value)" style="margin-bottom:10px;">
         <option value="" ${!statoFiltroTemp?'selected':''}>Tutti gli stati</option>
         <option value="confermato" ${statoFiltroTemp==='confermato'?'selected':''}>✅ Confermato (già registrato)</option>
@@ -5326,7 +5368,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "88";
+const APP_VERSION = "89";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
