@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v92">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v93">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v92</title>
+<title>HACCP Baldoria v93</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 92 · fix aggiunta articoli ordine aperto · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 93 · mancanze sanif non retroattive a luglio · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2110,10 +2110,11 @@ let sanifSubTab = "giornaliera";
 function dataPregressaMancante(item, freq){
   if(freq !== "giornaliera") return null;
   const oggi = todayISO();
-  for(let i=1; i<=30; i++){
-    const d = addDaysISO(oggi, -i);
+  let d = addDaysISO(oggi, -1);
+  while(d >= DATA_INIZIO_CONTROLLO_TEMP){
     const esiste = logs.sanificazione.some(r=>r.item===item && r.frequenza===freq && r.data===d);
     if(!esiste) return d;
+    d = addDaysISO(d, -1);
   }
   return null;
 }
@@ -5424,7 +5425,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "92";
+const APP_VERSION = "93";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
