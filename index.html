@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v99">
+<meta name="apple-mobile-web-app-title" content="HACCP Baldoria v100">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1F6F4A">
 <meta name="format-detection" content="telephone=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>HACCP Baldoria v99</title>
+<title>HACCP Baldoria v100</title>
 <style>
   :root{
     --cream:#FBF6EC;
@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 99 · diagnostica errori AI/crediti · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 100 · fix JSON Parse error EOF · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -445,7 +445,15 @@ async function aiRequest(payload){
       if(r.status===429) throw new Error("troppe richieste in questo momento, riprova tra poco");
       throw new Error("proxy "+r.status+(dettaglio? ": "+dettaglio : ""));
     }
-    const data = await r.json();
+    let data;
+    try{
+      const rawText = await r.text();
+      if(!rawText || !rawText.trim()) throw new Error("risposta vuota dal server — riprova");
+      data = JSON.parse(rawText);
+    }catch(e){
+      if(e.message && e.message.includes("risposta vuota")) throw e;
+      throw new Error("risposta non valida dal server — riprova tra poco");
+    }
     if(data && data.type==="error"){
       const msg = data.error?.message || "";
       if(/credit|quota|billing/i.test(msg)) throw new Error("crediti API esauriti — controlla il saldo su console.anthropic.com");
@@ -1949,9 +1957,14 @@ async function readTemperatureFromPhoto(base64, mediaType){
       }]
   });
   const textBlock = (data.content||[]).find(b=>b.type==="text");
-  if(!textBlock) throw new Error("no text");
+  if(!textBlock) throw new Error("nessun testo nella risposta — riprova");
   const clean = textBlock.text.replace(/```json|```/g,"").trim();
-  return JSON.parse(clean);
+  if(!clean) throw new Error("risposta vuota dall'AI — riprova");
+  try{
+    return JSON.parse(clean);
+  }catch(e){
+    throw new Error("risposta dell'AI non interpretabile — riprova con una foto più chiara");
+  }
 }
 
 function renderPhotoResult(result, pointId, p, imgDataUrl){
@@ -2603,9 +2616,14 @@ async function readRecipeFromPhoto(base64, mediaType){
       }]
   });
   const textBlock = (data.content||[]).find(b=>b.type==="text");
-  if(!textBlock) throw new Error("no text");
+  if(!textBlock) throw new Error("nessun testo nella risposta — riprova");
   const clean = textBlock.text.replace(/```json|```/g,"").trim();
-  return JSON.parse(clean);
+  if(!clean) throw new Error("risposta vuota dall'AI — riprova");
+  try{
+    return JSON.parse(clean);
+  }catch(e){
+    throw new Error("risposta dell'AI non interpretabile — riprova con una foto più chiara");
+  }
 }
 function handleRecipePhoto(e){
   const file = e.target.files[0];
@@ -2655,9 +2673,14 @@ async function readBollaFromPhoto(base64, mediaType){
       }]
   });
   const textBlock = (data.content||[]).find(b=>b.type==="text");
-  if(!textBlock) throw new Error("no text");
+  if(!textBlock) throw new Error("nessun testo nella risposta — riprova");
   const clean = textBlock.text.replace(/```json|```/g,"").trim();
-  return JSON.parse(clean);
+  if(!clean) throw new Error("risposta vuota dall'AI — riprova");
+  try{
+    return JSON.parse(clean);
+  }catch(e){
+    throw new Error("risposta dell'AI non interpretabile — riprova con una foto più chiara");
+  }
 }
 function setMomaCheck(key, val, btn){
   window._momaChecks[key] = val;
@@ -5483,7 +5506,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "99";
+const APP_VERSION = "100";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
