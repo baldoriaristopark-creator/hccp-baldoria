@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 100 · fix JSON Parse error EOF · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 1.1 · pulizia foto vecchie per liberare spazio · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4578,6 +4578,46 @@ async function closeNoco(id){
 }
 
 // ---------- IMPOSTAZIONI ----------
+function trovaFotoPrecedentiA(cutoff){
+  const trovate = [];
+  logs.temperature.forEach(r=>{ if(r.photoKey && r.data < cutoff) trovate.push({rec:r, key:r.photoKey}); });
+  logs.sanificazione.forEach(r=>{ if(r.photoKey && r.data < cutoff) trovate.push({rec:r, key:r.photoKey}); });
+  logs.moma.forEach(r=>{ if(r.photoKey && r.data < cutoff) trovate.push({rec:r, key:r.photoKey}); });
+  logs.composizioni.forEach(r=>{ if(r.photoKey && r.data < cutoff) trovate.push({rec:r, key:r.photoKey}); });
+  return trovate;
+}
+function aggiornaContoFotoVecchie(){
+  const cutoff = document.getElementById("pulizFotoData").value;
+  const holder = document.getElementById("pulizFotoInfo");
+  if(!holder) return;
+  if(!cutoff){ holder.innerHTML = ""; return; }
+  const trovate = trovaFotoPrecedentiA(cutoff);
+  holder.innerHTML = `<p class="muted" style="font-weight:700;">${trovate.length? `📷 ${trovate.length} foto trovate prima del ${fmtDate(cutoff)}` : "Nessuna foto trovata prima di questa data."}</p>`;
+}
+async function eliminaFotoVecchie(){
+  if(!isAdmin()) return;
+  const cutoff = document.getElementById("pulizFotoData").value;
+  if(!cutoff){ toast("Seleziona prima una data"); return; }
+  const daEliminare = trovaFotoPrecedentiA(cutoff);
+  if(!daEliminare.length){ toast("Nessuna foto precedente a questa data trovata."); return; }
+  if(!confirm(`Eliminare ${daEliminare.length} foto precedenti al ${fmtDate(cutoff)}? I dati del registro (valori, conferme, date) restano intatti — viene tolta solo l'immagine allegata. L'eliminazione non è reversibile.`)) return;
+  let riusciti = 0, falliti = 0;
+  for(const item of daEliminare){
+    try{
+      await DB.delete(item.key, true);
+      riusciti++;
+    }catch(e){ falliti++; }
+    delete item.rec.photoKey;
+  }
+  await Promise.all([
+    saveLog("temperature").catch(()=>{}),
+    saveLog("sanificazione").catch(()=>{}),
+    saveLog("moma").catch(()=>{}),
+    saveLog("composizioni").catch(()=>{})
+  ]);
+  toast(`✅ Eliminate ${riusciti} foto${falliti? `, ${falliti} già rimosse o non trovate`:''} — spazio liberato`);
+  activeTab="impostazioni"; render();
+}
 function renderImpostazioni(){
   const me = getCurrentOperator();
   $main.innerHTML = `
@@ -4636,6 +4676,16 @@ function renderImpostazioni(){
       ${DB.mode==="supabase"? `<p class="muted" style="margin-top:6px;">📡 Sincronizzazione: ${pendingSyncCount()>0? `<b>${pendingSyncCount()} in attesa</b> (offline o rete lenta)` : `<b>tutto aggiornato</b>`}</p>`:""}
       <button class="btn secondary block" onclick="openDbConfig()">Configura database condiviso</button>
     </div>
+    ${isAdmin() && DB.mode==="supabase"? `
+    <div class="card">
+      <h2>🧹 Libera spazio — elimina foto vecchie</h2>
+      <p class="muted">Se non riesci più a caricare foto, probabilmente lo spazio di archiviazione è pieno. Puoi eliminare le foto più vecchie di una certa data: il registro (valori, conferme, date) resta intatto per l'ispezione ASL — viene tolta solo l'immagine allegata.</p>
+      <div id="pulizFotoInfo"></div>
+      <label class="field">Elimina le foto precedenti al</label>
+      <input type="date" id="pulizFotoData" max="${todayISO()}" oninput="aggiornaContoFotoVecchie()">
+      <div class="rowbtns"><button class="btn danger block" onclick="eliminaFotoVecchie()">🗑️ Elimina le foto precedenti a questa data</button></div>
+    </div>
+    ` : ''}
     <div class="card">
       <h2>💾 Backup e Ripristino</h2>
       <p class="muted">${DB.mode==="supabase"? "Ogni giorno l'app salva automaticamente una copia completa di tutti i registri, così avete sempre un punto a cui tornare in caso di problemi." : "Il backup automatico giornaliero richiede la modalità database condiviso."}</p>
@@ -5506,14 +5556,14 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "100";
+const APP_VERSION = "1.1";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
     const r = await fetch(url, {cache:"no-store"});
     if(!r.ok) return;
     const text = await r.text();
-    const m = text.match(/versione (\d+) ·/);
+    const m = text.match(/versione (\d+\.\d+) ·/);
     if(m && m[1] !== APP_VERSION){
       if(silentReloadIfChanged){
         toast("🔄 Aggiornamento alla versione più recente...");
