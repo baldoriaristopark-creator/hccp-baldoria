@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 1.1 · pulizia foto vecchie per liberare spazio · 12/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 1.2 · flag lunga conservazione + auto-esaurito 3a consegna · 12/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2764,14 +2764,29 @@ async function saveMoma(){
     }
     const sett = isoWeekOfYear(dataBolla);
     prodotti.forEach(p=>{
+      const nomeProdotto = p.nome.trim();
       const lottoFinale = (p.lotto && p.lotto.trim())
         ? p.lotto.trim()
         : `DDT ${ddt||'s.n.'} del ${dataBollaLbl} · sett. ${sett}`;
-      const lunga = isLungaConservazione(p.nome);
+      // Tutte le consegne precedenti dello stesso articolo (non semilavorati), per le due regole seguenti
+      const precedentiStessoNome = logs.produzione.filter(x=>!x.semilavorato && x.prodotto.trim().toLowerCase()===nomeProdotto.toLowerCase());
+      // 1) Se questo articolo era già stato segnato "a lunga conservazione" in passato (manualmente o
+      // in automatico), manteniamo sempre il flag anche se il riconoscimento automatico questa volta non lo cogliesse.
+      const lungaGiaSegnata = precedentiStessoNome.some(x=>x.lungaConservazione);
+      const lunga = isLungaConservazione(nomeProdotto) || lungaGiaSegnata;
       const scadenzaProdotto = lunga ? addDaysISO(consegna, 730) : scadenza;
+      // 2) Se questa è già la 3° (o successiva) consegna ATTIVA dello stesso articolo, il più vecchio
+      // si considera esaurito in automatico (restano attive solo le due consegne più recenti).
+      const attivePrecedenti = precedentiStessoNome.filter(x=>!x.esaurito).sort((a,b)=>a.dataConsegna.localeCompare(b.dataConsegna));
+      if(attivePrecedenti.length >= 2){
+        const piuVecchia = attivePrecedenti[0];
+        piuVecchia.esaurito = true;
+        piuVecchia.dataEsaurimento = consegna;
+        piuVecchia.note = (piuVecchia.note||"") + " [Segnato automaticamente come esaurito: sono arrivate almeno 2 consegne più recenti dello stesso articolo.]";
+      }
       logs.produzione.push({
         id: uid(),
-        prodotto: p.nome.trim(),
+        prodotto: nomeProdotto,
         lotto: lottoFinale,
         lottoStimato: !(p.lotto && p.lotto.trim()),
         quantita: p.quantita ? p.quantita.trim() : "",
@@ -5556,7 +5571,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "1.1";
+const APP_VERSION = "1.2";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
