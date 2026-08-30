@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 1.4 · messaggio Salvatore in Home + abbattuto 7gg · 13/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 1.5 · corretto nome Sasy per messaggio Home · 13/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4665,7 +4665,7 @@ async function eliminaFotoVecchie(){
 // Solo l'operatore di nome "Salvatore" può scrivere il messaggio pubblico — non basta essere admin.
 function puoScrivereAnnuncio(){
   const op = getCurrentOperator();
-  return !!(op && op.nome && op.nome.trim().toLowerCase()==="salvatore");
+  return !!(op && op.nome && op.nome.trim().toLowerCase()==="sasy");
 }
 async function salvaAnnuncio(){
   if(!puoScrivereAnnuncio()){ toast("⛔ Solo Salvatore può scrivere questo messaggio"); return; }
@@ -4763,7 +4763,7 @@ function renderImpostazioni(){
     ${puoScrivereAnnuncio()? `
     <div class="card">
       <h2>📢 Messaggio per tutti</h2>
-      <p class="muted">Scrivi un avviso che comparirà a tutti in Home (utile per comunicazioni urgenti, es. "oggi chiuso il reparto pizzeria"). Resta visibile finché non lo cambi o lo cancelli. Solo tu (Salvatore) puoi scriverlo.</p>
+      <p class="muted">Scrivi un avviso che comparirà a tutti in Home (utile per comunicazioni urgenti, es. "oggi chiuso il reparto pizzeria"). Resta visibile finché non lo cambi o lo cancelli. Solo tu (Sasy) puoi scriverlo.</p>
       ${config.annuncio? `<div class="card" style="padding:10px;background:var(--amber-pale);border:none;margin-bottom:10px;">
         <div style="font-weight:700;font-size:13px;">${esc(config.annuncio.testo)}</div>
         <div class="muted" style="font-size:11px;margin-top:4px;">scritto da ${config.annuncio.autore} il ${fmtDate(config.annuncio.data)}</div>
@@ -5656,7 +5656,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "1.4";
+const APP_VERSION = "1.5";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
