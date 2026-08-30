@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 1.3 · fix ricetta terminata bloccata (anche retroattivo) · 13/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 1.4 · messaggio Salvatore in Home + abbattuto 7gg · 13/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -557,6 +557,15 @@ function migrateReparti(){
     config.ordiniListino = ["ACCIUGHE", "ACETO MELE", "ACETO PER POSATE", "ACETO VINO", "ARIOSTO", "ARROSTICINI", "BACON", "BANDIDOS", "barattoli miele", "BBQ 2 LT", "BBQ MONODOSE", "BICCHIERI", "BICCHIERI CAFFE'", "BURRO", "CACAO IN POLVERE", "CACIOTTE MIX TAGLIERI", "CANDEGGINA", "CANNELLINI", "CANNUCCE", "CANNUCCE CORTE", "CANNUCCE LUNGE", "capocollo", "CAPOCOLLO", "CAPPERI SALE", "CARCIOFI AL NATURALE", "CECI", "CHEDDAR TONCHETTO", "CICOLI", "CIOCCOLATO FONDENTE", "CONCENTRATO POMODORO", "CONO GELATO", "COPPA DI TESTA", "COTTO", "CRAMBLE LOTUS", "CREM,A PEPERONI", "CREMA DI ZUCCA", "CREMA FRIARIELLI", "crema lotus", "CREMA NOCI", "CREMA PISTACCHIO", "CREMA RADICCHIO", "CRUDO", "CUCCHIAINI GELATO", "DET PAVIMENTI", "DIGESTIVE BISCOTTI", "DUBLESTEACK", "farina 00", "FARINA DI RISO CELIACO", "FETA", "FONDO BRUNO", "FUNGHI D'AMICO", "GLASSA ACETO", "GOCCIE CIOCC", "GRANA PEZZO GRANDE", "granella lotus", "GRANELLA PISTACCHIO", "GRISSINI", "GUANCIALE", "KELLOGS", "KETCHUP 5 KG", "LARDO CUCINA", "LASAGNA", "LATTE INTERO", "LENTICCHIE", "LIEVITO", "LIEVITO DOLCI", "LINGUINE DE CECCO", "maionese 5 kg", "MAIS BARATTOLO", "MANDORLE SGUSCIATE", "mascarpone", "MONODOSE FORMAGGIO", "MONODOSE KETCHUP", "MONODOSE MAIONESE", "MORTADELLA", "noci sgusciate", "NUTELLA", "olio evo", "olio girasole", "olio oliva", "OLIVE  SFIZIOSE", "OLIVE NERE DENOC.", "OLIVE VERDI", "OMOGGENIZZATI", "ORIGANO", "PAN DI STELLE", "PANCARRE", "pancetta arrotolata", "panco", "PANE GRATTUGGIATO", "pane senzaglutine", "panna", "panna dolce", "PANNO MICROFIBRA", "passate per ragu", "pasta bucatini", "pasta mista", "pasta paccheri", "pasta penne bimbi", "PASTA SENZA GLUTINE", "pasta spaghetti", "pasta ziti", "pastina plasmon", "patatine per feste", "patatine puf", "pecorino", "PEPE IN POLVERE", "pepe nero in grani", "PEPE ROSA", "PEPE VERDE", "PEPERONCINO MACINATO", "PEPSI", "PESTO CREMA", "philadelphia", "PISELLI CONGELATI", "PLAY TIME", "POLENTA", "PORCHETTA ARICCIA", "PORCHETTA PROSCUTTATA", "provolone per taglieti", "PURè", "RETINE PER CUCINA", "RIGATONI NAPOLETANI", "RISO VIGNOLA", "salame piccante pizzeria", "salame pizzeria", "salame taglieri", "sale fino", "sale grosso", "sale maldon", "SALE MALDON", "samurai piccoli per buffet", "savoiardi", "SEMOLA RIMACINATA", "SGRASSATORE", "SOTTILETTE CHEDDAR", "SOTTILETTE CLASSICHE", "spianata  piccante", "spianata dolce", "staccante", "stracci pavimenti", "STROFINACCI PER CUCINA", "SUGNA", "svelto per cucina", "SWEET CHILI DEVELY", "TARALLINI", "TONNO", "TOPPIN NOCCIOLA", "TOPPING CARAMELLO", "TOPPING CIOC BIANCO", "TOPPING FRAGOLA AMARENA", "TOPPING FRUTTI DI BOSCO", "TOPPING PISTACCHIO", "tovaglioli", "TOVAGLIOLI NERI", "VANILLINA", "wrustell", "ZAFFERANO", "ZUCCHERO", "ZUCCHERO A VELO", "ZUCCHERO DI CANNA"];
     changed = true;
   }
+  // Correzione retroattiva: ricette create prima dell'introduzione del campo "abbattuto negativo"
+  // non lo avevano mai impostato — lo portiamo a 7gg (limite del manuale HACCP, cap. 7.11) invece
+  // di lasciarlo indefinito (con il rischio che erediti per sbaglio il valore dell'abbattuto positivo).
+  (config.recipes||[]).forEach(r=>{
+    if(r.giorniConservazioneAbbattutoNegativo===undefined){
+      r.giorniConservazioneAbbattutoNegativo = 7;
+      changed = true;
+    }
+  });
   // Correzione retroattiva: ricette segnate manualmente "terminata" nonostante l'ultima
   // preparazione sia ancora attiva (non esaurita) — la spunta era rimasta accesa per errore.
   (config.recipes||[]).forEach(r=>{
@@ -629,6 +638,7 @@ const DEFAULT_CONFIG = {
   },
   recipes: [],
   ordiniListino: [],
+  annuncio: null,
   nocoCounter: 0
 };
 // Traccia, per ogni tipo di dato, se l'ultimo caricamento è fallito per un VERO problema
@@ -1421,6 +1431,7 @@ function renderHome(){
   const inScadenzaProd = attiviProd.filter(p=>p.dataScadenza >= t && (new Date(p.dataScadenza)-new Date(t))/86400000 <= 1);
 
   $main.innerHTML = `
+    ${annuncioBannerHtml()}
     ${auditBannerHtml()}
     <div class="card">
       <h2>Riepilogo di oggi</h2>
@@ -3503,7 +3514,7 @@ function openAddRecipe(){
     <input type="number" id="rcGiorniAbbattuto" value="8" min="0" max="365">
     <p class="muted" style="font-size:12px;">Scadenza del semilavorato con abbattimento positivo (nucleo ≤ +3°C).</p>
     <label class="field">Giorni di conservazione — ABBATTUTO NEGATIVO (obbligatorio)</label>
-    <input type="number" id="rcGiorniAbbattutoNeg" value="20" min="0" max="365">
+    <input type="number" id="rcGiorniAbbattutoNeg" value="7" min="0" max="365">
     <p class="muted" style="font-size:12px;">Scadenza del semilavorato con abbattimento negativo/surgelazione (nucleo ≤ -18°C).</p>
     <div id="rcErrore" style="color:var(--red);font-size:13px;margin-top:4px;"></div>
     <div class="rowbtns"><button class="btn block" onclick="saveNewRecipe()">Salva ricetta</button></div>
@@ -3560,7 +3571,7 @@ function openEditRecipe(id){
     <label class="field">Giorni di conservazione — ABBATTUTO POSITIVO (obbligatorio)</label>
     <input type="number" id="rcGiorniAbbattuto" value="${r.giorniConservazioneAbbattuto!==undefined? r.giorniConservazioneAbbattuto : 8}" min="0" max="365">
     <label class="field">Giorni di conservazione — ABBATTUTO NEGATIVO (obbligatorio)</label>
-    <input type="number" id="rcGiorniAbbattutoNeg" value="${r.giorniConservazioneAbbattutoNegativo!==undefined? r.giorniConservazioneAbbattutoNegativo : 20}" min="0" max="365">
+    <input type="number" id="rcGiorniAbbattutoNeg" value="${r.giorniConservazioneAbbattutoNegativo!==undefined? r.giorniConservazioneAbbattutoNegativo : 7}" min="0" max="365">
     <p class="muted" style="font-size:12px;">Scadenza del semilavorato: senza abbattitore, con abbattitore positivo, con abbattitore negativo/surgelazione.</p>
     <label style="display:flex;align-items:center;gap:8px;margin:12px 0;font-size:13px;cursor:pointer;">
       <input type="checkbox" id="rcTerminata" ${r.terminata?'checked':''}>
@@ -4651,6 +4662,46 @@ async function eliminaFotoVecchie(){
   toast(`✅ Eliminate ${riusciti} foto${falliti? `, ${falliti} già rimosse o non trovate`:''} — spazio liberato`);
   activeTab="impostazioni"; render();
 }
+// Solo l'operatore di nome "Salvatore" può scrivere il messaggio pubblico — non basta essere admin.
+function puoScrivereAnnuncio(){
+  const op = getCurrentOperator();
+  return !!(op && op.nome && op.nome.trim().toLowerCase()==="salvatore");
+}
+async function salvaAnnuncio(){
+  if(!puoScrivereAnnuncio()){ toast("⛔ Solo Salvatore può scrivere questo messaggio"); return; }
+  const testo = document.getElementById("annuncioTesto").value.trim();
+  if(!testo){ toast("Scrivi un messaggio prima di pubblicare"); return; }
+  config.annuncio = { testo, autore: lastOperator||getCurrentOperator()?.nome||"Admin", data: todayISO() };
+  await saveConfig();
+  toast("📢 Messaggio pubblicato — comparirà a tutti in Home");
+  activeTab="impostazioni"; render();
+}
+async function rimuoviAnnuncio(){
+  if(!puoScrivereAnnuncio()){ toast("⛔ Solo Salvatore può farlo"); return; }
+  if(!confirm("Rimuovere il messaggio pubblicato?")) return;
+  config.annuncio = null;
+  await saveConfig();
+  toast("Messaggio rimosso");
+  activeTab="impostazioni"; render();
+}
+function annuncioBannerHtml(){
+  if(!config.annuncio || !config.annuncio.testo) return "";
+  return `<div class="card" style="border:2px solid var(--amber);background:var(--amber-pale);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+      <div>
+        <h2 style="margin:0 0 4px 0;">📢 Messaggio</h2>
+        <div style="font-size:14px;font-weight:600;white-space:pre-wrap;">${esc(config.annuncio.testo)}</div>
+        <div class="muted" style="font-size:11px;margin-top:6px;">${esc(config.annuncio.autore)} · ${fmtDate(config.annuncio.data)}</div>
+      </div>
+      ${puoScrivereAnnuncio()? `<button class="iconbtn" onclick="rimuoviAnnuncio()" title="Rimuovi">✕</button>`:''}
+    </div>
+  </div>`;
+}
+function isAppInstallata(){
+  try{
+    return window.matchMedia && window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+  }catch(e){ return false; }
+}
 function renderImpostazioni(){
   const me = getCurrentOperator();
   $main.innerHTML = `
@@ -4709,6 +4760,22 @@ function renderImpostazioni(){
       ${DB.mode==="supabase"? `<p class="muted" style="margin-top:6px;">📡 Sincronizzazione: ${pendingSyncCount()>0? `<b>${pendingSyncCount()} in attesa</b> (offline o rete lenta)` : `<b>tutto aggiornato</b>`}</p>`:""}
       <button class="btn secondary block" onclick="openDbConfig()">Configura database condiviso</button>
     </div>
+    ${puoScrivereAnnuncio()? `
+    <div class="card">
+      <h2>📢 Messaggio per tutti</h2>
+      <p class="muted">Scrivi un avviso che comparirà a tutti in Home (utile per comunicazioni urgenti, es. "oggi chiuso il reparto pizzeria"). Resta visibile finché non lo cambi o lo cancelli. Solo tu (Salvatore) puoi scriverlo.</p>
+      ${config.annuncio? `<div class="card" style="padding:10px;background:var(--amber-pale);border:none;margin-bottom:10px;">
+        <div style="font-weight:700;font-size:13px;">${esc(config.annuncio.testo)}</div>
+        <div class="muted" style="font-size:11px;margin-top:4px;">scritto da ${config.annuncio.autore} il ${fmtDate(config.annuncio.data)}</div>
+      </div>` : `<p class="muted" style="font-style:italic;">Nessun messaggio attivo al momento.</p>`}
+      <label class="field">Nuovo messaggio</label>
+      <textarea id="annuncioTesto" placeholder="Scrivi qui l'avviso da mostrare a tutti...">${config.annuncio? esc(config.annuncio.testo) : ''}</textarea>
+      <div class="rowbtns">
+        <button class="btn block" onclick="salvaAnnuncio()">Pubblica messaggio</button>
+        ${config.annuncio? `<button class="btn danger" onclick="rimuoviAnnuncio()">🗑️ Rimuovi</button>`:''}
+      </div>
+    </div>
+    ` : ''}
     ${isAdmin() && DB.mode==="supabase"? `
     <div class="card">
       <h2>🧹 Libera spazio — elimina foto vecchie</h2>
@@ -5589,7 +5656,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "1.3";
+const APP_VERSION = "1.4";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
@@ -5620,6 +5687,7 @@ function proceedToApp(){
   render();
   window.__avviata = true;
   updateOfflineBadge();
+  // Il messaggio dell'amministrazione ora compare come banner fisso in Home, non più come popup una tantum
   if(DB.mode==="local" && !LS.available){
     setTimeout(()=>toast("⚠️ Questo browser non salva i dati: apri l'app da un indirizzo web, non dal file"), 1200);
   } else if(DB.mode==="local"){
