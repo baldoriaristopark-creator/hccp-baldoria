@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 1.5 · corretto nome Sasy per messaggio Home · 13/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 1.6 · banner messaggio rosso lampeggiante · 13/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4686,12 +4686,12 @@ async function rimuoviAnnuncio(){
 }
 function annuncioBannerHtml(){
   if(!config.annuncio || !config.annuncio.testo) return "";
-  return `<div class="card" style="border:2px solid var(--amber);background:var(--amber-pale);">
+  return `<div class="card" style="border:2px solid var(--red);animation:blinkRed 1.2s infinite;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
       <div>
         <h2 style="margin:0 0 4px 0;">📢 Messaggio</h2>
-        <div style="font-size:14px;font-weight:600;white-space:pre-wrap;">${esc(config.annuncio.testo)}</div>
-        <div class="muted" style="font-size:11px;margin-top:6px;">${esc(config.annuncio.autore)} · ${fmtDate(config.annuncio.data)}</div>
+        <div style="font-size:14px;font-weight:700;white-space:pre-wrap;">${esc(config.annuncio.testo)}</div>
+        <div style="font-size:11px;margin-top:6px;opacity:.8;">${esc(config.annuncio.autore)} · ${fmtDate(config.annuncio.data)}</div>
       </div>
       ${puoScrivereAnnuncio()? `<button class="iconbtn" onclick="rimuoviAnnuncio()" title="Rimuovi">✕</button>`:''}
     </div>
@@ -5656,7 +5656,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "1.5";
+const APP_VERSION = "1.6";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
