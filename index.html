@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 1.6 · banner messaggio rosso lampeggiante · 13/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 1.7 · ordine chiuso segnabile come inviato · 13/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4258,8 +4258,8 @@ function renderOrdini(){
       </div>
       ${storico.length? `
       <div class="card" style="padding:10px;background:var(--cream);border:1px solid var(--line);margin-bottom:10px;cursor:pointer;" onclick="openOrdineStorico('${storico[0].id}')">
-        <div style="font-weight:800;font-size:13px;">📦 Ultimo ordine chiuso — ${fmtDate(storico[0].data)}</div>
-        <div class="muted" style="font-size:12px;">${Object.keys(storico[0].righe).filter(k=>storico[0].righe[k]).length} articoli · chiuso da ${storico[0].operatoreChiusura||'—'} · tocca per i dettagli</div>
+        <div style="font-weight:800;font-size:13px;">📦 Ultimo ordine chiuso — ${fmtDate(storico[0].data)} ${storico[0].inviato? '📤':''}</div>
+        <div class="muted" style="font-size:12px;">${Object.keys(storico[0].righe).filter(k=>storico[0].righe[k]).length} articoli · chiuso da ${storico[0].operatoreChiusura||'—'} · ${storico[0].inviato? '<b style="color:var(--green-dark);">inviato</b>' : 'da inviare'} · tocca per i dettagli</div>
       </div>` : ''}
       ${isAdmin()? `<div class="rowbtns"><button class="btn danger block" onclick="chiudiOrdineCorrente()">✅ Chiudi ordine settimanale e aprine uno nuovo</button></div>` : ''}
       <div class="rowbtns"><button class="iconbtn block" onclick="openAddArticoloOrdine()">+ Aggiungi articolo mancante al listino</button></div>
@@ -4293,8 +4293,8 @@ function renderOrdini(){
       <h2>Ordini precedenti</h2>
       ${storico.map(o=>`
         <div class="logrow" onclick="openOrdineStorico('${o.id}')" style="cursor:pointer;">
-          <div><div class="val">Ordine del ${fmtDate(o.data)}</div>
-          <div class="meta">${Object.keys(o.righe).filter(k=>o.righe[k]).length} articoli · chiuso da ${o.operatoreChiusura||'—'}</div></div>
+          <div><div class="val">Ordine del ${fmtDate(o.data)} ${o.inviato? '📤':''}</div>
+          <div class="meta">${Object.keys(o.righe).filter(k=>o.righe[k]).length} articoli · chiuso da ${o.operatoreChiusura||'—'} · ${o.inviato? 'inviato':'da inviare'}</div></div>
           <span class="muted">›</span>
         </div>
       `).join("")}
@@ -4373,14 +4373,34 @@ function openOrdineStorico(id){
   const righe = Object.entries(o.righe).filter(([,q])=>q).sort((a,b)=>a[0].localeCompare(b[0]));
   openSheet(`Ordine del ${fmtDate(o.data)}`, `
     <p class="muted">Aperto da ${o.operatoreApertura} · chiuso da ${o.operatoreChiusura||'—'} il ${o.chiusoIl? fmtDate(o.chiusoIl.slice(0,10)):'—'}</p>
+    ${o.inviato? `<div class="card" style="padding:10px;background:var(--green-pale);border:none;margin-bottom:10px;">
+      <div style="font-weight:800;font-size:13px;">📤 Ordine inviato</div>
+      <div class="muted" style="font-size:11px;">confermato da ${o.inviatoDa||'—'} il ${o.inviatoIl? fmtDate(o.inviatoIl.slice(0,10)):'—'}</div>
+    </div>` : ''}
     ${isAdmin()? `<p class="muted">👑 Tocca il nome di un articolo per evidenziarlo come "ordinato/ricevuto".</p>`:''}
     <div class="rowbtns">
       <button class="iconbtn" onclick="stampaOrdineStorico('${id}')">🖨️ Stampa</button>
       ${isAdmin()? `<button class="btn danger" onclick="eliminaOrdineStorico('${id}')">🗑️ Elimina dallo storico</button>`:''}
     </div>
+    ${isAdmin()? `<div class="rowbtns"><button class="${o.inviato?'btn secondary':'btn'} block" onclick="toggleOrdineInviato('${id}')">${o.inviato? '↩️ Segna come NON inviato':'📤 Segna come inviato'}</button></div>`:''}
     ${isAdmin()? `<div class="rowbtns"><button class="iconbtn block" onclick="openAddArticoloOrdineStorico('${id}')">+ Aggiungi articolo</button></div>`:''}
     <div id="ordineStoricoRighe">${ordineStoricoRigheHtml(id)}</div>
   `);
+}
+async function toggleOrdineInviato(id){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  const o = logs.ordini.find(x=>x.id===id);
+  if(!o) return;
+  o.inviato = !o.inviato;
+  if(o.inviato){
+    o.inviatoDa = lastOperator||getCurrentOperator()?.nome||"Admin";
+    o.inviatoIl = new Date().toISOString();
+  } else {
+    delete o.inviatoDa; delete o.inviatoIl;
+  }
+  await saveLog("ordini");
+  toast(o.inviato? "📤 Ordine segnato come inviato" : "Segnato come non inviato");
+  activeTab="ordini"; closeSheet(); openOrdineStorico(id);
 }
 function ordineStoricoRigheHtml(id){
   const o = logs.ordini.find(x=>x.id===id);
@@ -5656,7 +5676,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "1.6";
+const APP_VERSION = "1.7";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
