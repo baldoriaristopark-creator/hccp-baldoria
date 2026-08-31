@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 1.7 · ordine chiuso segnabile come inviato · 13/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 1.8 · fix tastiera ricerca ordini · 13/08/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4266,27 +4266,7 @@ function renderOrdini(){
     </div>
     <div class="card">
       <input type="text" placeholder="🔎 Cerca un articolo..." value="${esc(ordiniSearchQuery)}" oninput="setOrdiniSearch(this.value)" style="margin-bottom:10px;">
-      ${filtrati.length? filtrati.map(art=>{
-        const riga = leggiRigaOrdine(ordine.righe[art]);
-        const artEsc = art.replace(/'/g,"\\'");
-        const ordinato = riga && !riga.legacy && riga.ordinato;
-        return `<div class="logrow" style="flex-wrap:wrap;${ordinato? 'background:var(--green-pale);':''}">
-          <div class="lbl" onclick="incrementaArticoloOrdine('${artEsc}')" style="cursor:pointer;flex:1;${ordinato? 'text-decoration:line-through;':''}">
-            ${isAdmin() && riga && !riga.legacy? `<span onclick="event.stopPropagation();toggleOrdinatoArticolo('${artEsc}')" title="Segna come ordinato" style="margin-right:4px;">${ordinato? '✅':'⬜'}</span>` : (ordinato? '✅ ':'')}${art}
-            ${riga && !riga.legacy && riga.operatore? `<div class="muted" style="font-size:11px;text-decoration:none;">aggiunto da ${riga.operatore}</div>`:''}
-            ${riga && riga.legacy? `<div class="muted" style="font-size:11px;">${riga.qta} (registrazione precedente a testo libero)</div>`:''}
-          </div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            ${riga && !riga.legacy ? `
-              <button class="iconbtn" style="padding:4px 10px;font-size:16px;" onclick="event.stopPropagation();decrementaArticoloOrdine('${artEsc}')">−</button>
-              <span class="chip ok" style="min-width:26px;text-align:center;">${riga.qta}</span>
-              <button class="iconbtn" style="padding:4px 10px;font-size:16px;" onclick="event.stopPropagation();incrementaArticoloOrdine('${artEsc}')">+</button>
-            ` : ''}
-            ${riga ? `<button class="iconbtn" style="padding:4px 8px;" onclick="event.stopPropagation();eliminaArticoloOrdine('${artEsc}')" title="Elimina dall'ordine">🗑️</button>`:''}
-            ${isAdmin()? `<button class="iconbtn" style="padding:4px 8px;" onclick="event.stopPropagation();openEditArticoloListino('${artEsc}')" title="Modifica o elimina definitivamente dal listino">✏️</button>`:''}
-          </div>
-        </div>`;
-      }).join("") : `<div class="empty">Nessun articolo trovato.</div>`}
+      <div id="ordiniArticoliHolder">${ordiniArticoliListHtml(ordine)}</div>
     </div>
     ${storico.length? `
     <div class="card">
@@ -4302,11 +4282,40 @@ function renderOrdini(){
   `;
   tickTimers(); // per mostrare subito il conto alla rovescia senza attendere il primo giro del timer
 }
+function ordiniArticoliListHtml(ordine){
+  const listino = (config.ordiniListino||[]).slice().sort((a,b)=>a.localeCompare(b));
+  const q = ordiniSearchQuery.trim();
+  const filtrati = q? listino.filter(a=>textMatchesQuery(a,q)) : listino;
+  if(!filtrati.length) return `<div class="empty">Nessun articolo trovato.</div>`;
+  return filtrati.map(art=>{
+    const riga = leggiRigaOrdine(ordine.righe[art]);
+    const artEsc = art.replace(/'/g,"\\'");
+    const ordinato = riga && !riga.legacy && riga.ordinato;
+    return `<div class="logrow" style="flex-wrap:wrap;${ordinato? 'background:var(--green-pale);':''}">
+      <div class="lbl" onclick="incrementaArticoloOrdine('${artEsc}')" style="cursor:pointer;flex:1;${ordinato? 'text-decoration:line-through;':''}">
+        ${isAdmin() && riga && !riga.legacy? `<span onclick="event.stopPropagation();toggleOrdinatoArticolo('${artEsc}')" title="Segna come ordinato" style="margin-right:4px;">${ordinato? '✅':'⬜'}</span>` : (ordinato? '✅ ':'')}${art}
+        ${riga && !riga.legacy && riga.operatore? `<div class="muted" style="font-size:11px;text-decoration:none;">aggiunto da ${riga.operatore}</div>`:''}
+        ${riga && riga.legacy? `<div class="muted" style="font-size:11px;">${riga.qta} (registrazione precedente a testo libero)</div>`:''}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        ${riga && !riga.legacy ? `
+          <button class="iconbtn" style="padding:4px 10px;font-size:16px;" onclick="event.stopPropagation();decrementaArticoloOrdine('${artEsc}')">−</button>
+          <span class="chip ok" style="min-width:26px;text-align:center;">${riga.qta}</span>
+          <button class="iconbtn" style="padding:4px 10px;font-size:16px;" onclick="event.stopPropagation();incrementaArticoloOrdine('${artEsc}')">+</button>
+        ` : ''}
+        ${riga ? `<button class="iconbtn" style="padding:4px 8px;" onclick="event.stopPropagation();eliminaArticoloOrdine('${artEsc}')" title="Elimina dall'ordine">🗑️</button>`:''}
+        ${isAdmin()? `<button class="iconbtn" style="padding:4px 8px;" onclick="event.stopPropagation();openEditArticoloListino('${artEsc}')" title="Modifica o elimina definitivamente dal listino">✏️</button>`:''}
+      </div>
+    </div>`;
+  }).join("");
+}
 function setOrdiniSearch(v){ ordiniSearchQuery = v; renderOrdiniList(); }
 function renderOrdiniList(){
-  // Ridisegna solo l'elenco articoli, per non far perdere il focus alla tastiera durante la ricerca
-  const holder = document.querySelector("#main .card:nth-child(2)");
-  if(holder) render(); // per semplicità e coerenza dei dati ridisegniamo tutta la vista
+  // Aggiorna SOLO l'elenco articoli filtrato, senza mai ricreare il campo di ricerca:
+  // ricreare l'intera pagina (come prima) fa perdere il focus e chiude la tastiera ad ogni lettera digitata.
+  const holder = document.getElementById("ordiniArticoliHolder");
+  const ordine = getOrdineAperto();
+  if(holder && ordine) holder.innerHTML = ordiniArticoliListHtml(ordine);
 }
 async function incrementaArticoloOrdine(articolo){
   const ordine = getOrdineAperto();
@@ -5676,7 +5685,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "1.7";
+const APP_VERSION = "1.8";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
