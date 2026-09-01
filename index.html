@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 1.8 · fix tastiera ricerca ordini · 13/08/2026</div>
+        <div class="sub" style="opacity:.85;">versione 1.9 · salva scheda in PDF vero · 02/09/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -5151,7 +5151,22 @@ function triggerDataDownload(filename, content, mime){
   a.click();
   document.body.removeChild(a);
 }
-function saveScheda(kind, mese){
+function caricaScript(src){
+  return new Promise((resolve, reject)=>{
+    if(document.querySelector(`script[src="${src}"]`)){ resolve(); return; }
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("impossibile caricare " + src));
+    document.head.appendChild(s);
+  });
+}
+async function assicuraLibrericePdf(){
+  if(window.jspdf && window.html2canvas) return;
+  await caricaScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+  await caricaScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+}
+async function saveScheda(kind, mese){
   const {title, body} = buildSchedaContent(kind, mese);
   const mk = mese || monthKeyNow();
   const monthLbl = MONTHS[parseInt(mk.slice(5,7),10)-1] + " " + mk.slice(0,4);
@@ -5175,8 +5190,38 @@ function saveScheda(kind, mese){
   ${body}
   <div class="firma"><div>Firma dell'operatore</div><div>Firma del responsabile dell'autocontrollo</div></div>
   </body></html>`;
-  triggerDataDownload(`${kind}-${mk}.html`, html, "text/html");
-  toast("💾 File salvato — controlla la cartella Download del telefono");
+  toast("📄 Preparo il PDF...");
+  try{
+    await assicuraLibrericePdf();
+    const styleMatch = html.match(/<style>([\s\S]*?)<\/style>/);
+    const bodyMatch = html.match(/<body>([\s\S]*?)<\/body>/);
+    const container = document.createElement("div");
+    container.style.cssText = "position:fixed;left:-99999px;top:0;width:780px;background:#fff;";
+    container.innerHTML = `<style>${styleMatch?styleMatch[1]:''}</style>${bodyMatch?bodyMatch[1]:''}`;
+    document.body.appendChild(container);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({unit:"pt", format:"a4"});
+    await new Promise((resolve, reject)=>{
+      pdf.html(container, {
+        margin:[24,24,24,24],
+        autoPaging:'text',
+        html2canvas:{ scale:0.72, useCORS:true },
+        callback: function(doc){
+          try{
+            doc.save(`${kind}-${mk}.pdf`);
+            resolve();
+          }catch(e){ reject(e); }
+          finally{ document.body.removeChild(container); }
+        }
+      });
+    });
+    toast("💾 PDF salvato — controlla la cartella Download del telefono");
+  }catch(e){
+    // Ripiego di sicurezza: se per qualche motivo il PDF non si genera (es. rete assente
+    // per caricare la libreria), salvo comunque come pagina web così il dato non si perde.
+    triggerDataDownload(`${kind}-${mk}.html`, html, "text/html");
+    toast("⚠️ PDF non disponibile ora — salvato come pagina web");
+  }
 }
 function printBtn(kind, meseDefault){
   return `<button class="printbtn" onclick="chiediMeseEAzione('${kind}','stampa','${meseDefault||todayISO().slice(0,7)}')" title="Stampa la scheda">🖨️ Stampa</button>`;
@@ -5685,7 +5730,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "1.8";
+const APP_VERSION = "1.9";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
