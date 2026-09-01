@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 2.0 · PDF vero con testo/tabelle affidabile · 02/09/2026</div>
+        <div class="sub" style="opacity:.85;">versione 2.1 · Ricette rinominata Schede di produzione · 02/09/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1359,7 +1359,7 @@ function renderHaccpMenu(){
     {id:"sanificazione", label:"🧽 Sanificazione", desc:"Pulizie giornaliere, settimanali, mensili"},
     {id:"moma", label:"🚚 Matrici in ingresso", desc:"Controllo consegne e bolle"},
     {id:"produzione", label:"📦 Articoli / Lotti", desc:"Tracciabilità lotti e scadenze"},
-    {id:"ricette", label:"🧾 Ricette", desc:"Composizioni, ingredienti e abbattimento"},
+    {id:"ricette", label:"🧾 Ricette (Schede di produzione)", desc:"Composizioni, ingredienti e abbattimento"},
     {id:"coai", label:"🐭 Infestanti", desc:"Controllo settimanale (COAI)"},
     {id:"noco", label:"⚠️ Non conformità", desc:"Verbali e azioni correttive"},
   ];
@@ -3263,8 +3263,8 @@ function findLottiForIngredient(nomeIngrediente){
 function renderRicette(){
   $main.innerHTML = `
     <div class="card">
-      <div class="card-head"><h2>Ricette base</h2><div style="display:flex;gap:6px;">${printBtn('ricette', meseExportRicette)}${saveBtn('ricette', meseExportRicette)}</div></div>
-      <p class="muted">Definisci gli ingredienti di ogni ricetta. Quando componi un piatto, l'app recupera automaticamente il lotto più recente di ogni ingrediente dalle schede di Produzione (alimentate dalle bolle MOMA). Tocca "🔍 Tracciabilità" su una ricetta per vedere tutte le composizioni fatte e i lotti usati.</p>
+      <div class="card-head"><h2>Ricette (Schede di produzione)</h2><div style="display:flex;gap:6px;">${printBtn('ricette', meseExportRicette)}${saveBtn('ricette', meseExportRicette)}</div></div>
+      <p class="muted">Definisci gli ingredienti di ogni scheda di produzione. Quando componi un piatto, l'app recupera automaticamente il lotto più recente di ogni ingrediente dalle schede di Produzione (alimentate dalle bolle MOMA). Tocca "🔍 Tracciabilità" su una scheda per vedere tutte le composizioni fatte e i lotti usati.</p>
       <div class="card" style="padding:10px;background:var(--cream);border:1px solid var(--line);margin-bottom:10px;font-size:12px;">
         <div style="font-weight:700;margin-bottom:4px;">Significato delle icone:</div>
         <div>❌ Ricetta terminata</div>
@@ -3272,7 +3272,7 @@ function renderRicette(){
         <div>🟡 In scadenza — l'ultimo lotto scade entro 1 giorno</div>
         <div>🔴 Scaduto — l'ultimo lotto ha superato la data di scadenza</div>
       </div>
-      <input type="text" id="ricetteBaseSearchInput" placeholder="🔎 Cerca una ricetta per nome o ingrediente..." oninput="renderRicetteBaseList(this.value)" style="margin-bottom:10px;">
+      <input type="text" id="ricetteBaseSearchInput" placeholder="🔎 Cerca una scheda di produzione per nome o ingrediente..." oninput="renderRicetteBaseList(this.value)" style="margin-bottom:10px;">
       ${repartoFilterHtml(repartoFiltroRicette, "setRepartoFiltroRicette")}
       <select onchange="setStatoFiltroRicette(this.value)" style="margin-bottom:10px;">
         <option value="" ${!statoFiltroRicette?'selected':''}>Tutti gli stati</option>
@@ -3282,8 +3282,8 @@ function renderRicette(){
         <option value="❌" ${statoFiltroRicette==='❌'?'selected':''}>❌ Terminata</option>
       </select>
       <div id="ricetteBaseListEl">${ricetteBaseListHtml("")}</div>
-      <div class="rowbtns"><button class="btn secondary block" onclick="openAddRecipe()">+ Aggiungi ricetta</button></div>
-      <div class="rowbtns"><button class="iconbtn block" onclick="importRicetteBase()">📥 Importa le 17 ricette base (food cost)</button></div>
+      <div class="rowbtns"><button class="btn secondary block" onclick="openAddRecipe()">+ Aggiungi scheda</button></div>
+      <div class="rowbtns"><button class="iconbtn block" onclick="importRicetteBase()">📥 Importa le 17 schede base (food cost)</button></div>
     </div>
   `;
 }
@@ -3336,7 +3336,7 @@ function openRicettaTracciabilita(recipeId){
         <span class="muted">›</span>
       </div>
     `;
-    }).join("") : `<div class="empty">Nessuna preparazione registrata ancora per questa ricetta.</div>`}
+    }).join("") : `<div class="empty">Nessuna preparazione registrata ancora per questa scheda.</div>`}
   `);
 }
 function statoRicetta(r){
@@ -3367,7 +3367,7 @@ function ricetteBaseListHtml(query){
   if(statoFiltroRicette) filtered = filtered.filter(r=>statoRicetta(r).icona===statoFiltroRicette);
   filtered = filtered.filter(r=>hasAnyRepartoAccess(r.reparti));
   if(!filtered.length){
-    return q? `<div class="empty">Nessuna ricetta trovata per "${esc(query)}".</div>` : `<div class="empty">Nessuna ricetta ${repartoFiltroRicette||statoFiltroRicette? `corrisponde ai filtri scelti`:"configurata"}.</div>`;
+    return q? `<div class="empty">Nessuna scheda di produzione trovata per "${esc(query)}".</div>` : `<div class="empty">Nessuna scheda di produzione ${repartoFiltroRicette||statoFiltroRicette? `corrisponde ai filtri scelti`:"configurata"}.</div>`;
   }
   return filtered.map(r=>{
     const sueComposizioni = logs.composizioni.filter(c=>c.ricettaId===r.id || (!c.ricettaId && c.ricettaNome===r.nome)).slice().reverse();
@@ -3493,11 +3493,11 @@ async function importRicetteBase(){
   saveConfig().catch(()=>toast("⚠️ Errore di salvataggio, controlla la connessione"));
 }
 function openAddRecipe(){
-  openSheet("Nuova ricetta", `
-    <label class="field">Foto della ricetta (facoltativa)</label>
+  openSheet("Nuova scheda di produzione", `
+    <label class="field">Foto della scheda (facoltativa)</label>
     <div class="photo-zone" id="rcPhotoZone">
       <input type="file" accept="image/*" capture="environment" id="rcPhotoInput" style="display:none">
-      <button class="btn secondary block" onclick="document.getElementById('rcPhotoInput').click()">📷 Fotografa la ricetta scritta</button>
+      <button class="btn secondary block" onclick="document.getElementById('rcPhotoInput').click()">📷 Fotografa la scheda scritta</button>
       <p class="muted" style="font-size:12px;margin-top:8px;margin-bottom:0;">Claude leggerà la foto e compilerà i campi qui sotto — controllali prima di salvare.</p>
       <div id="rcPhotoResult"></div>
     </div>
@@ -3517,7 +3517,7 @@ function openAddRecipe(){
     <input type="number" id="rcGiorniAbbattutoNeg" value="7" min="0" max="365">
     <p class="muted" style="font-size:12px;">Scadenza del semilavorato con abbattimento negativo/surgelazione (nucleo ≤ -18°C).</p>
     <div id="rcErrore" style="color:var(--red);font-size:13px;margin-top:4px;"></div>
-    <div class="rowbtns"><button class="btn block" onclick="saveNewRecipe()">Salva ricetta</button></div>
+    <div class="rowbtns"><button class="btn block" onclick="saveNewRecipe()">Salva scheda</button></div>
   `, ()=>{
     window._recipePhoto = null;
     document.getElementById("rcPhotoInput").onchange = handleRecipePhoto;
@@ -3554,10 +3554,10 @@ function openEditRecipe(id){
   const r = config.recipes.find(x=>x.id===id);
   openSheet(`Modifica — ${r.nome}`, `
     ${r.photoKey? `<div id="rcEditPhoto" style="margin-bottom:12px;"><span class="spinner"></span> Carico foto...</div>` : ""}
-    <label class="field">Foto della ricetta ${r.photoKey? '(sostituisci, facoltativo)':'(facoltativa)'}</label>
+    <label class="field">Foto della scheda ${r.photoKey? '(sostituisci, facoltativo)':'(facoltativa)'}</label>
     <div class="photo-zone" id="rcPhotoZone">
       <input type="file" accept="image/*" capture="environment" id="rcPhotoInput" style="display:none">
-      <button class="btn secondary block" onclick="document.getElementById('rcPhotoInput').click()">📷 ${r.photoKey?'Rifotografa e ritrascrivi':'Fotografa la ricetta scritta'}</button>
+      <button class="btn secondary block" onclick="document.getElementById('rcPhotoInput').click()">📷 ${r.photoKey?'Rifotografa e ritrascrivi':'Fotografa la scheda scritta'}</button>
       <div id="rcPhotoResult"></div>
     </div>
     <label class="field">Nome piatto/prodotto</label><input type="text" id="rcNome" value="${r.nome}">
@@ -3580,7 +3580,7 @@ function openEditRecipe(id){
     <div id="rcErrore" style="color:var(--red);font-size:13px;margin-top:4px;"></div>
     <div class="rowbtns">
       <button class="btn block" onclick="editRecipe('${id}')">Salva modifiche</button>
-      <button class="btn danger" onclick="deleteRecipe('${id}')">Elimina ricetta</button>
+      <button class="btn danger" onclick="deleteRecipe('${id}')">Elimina scheda</button>
     </div>
   `, async ()=>{
     window._recipePhoto = null;
@@ -4780,7 +4780,7 @@ function renderImpostazioni(){
         <button class="iconbtn" onclick="exportCsv('coai')">COAI</button>
         <button class="iconbtn" onclick="exportCsv('noco')">NOCO</button>
         <button class="iconbtn" onclick="exportCsv('produzione')">Articoli / Lotti</button>
-        <button class="iconbtn" onclick="exportCsv('composizioni')">Ricette / Composizioni</button>
+        <button class="iconbtn" onclick="exportCsv('composizioni')">Schede di produzione / Composizioni</button>
       </div>
     </div>
     <div class="card">
@@ -4834,7 +4834,7 @@ function renderImpostazioni(){
         <button class="printbtn" onclick="printScheda('coai')">🖨️ Infestanti</button>
         <button class="printbtn" onclick="printScheda('noco')">🖨️ NOCO</button>
         <button class="printbtn" onclick="printScheda('produzione')">🖨️ Articoli / Lotti</button>
-        <button class="printbtn" onclick="printScheda('ricette')">🖨️ Ricette</button>
+        <button class="printbtn" onclick="printScheda('ricette')">🖨️ Schede di produzione</button>
       </div>
     </div>
     <div class="card">
@@ -5101,8 +5101,8 @@ function buildSchedaContent(kind, mese){
       + `<h2>Esauriti (mese corrente)</h2>` + tbl(["Prodotto","Lotto","Quantità","Fornitore","DDT","Consegna","Scadenza","Note"],
         rowsOf(logs.produzione.filter(p=>p.esaurito && (p.dataScadenza||"").startsWith(mk))));
   } else if(kind==="ricette"){
-    title = "Ricette e composizioni";
-    body = `<h2>Ricette base</h2>` + tbl(["Ricetta","Ingredienti"],
+    title = "Schede di produzione e composizioni";
+    body = `<h2>Schede di produzione</h2>` + tbl(["Scheda","Ingredienti"],
       (config.recipes||[]).map(r=>[esc(r.nome), (r.ingredienti||[]).map(i=>esc(i.nome||i)).join(", ")]))
       + `<h2>Composizioni registrate (mese corrente)</h2>` + tbl(["Data","Ora","Ricetta","Ingredienti / Lotti","Operatore","Note"],
         logs.composizioni.filter(inMonth).sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
@@ -5324,7 +5324,7 @@ function schedaBody(kind){
       + `<div style="font-size:10px;color:#666;">* lotto non riportato in bolla: tracciabilità garantita da numero e data di emissione del DDT e settimana dell'anno.</div>`;
   }
   if(kind==="ricette"){
-    return `<h2>Ricette base</h2>` + tbl(["Ricetta","Ingredienti"],
+    return `<h2>Schede di produzione</h2>` + tbl(["Scheda","Ingredienti"],
       (config.recipes||[]).map(r=>[esc(r.nome), (r.ingredienti||[]).map(i=>esc(i.nome||i)).join(", ")]))
       + `<h2>Composizioni registrate</h2>` + tbl(["Data","Ora","Ricetta","Ingredienti / Lotti","Operatore"],
         logs.composizioni.filter(inMonth).sort((a,b)=>(a.data+a.ora).localeCompare(b.data+b.ora))
@@ -5388,7 +5388,7 @@ function printFascicolo(){
     ["Registro sanificazione (MOSA)","sanificazione"],
     ["Controllo matrici in ingresso (MOMA)","moma"],
     ["Articoli e tracciabilità lotti (P1)","produzione"],
-    ["Ricette e composizioni","ricette"],
+    ["Schede di produzione e composizioni","ricette"],
     ["Controllo agenti infestanti (COAI)","coai"],
     ["Verbali di non conformità (NOCO)","noco"]
   ].map(([titolo,kind])=>`<div style="page-break-before:always;"><h1 style="font-size:15px;margin:0 0 10px 0;">${titolo}</h1>${schedaBody(kind)}</div>`).join("");
@@ -5754,7 +5754,7 @@ function openOfflineInfo(){
     const nomi = {
       "log-temperature":"Temperature", "log-sanificazione":"Sanificazione", "log-moma":"MOMA",
       "log-coai":"Infestanti (COAI)", "log-noco":"Non conformità (NOCO)", "log-produzione":"Articoli/Lotti",
-      "log-composizioni":"Ricette/Composizioni", "config":"Configurazione ricette/punti"
+      "log-composizioni":"Schede di produzione/Composizioni", "config":"Configurazione schede/punti"
     };
     return `<div class="logrow"><div><div class="val">${nomi[k]||k}</div><div class="meta">In attesa dal ${fmtDate(new Date(q[k].ts).toISOString().slice(0,10))}</div></div></div>`;
   }).join("");
@@ -5766,7 +5766,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "2.0";
+const APP_VERSION = "2.1";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
