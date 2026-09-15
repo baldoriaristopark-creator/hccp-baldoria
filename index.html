@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 2.1 · Ricette rinominata Schede di produzione · 02/09/2026</div>
+        <div class="sub" style="opacity:.85;">versione 2.2 · solo admin modifica quantità già salvate · 02/09/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4291,19 +4291,22 @@ function ordiniArticoliListHtml(ordine){
     const riga = leggiRigaOrdine(ordine.righe[art]);
     const artEsc = art.replace(/'/g,"\\'");
     const ordinato = riga && !riga.legacy && riga.ordinato;
+    // Un articolo già presente in lista è "salvato": solo l'admin può ancora toccarlo.
+    // Gli operatori possono solo aggiungerne uno completamente nuovo (riga ancora inesistente).
+    const puoModificare = isAdmin() || !riga;
     return `<div class="logrow" style="flex-wrap:wrap;${ordinato? 'background:var(--green-pale);':''}">
-      <div class="lbl" onclick="incrementaArticoloOrdine('${artEsc}')" style="cursor:pointer;flex:1;${ordinato? 'text-decoration:line-through;':''}">
+      <div class="lbl" onclick="${puoModificare? `incrementaArticoloOrdine('${artEsc}')` : ''}" style="${puoModificare?'cursor:pointer;':'cursor:default;'}flex:1;${ordinato? 'text-decoration:line-through;':''}">
         ${isAdmin() && riga && !riga.legacy? `<span onclick="event.stopPropagation();toggleOrdinatoArticolo('${artEsc}')" title="Segna come ordinato" style="margin-right:4px;">${ordinato? '✅':'⬜'}</span>` : (ordinato? '✅ ':'')}${art}
-        ${riga && !riga.legacy && riga.operatore? `<div class="muted" style="font-size:11px;text-decoration:none;">aggiunto da ${riga.operatore}</div>`:''}
+        ${riga && !riga.legacy && riga.operatore? `<div class="muted" style="font-size:11px;text-decoration:none;">aggiunto da ${riga.operatore}${!isAdmin()? ' · 🔒 salvato':''}</div>`:''}
         ${riga && riga.legacy? `<div class="muted" style="font-size:11px;">${riga.qta} (registrazione precedente a testo libero)</div>`:''}
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         ${riga && !riga.legacy ? `
-          <button class="iconbtn" style="padding:4px 10px;font-size:16px;" onclick="event.stopPropagation();decrementaArticoloOrdine('${artEsc}')">−</button>
+          ${isAdmin()? `<button class="iconbtn" style="padding:4px 10px;font-size:16px;" onclick="event.stopPropagation();decrementaArticoloOrdine('${artEsc}')">−</button>`:''}
           <span class="chip ok" style="min-width:26px;text-align:center;">${riga.qta}</span>
-          <button class="iconbtn" style="padding:4px 10px;font-size:16px;" onclick="event.stopPropagation();incrementaArticoloOrdine('${artEsc}')">+</button>
+          ${isAdmin()? `<button class="iconbtn" style="padding:4px 10px;font-size:16px;" onclick="event.stopPropagation();incrementaArticoloOrdine('${artEsc}')">+</button>`:''}
         ` : ''}
-        ${riga ? `<button class="iconbtn" style="padding:4px 8px;" onclick="event.stopPropagation();eliminaArticoloOrdine('${artEsc}')" title="Elimina dall'ordine">🗑️</button>`:''}
+        ${riga && isAdmin() ? `<button class="iconbtn" style="padding:4px 8px;" onclick="event.stopPropagation();eliminaArticoloOrdine('${artEsc}')" title="Elimina dall'ordine">🗑️</button>`:''}
         ${isAdmin()? `<button class="iconbtn" style="padding:4px 8px;" onclick="event.stopPropagation();openEditArticoloListino('${artEsc}')" title="Modifica o elimina definitivamente dal listino">✏️</button>`:''}
       </div>
     </div>`;
@@ -4322,11 +4325,16 @@ async function incrementaArticoloOrdine(articolo){
   if(!ordine) return;
   const attuale = leggiRigaOrdine(ordine.righe[articolo]);
   if(attuale && attuale.legacy){ toast("Questa voce ha una quantità a testo libero: eliminala e riaggiungila per usare il nuovo contatore."); return; }
+  // Una volta che un articolo è già stato salvato (presente in lista), solo l'amministratore
+  // può modificarne ulteriormente la quantità. Gli operatori possono solo AGGIUNGERE articoli
+  // mai inseriti prima (la prima volta che lo toccano, qta passa da 0 a 1).
+  if(attuale && !isAdmin()){ toast("⛔ Questo articolo è già stato salvato: solo l'amministratore può modificarne la quantità"); return; }
   ordine.righe[articolo] = { qta: (attuale? attuale.qta : 0) + 1, operatore: lastOperator||"—" };
   await saveLog("ordini");
   renderOrdiniList();
 }
 async function decrementaArticoloOrdine(articolo){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può modificare la quantità di un articolo già salvato"); return; }
   const ordine = getOrdineAperto();
   if(!ordine) return;
   const attuale = leggiRigaOrdine(ordine.righe[articolo]);
@@ -4355,6 +4363,7 @@ async function salvaOrdineCorrente(){
   toast("💾 Ordine salvato");
 }
 async function eliminaArticoloOrdine(articolo){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può eliminare un articolo già salvato"); return; }
   const ordine = getOrdineAperto();
   if(!ordine) return;
   if(!confirm(`Eliminare "${articolo}" dall'ordine?`)) return;
@@ -5766,7 +5775,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "2.1";
+const APP_VERSION = "2.2";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
