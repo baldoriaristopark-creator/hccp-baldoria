@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 2.3 · operatori possono aggiungere quantità a ordini salvati · 21/09/2026</div>
+        <div class="sub" style="opacity:.85;">versione 2.4 · tutti possono aumentare e diminuire quantità · 21/09/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4302,7 +4302,7 @@ function ordiniArticoliListHtml(ordine){
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         ${riga && !riga.legacy ? `
-          ${isAdmin()? `<button class="iconbtn" style="padding:4px 10px;font-size:16px;" onclick="event.stopPropagation();decrementaArticoloOrdine('${artEsc}')">−</button>`:''}
+          <button class="iconbtn" style="padding:4px 10px;font-size:16px;" onclick="event.stopPropagation();decrementaArticoloOrdine('${artEsc}')">−</button>
           <span class="chip ok" style="min-width:26px;text-align:center;">${riga.qta}</span>
           <button class="iconbtn" style="padding:4px 10px;font-size:16px;" onclick="event.stopPropagation();incrementaArticoloOrdine('${artEsc}')">+</button>
         ` : ''}
@@ -4332,7 +4332,6 @@ async function incrementaArticoloOrdine(articolo){
   renderOrdiniList();
 }
 async function decrementaArticoloOrdine(articolo){
-  if(!isAdmin()){ toast("⛔ Solo l'amministratore può modificare la quantità di un articolo già salvato"); return; }
   const ordine = getOrdineAperto();
   if(!ordine) return;
   const attuale = leggiRigaOrdine(ordine.righe[articolo]);
@@ -5773,7 +5772,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "2.3";
+const APP_VERSION = "2.4";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
