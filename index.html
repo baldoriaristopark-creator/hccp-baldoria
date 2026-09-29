@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 2.9 · backup Drive in PDF · 29/09/2026</div>
+        <div class="sub" style="opacity:.85;">versione 3.0 · fascicolo completo su Drive · 29/09/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -5147,7 +5147,7 @@ function renderImpostazioni(){
     ${isAdmin()? `
     <div class="card">
       <h2>☁️ Backup su Google Drive</h2>
-      <p class="muted">Salva nel tuo Google Drive, cartella <b>${GDRIVE_FOLDER}</b>: le schede PDF del mese (temperature, articoli/lotti, consegne MOMA, schede di produzione) più una copia completa per il ripristino. Ogni backup aggiorna i PDF del mese in corso.</p>
+      <p class="muted">Salva nel tuo Google Drive, cartella <b>${GDRIVE_FOLDER}</b>: il <b>fascicolo completo per ispezione</b> del mese in PDF (riepilogo + tutti i registri) più una copia completa per il ripristino. Ogni backup aggiorna il fascicolo del mese in corso.</p>
       <p class="muted" style="margin-top:6px;">Ultimo backup su Drive: <b>${gdLastBackupLabel()}</b></p>
       <div class="rowbtns"><button class="btn block" id="gdBackupBtn" onclick="driveBackupNow()" ${_gdBusy? "disabled":""}>☁️ Salva su Google Drive adesso</button></div>
     </div>
@@ -5503,32 +5503,27 @@ function pdfTxt(s){
     .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\uFE0F\u200D]/gu,"")
     .replace(/\s{2,}/g," ").trim();
 }
-async function buildSchedaPdf(kind, mese){
-  const {title, body} = buildSchedaContent(kind, mese);
-  const mk = mese || monthKeyNow();
-  const monthLbl = MONTHS[parseInt(mk.slice(5,7),10)-1] + " " + mk.slice(0,4);
-  await assicuraLibrericePdf();
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:"pt", format:"a4"});
-  const pageWidth = doc.internal.pageSize.getWidth();
+function pdfIntestazione(doc, title, monthLbl){
   const marginX = 36;
   let y = 40;
-
-  doc.setFont("helvetica","bold"); doc.setFontSize(15);
+  doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.setTextColor(30);
   doc.text("Baldoria — Autocontrollo HACCP", marginX, y);
   y += 16;
   doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(100);
   doc.text(pdfTxt(`${title} · Periodo: ${monthLbl} · Salvato il ${fmtDate(todayISO())} alle ${nowTime()}`), marginX, y);
   doc.setTextColor(30);
-  y += 18;
-
+  return y + 18;
+}
+// Disegna nel PDF l'HTML già usato per la stampa (titoli, tabelle, avvisi) mantenendo l'ordine.
+function pdfCorpo(doc, bodyHtml, y){
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const marginX = 36;
   const parser = new DOMParser();
-  const bodyDoc = parser.parseFromString(`<div>${body}</div>`, "text/html");
+  const bodyDoc = parser.parseFromString(`<div>${bodyHtml}</div>`, "text/html");
   const nodi = Array.from(bodyDoc.body.firstChild.childNodes).filter(n=>n.nodeType===1);
   const cellText = el => pdfTxt(el.innerHTML.replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g,"")
                                   .replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'"))
                                   .replace(/ ?\n ?/g,"\n");
-
   for(const nodo of nodi){
     if(y > 760){ doc.addPage(); y = 40; }
     if(nodo.tagName === "H1" || nodo.tagName === "H2" || nodo.tagName === "H3"){
@@ -5551,24 +5546,61 @@ async function buildSchedaPdf(kind, mese){
         headStyles:{ fillColor:[228,241,233], textColor:[21,83,52], fontStyle:'bold' },
         didParseCell: function(data){
           const raw = data.cell.raw;
-          if(data.section==="body" && typeof raw === "string" && /scaduto|non conforme|fuori soglia|PRESENZA|APERTA|: NC\b/i.test(raw)) data.cell.styles.textColor = [192,57,43];
+          if(data.section==="body" && typeof raw === "string" && /scaduto|non conforme|fuori soglia|PRESENZA|APERTA|ancora aperte|anomalie|con presenze|: NC\b/i.test(raw)) data.cell.styles.textColor = [192,57,43];
         }
       });
       y = doc.lastAutoTable.finalY + 14;
     } else if(nodo.textContent.trim()){
-      doc.setFont("helvetica","italic"); doc.setFontSize(9); doc.setTextColor(130);
+      const rosso = /C0392B/i.test(nodo.getAttribute("style")||"");
+      doc.setFont("helvetica", rosso? "bold" : "italic"); doc.setFontSize(9);
+      if(rosso) doc.setTextColor(192,57,43); else doc.setTextColor(130);
       const lines = doc.splitTextToSize(pdfTxt(nodo.textContent), pageWidth - 2*marginX);
       doc.text(lines, marginX, y);
       doc.setTextColor(30);
       y += 12*lines.length + 4;
     }
   }
-
+  return y;
+}
+function pdfFirme(doc, y){
+  const pageWidth = doc.internal.pageSize.getWidth();
   if(y > 740){ doc.addPage(); y = 40; }
   y += 30;
   doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(60);
-  doc.text("Firma dell'operatore: ________________________", marginX, y);
+  doc.text("Firma dell'operatore: ________________________", 36, y);
   doc.text("Firma del responsabile: ________________________", pageWidth/2 + 10, y);
+}
+function meseLabel(mk){ return MONTHS[parseInt(mk.slice(5,7),10)-1] + " " + mk.slice(0,4); }
+async function buildSchedaPdf(kind, mese){
+  const {title, body} = buildSchedaContent(kind, mese);
+  const mk = mese || monthKeyNow();
+  await assicuraLibrericePdf();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"pt", format:"a4"});
+  let y = pdfIntestazione(doc, title, meseLabel(mk));
+  y = pdfCorpo(doc, body, y);
+  pdfFirme(doc, y);
+  return doc;
+}
+// Fascicolo completo per ispezione in PDF: riepilogo + ogni registro su pagina nuova, firme in fondo.
+async function buildFascicoloPdf(mese){
+  const f = buildFascicoloContent(mese);
+  await assicuraLibrericePdf();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"pt", format:"a4"});
+  let y = pdfIntestazione(doc, f.title, meseLabel(f.mk));
+  y = pdfCorpo(doc, f.riepilogo, y);
+  for(const sez of f.sezioni){
+    doc.addPage();
+    y = pdfCorpo(doc, `<h1>${esc(sez.titolo)}</h1>` + sez.body, 30);
+  }
+  pdfFirme(doc, y);
+  const n = doc.getNumberOfPages();
+  for(let i=1; i<=n; i++){
+    doc.setPage(i);
+    doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(130);
+    doc.text(pdfTxt(`Baldoria — Fascicolo HACCP ${meseLabel(f.mk)} · pagina ${i} di ${n}`), 36, doc.internal.pageSize.getHeight() - 20);
+  }
   return doc;
 }
 async function saveScheda(kind, mese){
@@ -5633,8 +5665,8 @@ function confermaMeseAzione(kind, azione){
 }
 
 // ---------- FASCICOLO COMPLETO PER ISPEZIONE ----------
-function schedaBody(kind){
-  const mk = monthKeyNow();
+function schedaBody(kind, mese){
+  const mk = mese || monthKeyNow();
   const inMonth = r => (r.data||"").startsWith(mk);
   if(kind==="temperature"){
     return config.points.map(p=>{
@@ -5696,8 +5728,8 @@ function schedaBody(kind){
   }
   return "";
 }
-function printFascicolo(){
-  const mk = monthKeyNow();
+function buildFascicoloContent(mese){
+  const mk = mese || monthKeyNow();
   const inMonth = r => (r.data||"").startsWith(mk);
   const temps = logs.temperature.filter(inMonth);
   const tempNC = temps.filter(r=>!r.spento && !r.conforme);
@@ -5731,7 +5763,7 @@ function printFascicolo(){
   </table>
   ${nocoAperte.length? `<div style="font-size:11px;color:#C0392B;margin-bottom:10px;">Attenzione: risultano verbali di non conformità ancora aperti. Verificare l'efficacia delle azioni correttive prima dell'archiviazione.</div>`:""}`;
 
-  const sezioni = [
+  const sezioniList = [
     ["Registro temperature (MOTE)","temperature"],
     ["Registro sanificazione (MOSA)","sanificazione"],
     ["Controllo matrici in ingresso (MOMA)","moma"],
@@ -5739,9 +5771,13 @@ function printFascicolo(){
     ["Schede di produzione e composizioni","ricette"],
     ["Controllo agenti infestanti (COAI)","coai"],
     ["Verbali di non conformità (NOCO)","noco"]
-  ].map(([titolo,kind])=>`<div style="page-break-before:always;"><h1 style="font-size:15px;margin:0 0 10px 0;">${titolo}</h1>${schedaBody(kind)}</div>`).join("");
-
-  printWindow("Fascicolo di autocontrollo — documentazione completa", riepilogo + sezioni);
+  ].map(([titolo,kind])=>({titolo, body: schedaBody(kind, mk)}));
+  return {title: "Fascicolo di autocontrollo — documentazione completa", mk, riepilogo, sezioni: sezioniList};
+}
+function printFascicolo(){
+  const f = buildFascicoloContent();
+  const sezioni = f.sezioni.map(x=>`<div style="page-break-before:always;"><h1 style="font-size:15px;margin:0 0 10px 0;">${x.titolo}</h1>${x.body}</div>`).join("");
+  printWindow(f.title, f.riepilogo + sezioni);
 }
 // Stampa scheda mensile a griglia — temperatura di un punto
 function printTempMese(pointId){
@@ -6178,12 +6214,6 @@ function buildCsvText(kind){
   const cell = v => '"' + (v===undefined||v===null? "" : String(v)).replace(/"/g,'""') + '"';
   return "\uFEFF" + [keys.map(cell).join(";"), ...flat.map(f=>keys.map(k=>cell(f[k])).join(";"))].join("\r\n");
 }
-const GDRIVE_PARTS = [
-  ["temperature", "Temperature (MOTE)"],
-  ["produzione",  "Articoli e Lotti (P1)"],
-  ["moma",        "Consegne MOMA"],
-  ["ricette",     "Schede di produzione e Lotti"]
-];
 let _gdBusy = false;
 function driveBackupNow(){
   if(!isAdmin()){ toast("⛔ Solo un amministratore può fare il backup su Drive"); return; }
@@ -6207,16 +6237,14 @@ function driveBackupNow(){
       }
       let n = 0;
       for(const mese of mesi){
-        for(const [k,label] of GDRIVE_PARTS){
-          const doc = await buildSchedaPdf(k, mese);
-          await gdUpload(folder, `${mese} ${label}.pdf`, doc.output("arraybuffer"), "application/pdf");
-          n++;
-        }
+        const doc = await buildFascicoloPdf(mese);
+        await gdUpload(folder, `${mese} Fascicolo HACCP completo.pdf`, doc.output("arraybuffer"), "application/pdf");
+        n++;
       }
       await gdUpload(folder, `${d} Backup-completo.json`, JSON.stringify(buildFullSnapshot()), "application/json; charset=UTF-8");
       n++;
       LS.set("gdrive-last-backup", new Date().toISOString());
-      toast(`☁️ Backup su Drive completato: ${n} file nella cartella "${GDRIVE_FOLDER}"`);
+      toast(`☁️ Backup su Drive completato: fascicolo PDF + copia di ripristino nella cartella "${GDRIVE_FOLDER}"`);
     }catch(e){
       toast("⚠️ Backup Drive non riuscito: " + (e && e.message || "riprova"));
     }finally{
@@ -6276,7 +6304,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "2.9";
+const APP_VERSION = "3.0";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
