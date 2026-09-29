@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 2.8 · backup su Google Drive · 29/09/2026</div>
+        <div class="sub" style="opacity:.85;">versione 2.9 · backup Drive in PDF · 29/09/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -5147,7 +5147,7 @@ function renderImpostazioni(){
     ${isAdmin()? `
     <div class="card">
       <h2>☁️ Backup su Google Drive</h2>
-      <p class="muted">Salva nel tuo Google Drive, cartella <b>${GDRIVE_FOLDER}</b>: temperature, articoli/lotti, consegne MOMA e schede di produzione (file CSV, si aprono con Excel) più una copia completa per il ripristino. Se lo rifai nello stesso giorno, i file di oggi vengono aggiornati.</p>
+      <p class="muted">Salva nel tuo Google Drive, cartella <b>${GDRIVE_FOLDER}</b>: le schede PDF del mese (temperature, articoli/lotti, consegne MOMA, schede di produzione) più una copia completa per il ripristino. Ogni backup aggiorna i PDF del mese in corso.</p>
       <p class="muted" style="margin-top:6px;">Ultimo backup su Drive: <b>${gdLastBackupLabel()}</b></p>
       <div class="rowbtns"><button class="btn block" id="gdBackupBtn" onclick="driveBackupNow()" ${_gdBusy? "disabled":""}>☁️ Salva su Google Drive adesso</button></div>
     </div>
@@ -5496,6 +5496,81 @@ async function assicuraLibrericePdf(){
   await caricaScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
   await caricaScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js");
 }
+// jsPDF con font standard non disegna emoji e simboli fuori dalla codifica WinAnsi: li ripuliamo.
+function pdfTxt(s){
+  return String(s==null? "" : s)
+    .replace(/≤/g,"<=").replace(/≥/g,">=")
+    .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\uFE0F\u200D]/gu,"")
+    .replace(/\s{2,}/g," ").trim();
+}
+async function buildSchedaPdf(kind, mese){
+  const {title, body} = buildSchedaContent(kind, mese);
+  const mk = mese || monthKeyNow();
+  const monthLbl = MONTHS[parseInt(mk.slice(5,7),10)-1] + " " + mk.slice(0,4);
+  await assicuraLibrericePdf();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"pt", format:"a4"});
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const marginX = 36;
+  let y = 40;
+
+  doc.setFont("helvetica","bold"); doc.setFontSize(15);
+  doc.text("Baldoria — Autocontrollo HACCP", marginX, y);
+  y += 16;
+  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(100);
+  doc.text(pdfTxt(`${title} · Periodo: ${monthLbl} · Salvato il ${fmtDate(todayISO())} alle ${nowTime()}`), marginX, y);
+  doc.setTextColor(30);
+  y += 18;
+
+  const parser = new DOMParser();
+  const bodyDoc = parser.parseFromString(`<div>${body}</div>`, "text/html");
+  const nodi = Array.from(bodyDoc.body.firstChild.childNodes).filter(n=>n.nodeType===1);
+  const cellText = el => pdfTxt(el.innerHTML.replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g,"")
+                                  .replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'"))
+                                  .replace(/ ?\n ?/g,"\n");
+
+  for(const nodo of nodi){
+    if(y > 760){ doc.addPage(); y = 40; }
+    if(nodo.tagName === "H1" || nodo.tagName === "H2" || nodo.tagName === "H3"){
+      const big = nodo.tagName === "H1";
+      y += big? 10 : 6;
+      if(y > 760){ doc.addPage(); y = 40; }
+      doc.setFont("helvetica","bold"); doc.setFontSize(big? 13 : nodo.tagName==="H2"? 11 : 10); doc.setTextColor(21,83,52);
+      doc.text(pdfTxt(nodo.textContent), marginX, y);
+      if(big){ doc.setDrawColor(31,111,74); doc.setLineWidth(1.5); doc.line(marginX, y+4, pageWidth-marginX, y+4); }
+      doc.setTextColor(30);
+      y += big? 16 : 10;
+    } else if(nodo.tagName === "TABLE"){
+      const headers = Array.from(nodo.querySelectorAll("thead th")).map(th=>pdfTxt(th.textContent));
+      const rows = Array.from(nodo.querySelectorAll("tbody tr")).map(tr=>Array.from(tr.querySelectorAll("td")).map(cellText));
+      doc.autoTable({
+        startY: y, margin:{left:marginX, right:marginX},
+        head: headers.length? [headers] : undefined,
+        body: rows,
+        styles:{ fontSize:8, cellPadding:3 },
+        headStyles:{ fillColor:[228,241,233], textColor:[21,83,52], fontStyle:'bold' },
+        didParseCell: function(data){
+          const raw = data.cell.raw;
+          if(data.section==="body" && typeof raw === "string" && /scaduto|non conforme|fuori soglia|PRESENZA|APERTA|: NC\b/i.test(raw)) data.cell.styles.textColor = [192,57,43];
+        }
+      });
+      y = doc.lastAutoTable.finalY + 14;
+    } else if(nodo.textContent.trim()){
+      doc.setFont("helvetica","italic"); doc.setFontSize(9); doc.setTextColor(130);
+      const lines = doc.splitTextToSize(pdfTxt(nodo.textContent), pageWidth - 2*marginX);
+      doc.text(lines, marginX, y);
+      doc.setTextColor(30);
+      y += 12*lines.length + 4;
+    }
+  }
+
+  if(y > 740){ doc.addPage(); y = 40; }
+  y += 30;
+  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(60);
+  doc.text("Firma dell'operatore: ________________________", marginX, y);
+  doc.text("Firma del responsabile: ________________________", pageWidth/2 + 10, y);
+  return doc;
+}
 async function saveScheda(kind, mese){
   const {title, body} = buildSchedaContent(kind, mese);
   const mk = mese || monthKeyNow();
@@ -5522,64 +5597,7 @@ async function saveScheda(kind, mese){
   </body></html>`;
   toast("📄 Preparo il PDF...");
   try{
-    await assicuraLibrericePdf();
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({unit:"pt", format:"a4"});
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const marginX = 36;
-    let y = 40;
-
-    doc.setFont("helvetica","bold"); doc.setFontSize(15);
-    doc.text("Baldoria — Autocontrollo HACCP", marginX, y);
-    y += 16;
-    doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(100);
-    doc.text(`${title} · Periodo: ${monthLbl} · Salvato il ${fmtDate(todayISO())} alle ${nowTime()}`, marginX, y);
-    doc.setTextColor(30);
-    y += 18;
-
-    // Analizzo il contenuto già costruito (titoli, tabelle, messaggi vuoti) mantenendo l'ordine originale
-    const parser = new DOMParser();
-    const bodyDoc = parser.parseFromString(`<div>${body}</div>`, "text/html");
-    const nodi = Array.from(bodyDoc.body.firstChild.childNodes).filter(n=>n.nodeType===1);
-
-    for(const nodo of nodi){
-      if(y > 760){ doc.addPage(); y = 40; }
-      if(nodo.tagName === "H2"){
-        y += 6;
-        if(y > 760){ doc.addPage(); y = 40; }
-        doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(21,83,52);
-        doc.text(nodo.textContent.trim(), marginX, y);
-        doc.setTextColor(30);
-        y += 10;
-      } else if(nodo.tagName === "TABLE"){
-        const headers = Array.from(nodo.querySelectorAll("thead th")).map(th=>th.textContent.trim());
-        const rows = Array.from(nodo.querySelectorAll("tbody tr")).map(tr=>Array.from(tr.querySelectorAll("td")).map(td=>td.textContent.trim()));
-        doc.autoTable({
-          startY: y, margin:{left:marginX, right:marginX},
-          head: headers.length? [headers] : undefined,
-          body: rows,
-          styles:{ fontSize:8, cellPadding:3 },
-          headStyles:{ fillColor:[228,241,233], textColor:[21,83,52], fontStyle:'bold' },
-          didParseCell: function(data){
-            const raw = data.cell.raw;
-            if(typeof raw === "string" && /scaduto|non conforme|fuori soglia/i.test(raw)) data.cell.styles.textColor = [192,57,43];
-          }
-        });
-        y = doc.lastAutoTable.finalY + 14;
-      } else if(nodo.classList && nodo.classList.contains("empty")){
-        doc.setFont("helvetica","italic"); doc.setFontSize(9); doc.setTextColor(130);
-        doc.text(nodo.textContent.trim(), marginX, y);
-        doc.setTextColor(30);
-        y += 16;
-      }
-    }
-
-    if(y > 740){ doc.addPage(); y = 40; }
-    y += 30;
-    doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(60);
-    doc.text("Firma dell'operatore: ________________________", marginX, y);
-    doc.text("Firma del responsabile: ________________________", pageWidth/2 + 10, y);
-
+    const doc = await buildSchedaPdf(kind, mese);
     doc.save(`${kind}-${mk}.pdf`);
     toast("💾 PDF salvato — controlla la cartella Download del telefono");
   }catch(e){
@@ -6133,8 +6151,12 @@ async function gdUpload(folderId, name, content, mime){
   const existing = l.files && l.files[0] && l.files[0].id;
   const boundary = "haccpbaldoria" + Date.now();
   const meta = existing? {} : {name, parents: [folderId]};
-  const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n` +
-               `--${boundary}\r\nContent-Type: ${mime}\r\n\r\n${content}\r\n--${boundary}--`;
+  const body = new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n` +
+    `--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`,
+    content,   // stringa (JSON) oppure ArrayBuffer (PDF)
+    `\r\n--${boundary}--`
+  ]);
   const url = existing
     ? `https://www.googleapis.com/upload/drive/v3/files/${existing}?uploadType=multipart&fields=id`
     : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id`;
@@ -6157,10 +6179,10 @@ function buildCsvText(kind){
   return "\uFEFF" + [keys.map(cell).join(";"), ...flat.map(f=>keys.map(k=>cell(f[k])).join(";"))].join("\r\n");
 }
 const GDRIVE_PARTS = [
-  ["temperature",  "Temperature"],
-  ["produzione",   "Articoli-Lotti"],
-  ["moma",         "Consegne-MOMA"],
-  ["composizioni", "Schede-produzione-Lotti"]
+  ["temperature", "Temperature (MOTE)"],
+  ["produzione",  "Articoli e Lotti (P1)"],
+  ["moma",        "Consegne MOMA"],
+  ["ricette",     "Schede di produzione e Lotti"]
 ];
 let _gdBusy = false;
 function driveBackupNow(){
@@ -6176,10 +6198,20 @@ function driveBackupNow(){
       await tokenP;
       const folder = await gdFindOrCreateFolder();
       const d = todayISO();
+      // Schede PDF del mese in corso; nei primi 5 giorni del mese aggiorno anche quelle del mese
+      // precedente, così gli ultimi giorni del mese chiuso finiscono comunque nel PDF.
+      const mesi = [d.slice(0,7)];
+      if(parseInt(d.slice(8,10),10) <= 5){
+        const p = new Date(parseInt(d.slice(0,4),10), parseInt(d.slice(5,7),10)-2, 1);
+        mesi.unshift(toLocalISODate(p).slice(0,7));
+      }
       let n = 0;
-      for(const [k,label] of GDRIVE_PARTS){
-        const csv = buildCsvText(k);
-        if(csv){ await gdUpload(folder, `${d} ${label}.csv`, csv, "text/csv; charset=UTF-8"); n++; }
+      for(const mese of mesi){
+        for(const [k,label] of GDRIVE_PARTS){
+          const doc = await buildSchedaPdf(k, mese);
+          await gdUpload(folder, `${mese} ${label}.pdf`, doc.output("arraybuffer"), "application/pdf");
+          n++;
+        }
       }
       await gdUpload(folder, `${d} Backup-completo.json`, JSON.stringify(buildFullSnapshot()), "application/json; charset=UTF-8");
       n++;
@@ -6244,7 +6276,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "2.8";
+const APP_VERSION = "2.9";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
