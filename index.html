@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 2.6 · turni team in schema a griglia · 29/09/2026</div>
+        <div class="sub" style="opacity:.85;">versione 2.7 · turni divisi per reparto, piano completo caricato · 29/09/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -605,6 +605,152 @@ function seedTurniPianoIniziale(){
   ];
   piano.forEach(t=>config.turni.push({id:uid(), ...t}));
   config.turniSeedFatto = true;
+  return true;
+}
+function seedTurniAltriRepartiIniziale(){
+  // Carica una tantum il piano turni per gli altri reparti (Cucina, Brace, Playground, Lavaggio,
+  // Pizzeria, Reception) per la settimana 28/9-4/10/2026, dall'anagrafica dello skill baldoria-turni.
+  // NOTA: la coppia Pizzeria che "monta" il venerdì (Cacace+Pezzella) e' un'assunzione di partenza,
+  // da confermare/correggere con la proprieta' — vedi il log di alternanza nell'anagrafica.
+  if(config.turniSeedAltriRepartiFatto) return false;
+  if(!config.turni) config.turni = [];
+  const piano = [
+    {data:"2026-09-28", reparto:"Cucina", fascia:"cena", operatore:"Cardillo Luigi"},
+    {data:"2026-09-29", reparto:"Cucina", fascia:"mattina", operatore:"Cardillo Luigi"},
+    {data:"2026-09-30", reparto:"Cucina", fascia:"seraLunga", operatore:"Cardillo Luigi"},
+    {data:"2026-10-01", reparto:"Cucina", fascia:"cena", operatore:"Cardillo Luigi"},
+    {data:"2026-10-02", reparto:"Cucina", fascia:"cena", operatore:"Cardillo Luigi"},
+    {data:"2026-10-03", reparto:"Cucina", fascia:"seraLunga", operatore:"Cardillo Luigi"},
+    {data:"2026-10-04", reparto:"Cucina", fascia:"mattina", operatore:"Cardillo Luigi"},
+    {data:"2026-09-28", reparto:"Cucina", fascia:"mattina", operatore:"Tall Aliu"},
+    {data:"2026-09-29", reparto:"Cucina", fascia:"cena", operatore:"Tall Aliu"},
+    {data:"2026-09-30", reparto:"Cucina", fascia:"cena", operatore:"Tall Aliu"},
+    {data:"2026-10-01", reparto:"Cucina", fascia:"seraLunga", operatore:"Tall Aliu"},
+    {data:"2026-10-02", reparto:"Cucina", fascia:"cena", operatore:"Tall Aliu"},
+    {data:"2026-10-03", reparto:"Cucina", fascia:"seraLunga", operatore:"Tall Aliu"},
+    {data:"2026-10-04", reparto:"Cucina", fascia:"cena", operatore:"Tall Aliu"},
+    {data:"2026-09-28", reparto:"Cucina", fascia:"cena", operatore:"Luongo Mario"},
+    {data:"2026-09-29", reparto:"Cucina", fascia:"seraLunga", operatore:"Luongo Mario"},
+    {data:"2026-09-30", reparto:"Cucina", fascia:"mattina", operatore:"Luongo Mario"},
+    {data:"2026-10-01", reparto:"Cucina", fascia:"cena", operatore:"Luongo Mario"},
+    {data:"2026-10-02", reparto:"Cucina", fascia:"cena", operatore:"Luongo Mario"},
+    {data:"2026-10-03", reparto:"Cucina", fascia:"seraLunga", operatore:"Luongo Mario"},
+    {data:"2026-10-04", reparto:"Cucina", fascia:"cena", operatore:"Luongo Mario"},
+    {data:"2026-09-28", reparto:"Cucina", fascia:"seraLunga", operatore:"Chiaiese Giulio"},
+    {data:"2026-09-29", reparto:"Cucina", fascia:"cena", operatore:"Chiaiese Giulio"},
+    {data:"2026-09-30", reparto:"Cucina", fascia:"cena", operatore:"Chiaiese Giulio"},
+    {data:"2026-10-01", reparto:"Cucina", fascia:"mattina", operatore:"Chiaiese Giulio"},
+    {data:"2026-10-02", reparto:"Cucina", fascia:"cena", operatore:"Chiaiese Giulio"},
+    {data:"2026-10-03", reparto:"Cucina", fascia:"seraLunga", operatore:"Chiaiese Giulio"},
+    {data:"2026-10-04", reparto:"Cucina", fascia:"cena", operatore:"Chiaiese Giulio"},
+    {data:"2026-09-28", reparto:"Cucina", fascia:"mattina", operatore:"Mokles Mokles (Cucina)"},
+    {data:"2026-09-29", reparto:"Cucina", fascia:"mattina", operatore:"Mokles Mokles (Cucina)"},
+    {data:"2026-09-30", reparto:"Cucina", fascia:"seraLunga", operatore:"Mokles Mokles (Cucina)"},
+    {data:"2026-10-01", reparto:"Cucina", fascia:"cena", operatore:"Mokles Mokles (Cucina)"},
+    {data:"2026-10-02", reparto:"Cucina", fascia:"cena", operatore:"Mokles Mokles (Cucina)"},
+    {data:"2026-10-03", reparto:"Cucina", fascia:"seraLunga", operatore:"Mokles Mokles (Cucina)"},
+    {data:"2026-10-04", reparto:"Cucina", fascia:"cena", operatore:"Mokles Mokles (Cucina)"},
+    {data:"2026-09-28", reparto:"Brace", fascia:"seraLunga", operatore:"Brandi Massimo"},
+    {data:"2026-09-29", reparto:"Brace", fascia:"mattina", operatore:"Brandi Massimo"},
+    {data:"2026-09-30", reparto:"Brace", fascia:"cena", operatore:"Brandi Massimo"},
+    {data:"2026-10-01", reparto:"Brace", fascia:"riposo", operatore:"Brandi Massimo"},
+    {data:"2026-10-02", reparto:"Brace", fascia:"cena", operatore:"Brandi Massimo"},
+    {data:"2026-10-03", reparto:"Brace", fascia:"seraLunga", operatore:"Brandi Massimo"},
+    {data:"2026-10-04", reparto:"Brace", fascia:"mattina", operatore:"Brandi Massimo"},
+    {data:"2026-09-28", reparto:"Brace", fascia:"cena", operatore:"Di Palma Alex"},
+    {data:"2026-09-29", reparto:"Brace", fascia:"riposo", operatore:"Di Palma Alex"},
+    {data:"2026-09-30", reparto:"Brace", fascia:"cena", operatore:"Di Palma Alex"},
+    {data:"2026-10-01", reparto:"Brace", fascia:"cena", operatore:"Di Palma Alex"},
+    {data:"2026-10-02", reparto:"Brace", fascia:"cena", operatore:"Di Palma Alex"},
+    {data:"2026-10-03", reparto:"Brace", fascia:"cena", operatore:"Di Palma Alex"},
+    {data:"2026-10-04", reparto:"Brace", fascia:"seraLunga", operatore:"Di Palma Alex"},
+    {data:"2026-09-28", reparto:"Brace", fascia:"mattina", operatore:"Rusciano Antonio"},
+    {data:"2026-09-29", reparto:"Brace", fascia:"cena", operatore:"Rusciano Antonio"},
+    {data:"2026-09-30", reparto:"Brace", fascia:"riposo", operatore:"Rusciano Antonio"},
+    {data:"2026-10-01", reparto:"Brace", fascia:"cena", operatore:"Rusciano Antonio"},
+    {data:"2026-10-02", reparto:"Brace", fascia:"seraLunga", operatore:"Rusciano Antonio"},
+    {data:"2026-10-03", reparto:"Brace", fascia:"seraLunga", operatore:"Rusciano Antonio"},
+    {data:"2026-10-04", reparto:"Brace", fascia:"cena", operatore:"Rusciano Antonio"},
+    {data:"2026-09-28", reparto:"Playground", fascia:"cena", operatore:"Cinquegrana Elena"},
+    {data:"2026-09-29", reparto:"Playground", fascia:"mattina", operatore:"Cinquegrana Elena"},
+    {data:"2026-09-30", reparto:"Playground", fascia:"cena", operatore:"Cinquegrana Elena"},
+    {data:"2026-10-01", reparto:"Playground", fascia:"riposo", operatore:"Cinquegrana Elena"},
+    {data:"2026-10-02", reparto:"Playground", fascia:"cena", operatore:"Cinquegrana Elena"},
+    {data:"2026-10-03", reparto:"Playground", fascia:"seraLunga", operatore:"Cinquegrana Elena"},
+    {data:"2026-10-04", reparto:"Playground", fascia:"cena", operatore:"Cinquegrana Elena"},
+    {data:"2026-09-28", reparto:"Playground", fascia:"mattina", operatore:"Iovino Lucia"},
+    {data:"2026-09-29", reparto:"Playground", fascia:"cena", operatore:"Iovino Lucia"},
+    {data:"2026-09-30", reparto:"Playground", fascia:"riposo", operatore:"Iovino Lucia"},
+    {data:"2026-10-01", reparto:"Playground", fascia:"cena", operatore:"Iovino Lucia"},
+    {data:"2026-10-02", reparto:"Playground", fascia:"cena", operatore:"Iovino Lucia"},
+    {data:"2026-10-03", reparto:"Playground", fascia:"cena", operatore:"Iovino Lucia"},
+    {data:"2026-10-04", reparto:"Playground", fascia:"cena", operatore:"Iovino Lucia"},
+    {data:"2026-09-28", reparto:"Lavaggio", fascia:"seraLunga", operatore:"Name"},
+    {data:"2026-09-29", reparto:"Lavaggio", fascia:"cena", operatore:"Name"},
+    {data:"2026-09-30", reparto:"Lavaggio", fascia:"riposo", operatore:"Name"},
+    {data:"2026-10-01", reparto:"Lavaggio", fascia:"cena", operatore:"Name"},
+    {data:"2026-10-02", reparto:"Lavaggio", fascia:"seraLunga", operatore:"Name"},
+    {data:"2026-10-03", reparto:"Lavaggio", fascia:"seraLunga", operatore:"Name"},
+    {data:"2026-10-04", reparto:"Lavaggio", fascia:"cena", operatore:"Name"},
+    {data:"2026-09-28", reparto:"Lavaggio", fascia:"cena", operatore:"Mokles Mokles (Lavaggio)"},
+    {data:"2026-09-29", reparto:"Lavaggio", fascia:"seraLunga", operatore:"Mokles Mokles (Lavaggio)"},
+    {data:"2026-09-30", reparto:"Lavaggio", fascia:"cena", operatore:"Mokles Mokles (Lavaggio)"},
+    {data:"2026-10-01", reparto:"Lavaggio", fascia:"riposo", operatore:"Mokles Mokles (Lavaggio)"},
+    {data:"2026-10-02", reparto:"Lavaggio", fascia:"cena", operatore:"Mokles Mokles (Lavaggio)"},
+    {data:"2026-10-03", reparto:"Lavaggio", fascia:"seraLunga", operatore:"Mokles Mokles (Lavaggio)"},
+    {data:"2026-10-04", reparto:"Lavaggio", fascia:"cena", operatore:"Mokles Mokles (Lavaggio)"},
+    {data:"2026-09-28", reparto:"Lavaggio", fascia:"cena", operatore:"Kokon Kokon"},
+    {data:"2026-09-29", reparto:"Lavaggio", fascia:"cena", operatore:"Kokon Kokon"},
+    {data:"2026-09-30", reparto:"Lavaggio", fascia:"seraLunga", operatore:"Kokon Kokon"},
+    {data:"2026-10-01", reparto:"Lavaggio", fascia:"cena", operatore:"Kokon Kokon"},
+    {data:"2026-10-02", reparto:"Lavaggio", fascia:"riposo", operatore:"Kokon Kokon"},
+    {data:"2026-10-03", reparto:"Lavaggio", fascia:"seraLunga", operatore:"Kokon Kokon"},
+    {data:"2026-10-04", reparto:"Lavaggio", fascia:"cena", operatore:"Kokon Kokon"},
+    {data:"2026-09-28", reparto:"Pizzeria", fascia:"riposo", operatore:"Murolo Alessio"},
+    {data:"2026-09-29", reparto:"Pizzeria", fascia:"mattina", operatore:"Murolo Alessio"},
+    {data:"2026-09-30", reparto:"Pizzeria", fascia:"seraLunga", operatore:"Murolo Alessio"},
+    {data:"2026-10-01", reparto:"Pizzeria", fascia:"mattina", operatore:"Murolo Alessio"},
+    {data:"2026-10-02", reparto:"Pizzeria", fascia:"cena", operatore:"Murolo Alessio"},
+    {data:"2026-10-03", reparto:"Pizzeria", fascia:"seraLunga", operatore:"Murolo Alessio"},
+    {data:"2026-10-04", reparto:"Pizzeria", fascia:"riposo", operatore:"Murolo Alessio"},
+    {data:"2026-09-28", reparto:"Pizzeria", fascia:"seraLunga", operatore:"Ioffredo Gennaro"},
+    {data:"2026-09-29", reparto:"Pizzeria", fascia:"cena", operatore:"Ioffredo Gennaro"},
+    {data:"2026-09-30", reparto:"Pizzeria", fascia:"cena", operatore:"Ioffredo Gennaro"},
+    {data:"2026-10-01", reparto:"Pizzeria", fascia:"cena", operatore:"Ioffredo Gennaro"},
+    {data:"2026-10-02", reparto:"Pizzeria", fascia:"cena", operatore:"Ioffredo Gennaro"},
+    {data:"2026-10-03", reparto:"Pizzeria", fascia:"seraLunga", operatore:"Ioffredo Gennaro"},
+    {data:"2026-10-04", reparto:"Pizzeria", fascia:"riposo", operatore:"Ioffredo Gennaro"},
+    {data:"2026-09-28", reparto:"Pizzeria", fascia:"mattina", operatore:"Cacace Gaetano"},
+    {data:"2026-09-29", reparto:"Pizzeria", fascia:"riposo", operatore:"Cacace Gaetano"},
+    {data:"2026-09-30", reparto:"Pizzeria", fascia:"mattina", operatore:"Cacace Gaetano"},
+    {data:"2026-10-01", reparto:"Pizzeria", fascia:"seraLunga", operatore:"Cacace Gaetano"},
+    {data:"2026-10-02", reparto:"Pizzeria", fascia:"seraLunga", operatore:"Cacace Gaetano"},
+    {data:"2026-10-03", reparto:"Pizzeria", fascia:"seraLunga", operatore:"Cacace Gaetano"},
+    {data:"2026-10-04", reparto:"Pizzeria", fascia:"cena", operatore:"Cacace Gaetano"},
+    {data:"2026-09-28", reparto:"Pizzeria", fascia:"cena", operatore:"Pezzella Giovanni"},
+    {data:"2026-09-29", reparto:"Pizzeria", fascia:"seraLunga", operatore:"Pezzella Giovanni"},
+    {data:"2026-09-30", reparto:"Pizzeria", fascia:"cena", operatore:"Pezzella Giovanni"},
+    {data:"2026-10-01", reparto:"Pizzeria", fascia:"cena", operatore:"Pezzella Giovanni"},
+    {data:"2026-10-02", reparto:"Pizzeria", fascia:"seraLunga", operatore:"Pezzella Giovanni"},
+    {data:"2026-10-03", reparto:"Pizzeria", fascia:"seraLunga", operatore:"Pezzella Giovanni"},
+    {data:"2026-10-04", reparto:"Pizzeria", fascia:"cena", operatore:"Pezzella Giovanni"},
+    {data:"2026-09-28", reparto:"Reception", fascia:"seraLunga", operatore:"Iorio Nunzio"},
+    {data:"2026-09-29", reparto:"Reception", fascia:"cena", operatore:"Iorio Nunzio"},
+    {data:"2026-09-30", reparto:"Reception", fascia:"cena", operatore:"Iorio Nunzio"},
+    {data:"2026-10-01", reparto:"Reception", fascia:"riposo", operatore:"Iorio Nunzio"},
+    {data:"2026-10-02", reparto:"Reception", fascia:"cena", operatore:"Iorio Nunzio"},
+    {data:"2026-10-03", reparto:"Reception", fascia:"cena", operatore:"Iorio Nunzio"},
+    {data:"2026-10-04", reparto:"Reception", fascia:"seraLunga", operatore:"Iorio Nunzio"},
+    {data:"2026-09-28", reparto:"Reception", fascia:"riposo", operatore:"Riccio Dario"},
+    {data:"2026-09-29", reparto:"Reception", fascia:"mattina", operatore:"Riccio Dario"},
+    {data:"2026-09-30", reparto:"Reception", fascia:"mattina", operatore:"Riccio Dario"},
+    {data:"2026-10-01", reparto:"Reception", fascia:"seraLunga", operatore:"Riccio Dario"},
+    {data:"2026-10-02", reparto:"Reception", fascia:"mattina", operatore:"Riccio Dario"},
+    {data:"2026-10-03", reparto:"Reception", fascia:"cena", operatore:"Riccio Dario"},
+    {data:"2026-10-04", reparto:"Reception", fascia:"cena", operatore:"Riccio Dario"}
+  ];
+  piano.forEach(t=>config.turni.push({id:uid(), ...t}));
+  config.turniSeedAltriRepartiFatto = true;
   return true;
 }
 function migrateReparti(){
@@ -4218,16 +4364,44 @@ function renderTurni(){
   const CODICE = {mattina:"M", cena:"S", seraLunga:"L", intermedio:"T", riposo:"R"};
   const COLORE = {mattina:"#FDE9C8", cena:"#CFE3F5", seraLunga:"#D9EAD3", intermedio:"#E6D6F5", riposo:"#EAEAEA"};
   const giornoBrevi = iso => WEEKDAY_LOCALE[new Date(iso+"T00:00:00").getDay()].slice(0,3);
+  const REPARTO_ICON = {Cucina:"🍳", Bar:"🍹", Sala:"🍽️", Playground:"🎠", Lavaggio:"🧽", Pizzeria:"🍕", Brace:"🔥", Reception:"🛎️"};
 
-  // Elenco dipendenti da mostrare in griglia: chi ha almeno un turno questa settimana, raggruppati per reparto
+  // Elenco dipendenti da mostrare in griglia, raggruppati per reparto
   const nomiSettimana = [...new Set(turni.filter(t=>giorni.includes(t.data)).map(t=>t.operatore))];
   const operatoriGriglia = (config.operatori||[]).filter(o=>nomiSettimana.includes(o.nome));
   nomiSettimana.forEach(n=>{ if(!operatoriGriglia.some(o=>o.nome===n)) operatoriGriglia.push({nome:n, reparti:[]}); });
-  const repartoDi = nome => { const t = turni.find(x=>x.operatore===nome && giorni.includes(x.data)); return t? t.reparto : "—"; };
-  const righeOrdinate = operatoriGriglia.slice().sort((a,b)=>{
-    const ra = repartoDi(a.nome), rb = repartoDi(b.nome);
-    return ra===rb? a.nome.localeCompare(b.nome) : ra.localeCompare(rb);
-  });
+  const repartoDi = nome => { const t = turni.find(x=>x.operatore===nome && giorni.includes(x.data)); return t? t.reparto : "Senza reparto"; };
+
+  // Ordine fisso delle sezioni reparto, come richiesto: Cucina, Bar, Sala, Playground, Lavaggio, Pizzeria — poi eventuali altri
+  const ORDINE_REPARTI_TURNI = ["Cucina","Bar","Sala","Playground","Lavaggio","Pizzeria"];
+  const repartiPresenti = [...new Set(operatoriGriglia.map(o=>repartoDi(o.nome)))];
+  const repartiOrdinati = [
+    ...ORDINE_REPARTI_TURNI.filter(r=>repartiPresenti.includes(r)),
+    ...repartiPresenti.filter(r=>!ORDINE_REPARTI_TURNI.includes(r)).sort()
+  ];
+
+  function tabellaRepartoHtml(reparto, operatoriReparto){
+    return `
+      <div style="overflow-x:auto;">
+        <table class="month" style="min-width:600px;">
+          <thead><tr>
+            <th style="text-align:left;">Dipendente</th>
+            ${giorni.map(g=>`<th>${giornoBrevi(g)}<br><span style="font-weight:400;font-size:10px;">${fmtDate(g).slice(0,5)}</span></th>`).join("")}
+          </tr></thead>
+          <tbody>
+          ${operatoriReparto.map(op=>`<tr>
+              <td style="text-align:left;font-weight:700;white-space:nowrap;">${op.nome}${me && op.nome===me.nome?' <span class="muted" style="font-size:10px;">(tu)</span>':''}</td>
+              ${giorni.map(g=>{
+                const t = turni.find(x=>x.operatore===op.nome && x.data===g);
+                const cod = t? CODICE[t.fascia]||"?" : "—";
+                const bg = t? COLORE[t.fascia]||"#fff" : "#fff";
+                return `<td style="background:${bg};cursor:${isAdmin()?'pointer':'default'};font-weight:700;" ${isAdmin()? `onclick="openCellaTurno('${g}','${op.nome.replace(/'/g,"\\'")}','${t?t.id:''}')"` : ''} title="${t? fasciaLbl(t.fascia) : 'Nessun turno'}">${cod}</td>`;
+              }).join("")}
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>`;
+  }
 
   $main.innerHTML = `
     <div class="card">
@@ -4241,40 +4415,25 @@ function renderTurni(){
       `).join("") : `<div class="empty">Nessun turno assegnato per te questa settimana.</div>`}
     </div>
     <div class="card">
-      <div class="card-head"><h2>Turni del team — schema settimanale</h2></div>
+      <div class="card-head"><h2>Turni del team</h2></div>
       <div class="rowbtns" style="margin-top:0;">
         <button class="iconbtn" onclick="cambiaSettimanaTurni(-1)">← Prec.</button>
         <button class="iconbtn" onclick="cambiaSettimanaTurni('reset')">Questa settimana</button>
         <button class="iconbtn" onclick="cambiaSettimanaTurni(1)">Succ. →</button>
       </div>
-      ${righeOrdinate.length? `
-      <div style="overflow-x:auto;">
-        <table class="month" style="min-width:600px;">
-          <thead><tr>
-            <th style="text-align:left;">Dipendente</th>
-            ${giorni.map(g=>`<th>${giornoBrevi(g)}<br><span style="font-weight:400;font-size:10px;">${fmtDate(g).slice(0,5)}</span></th>`).join("")}
-          </tr></thead>
-          <tbody>
-          ${righeOrdinate.map(op=>{
-            let repartoCorrente = null;
-            return `<tr>
-              <td style="text-align:left;font-weight:700;white-space:nowrap;">${op.nome}${me && op.nome===me.nome?' <span class="muted" style="font-size:10px;">(tu)</span>':''}<div class="muted" style="font-size:10px;font-weight:400;">${repartoDi(op.nome)}</div></td>
-              ${giorni.map(g=>{
-                const t = turni.find(x=>x.operatore===op.nome && x.data===g);
-                const cod = t? CODICE[t.fascia]||"?" : "—";
-                const bg = t? COLORE[t.fascia]||"#fff" : "#fff";
-                return `<td style="background:${bg};cursor:${isAdmin()?'pointer':'default'};font-weight:700;" ${isAdmin()? `onclick="openCellaTurno('${g}','${op.nome.replace(/'/g,"\\'")}','${t?t.id:''}')"` : ''} title="${t? fasciaLbl(t.fascia) : 'Nessun turno'}">${cod}</td>`;
-              }).join("")}
-            </tr>`;
-          }).join("")}
-          </tbody>
-        </table>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:11px;">
+    </div>
+    ${repartiOrdinati.length? repartiOrdinati.map(reparto=>{
+      const operatoriReparto = operatoriGriglia.filter(o=>repartoDi(o.nome)===reparto).sort((a,b)=>a.nome.localeCompare(b.nome));
+      return `<div class="card">
+        <h2>${REPARTO_ICON && REPARTO_ICON[reparto]? REPARTO_ICON[reparto]+' ' : ''}${reparto}</h2>
+        ${tabellaRepartoHtml(reparto, operatoriReparto)}
+      </div>`;
+    }).join("") : `<div class="card"><div class="empty">Nessun turno pianificato per questa settimana.</div></div>`}
+    <div class="card">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;">
         ${Object.entries(FASCE_TURNO).map(([k,v])=>`<span><span style="display:inline-block;width:12px;height:12px;background:${COLORE[k]};border-radius:3px;margin-right:3px;vertical-align:middle;"></span>${CODICE[k]} = ${v.label}</span>`).join("")}
       </div>
-      ` : `<div class="empty">Nessun turno pianificato per questa settimana.</div>`}
-      ${isAdmin()? `<div class="rowbtns"><button class="btn secondary block" onclick="openAddTurnoForm('${giorni[0]}')">+ Aggiungi turno</button></div>`:''}
+      ${isAdmin()? `<div class="rowbtns" style="margin-top:10px;"><button class="btn secondary block" onclick="openAddTurnoForm('${giorni[0]}')">+ Aggiungi turno</button></div>`:''}
     </div>
   `;
 }
@@ -5929,7 +6088,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "2.6";
+const APP_VERSION = "2.7";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
@@ -5983,7 +6142,9 @@ function proceedToApp(){
     $main.innerHTML = `<div class="empty"><span class="spinner"></span> Caricamento registri...</div>`;
     await loadAll();
     migrateReparti();
-    if(seedTurniPianoIniziale()) saveConfig().catch(()=>{});
+    let turniCaricati = seedTurniPianoIniziale();
+    if(seedTurniAltriRepartiIniziale()) turniCaricati = true;
+    if(turniCaricati) saveConfig().catch(()=>{});
     const sessId = LS.get(SESSION_KEY);
     const sessOp = sessId ? (config.operatori||[]).find(o=>o.id===sessId) : null;
     if(sessOp && sessOp.attivo){
