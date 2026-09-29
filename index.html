@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 2.5 · turni con 5 codici M/S/L/T/R + piano Sala/Bar caricato · 29/09/2026</div>
+        <div class="sub" style="opacity:.85;">versione 2.6 · turni team in schema a griglia · 29/09/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4215,6 +4215,20 @@ function renderTurni(){
   const fasciaLbl = f => { const x = FASCE_TURNO[f]; return x? `${x.icon} ${x.label}` : f; };
   const giornoLbl = iso => WEEKDAY_LOCALE[new Date(iso+"T00:00:00").getDay()];
 
+  const CODICE = {mattina:"M", cena:"S", seraLunga:"L", intermedio:"T", riposo:"R"};
+  const COLORE = {mattina:"#FDE9C8", cena:"#CFE3F5", seraLunga:"#D9EAD3", intermedio:"#E6D6F5", riposo:"#EAEAEA"};
+  const giornoBrevi = iso => WEEKDAY_LOCALE[new Date(iso+"T00:00:00").getDay()].slice(0,3);
+
+  // Elenco dipendenti da mostrare in griglia: chi ha almeno un turno questa settimana, raggruppati per reparto
+  const nomiSettimana = [...new Set(turni.filter(t=>giorni.includes(t.data)).map(t=>t.operatore))];
+  const operatoriGriglia = (config.operatori||[]).filter(o=>nomiSettimana.includes(o.nome));
+  nomiSettimana.forEach(n=>{ if(!operatoriGriglia.some(o=>o.nome===n)) operatoriGriglia.push({nome:n, reparti:[]}); });
+  const repartoDi = nome => { const t = turni.find(x=>x.operatore===nome && giorni.includes(x.data)); return t? t.reparto : "—"; };
+  const righeOrdinate = operatoriGriglia.slice().sort((a,b)=>{
+    const ra = repartoDi(a.nome), rb = repartoDi(b.nome);
+    return ra===rb? a.nome.localeCompare(b.nome) : ra.localeCompare(rb);
+  });
+
   $main.innerHTML = `
     <div class="card">
       <h2>📅 I tuoi turni questa settimana</h2>
@@ -4227,38 +4241,62 @@ function renderTurni(){
       `).join("") : `<div class="empty">Nessun turno assegnato per te questa settimana.</div>`}
     </div>
     <div class="card">
-      <div class="card-head"><h2>Turni del team</h2></div>
+      <div class="card-head"><h2>Turni del team — schema settimanale</h2></div>
       <div class="rowbtns" style="margin-top:0;">
         <button class="iconbtn" onclick="cambiaSettimanaTurni(-1)">← Prec.</button>
         <button class="iconbtn" onclick="cambiaSettimanaTurni('reset')">Questa settimana</button>
         <button class="iconbtn" onclick="cambiaSettimanaTurni(1)">Succ. →</button>
       </div>
-      ${giorni.map(g=>{
-        const turniGiorno = turni.filter(t=>t.data===g).sort((a,b)=>(a.reparto+a.fascia).localeCompare(b.reparto+b.fascia));
-        return `<h3>${giornoLbl(g)} ${fmtDate(g)}</h3>
-        ${turniGiorno.length? turniGiorno.map(t=>`
-          <div class="logrow">
-            <div><div class="val">${t.operatore}${me && t.operatore===me.nome?' <span class="muted" style="font-size:11px;">(tu)</span>':''}</div>
-            <div class="meta">${t.reparto} · ${fasciaLbl(t.fascia)}</div></div>
-            ${isAdmin()? `<button class="iconbtn" onclick="eliminaTurno('${t.id}')">🗑️</button>`:''}
-          </div>
-        `).join("") : `<div class="empty" style="padding:6px 0;">Nessun turno assegnato.</div>`}
-        `;
-      }).join("")}
+      ${righeOrdinate.length? `
+      <div style="overflow-x:auto;">
+        <table class="month" style="min-width:600px;">
+          <thead><tr>
+            <th style="text-align:left;">Dipendente</th>
+            ${giorni.map(g=>`<th>${giornoBrevi(g)}<br><span style="font-weight:400;font-size:10px;">${fmtDate(g).slice(0,5)}</span></th>`).join("")}
+          </tr></thead>
+          <tbody>
+          ${righeOrdinate.map(op=>{
+            let repartoCorrente = null;
+            return `<tr>
+              <td style="text-align:left;font-weight:700;white-space:nowrap;">${op.nome}${me && op.nome===me.nome?' <span class="muted" style="font-size:10px;">(tu)</span>':''}<div class="muted" style="font-size:10px;font-weight:400;">${repartoDi(op.nome)}</div></td>
+              ${giorni.map(g=>{
+                const t = turni.find(x=>x.operatore===op.nome && x.data===g);
+                const cod = t? CODICE[t.fascia]||"?" : "—";
+                const bg = t? COLORE[t.fascia]||"#fff" : "#fff";
+                return `<td style="background:${bg};cursor:${isAdmin()?'pointer':'default'};font-weight:700;" ${isAdmin()? `onclick="openCellaTurno('${g}','${op.nome.replace(/'/g,"\\'")}','${t?t.id:''}')"` : ''} title="${t? fasciaLbl(t.fascia) : 'Nessun turno'}">${cod}</td>`;
+              }).join("")}
+            </tr>`;
+          }).join("")}
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:11px;">
+        ${Object.entries(FASCE_TURNO).map(([k,v])=>`<span><span style="display:inline-block;width:12px;height:12px;background:${COLORE[k]};border-radius:3px;margin-right:3px;vertical-align:middle;"></span>${CODICE[k]} = ${v.label}</span>`).join("")}
+      </div>
+      ` : `<div class="empty">Nessun turno pianificato per questa settimana.</div>`}
       ${isAdmin()? `<div class="rowbtns"><button class="btn secondary block" onclick="openAddTurnoForm('${giorni[0]}')">+ Aggiungi turno</button></div>`:''}
     </div>
   `;
+}
+function openCellaTurno(data, operatore, turnoId){
+  if(!isAdmin()) return;
+  if(turnoId){
+    openEditTurnoForm(turnoId);
+  } else {
+    openAddTurnoForm(data, operatore);
+  }
 }
 function cambiaSettimanaTurni(delta){
   turniWeekOffset = delta==='reset'? 0 : turniWeekOffset+delta;
   render();
 }
-function openAddTurnoForm(defaultDate){
+function openAddTurnoForm(defaultDate, defaultOperatore){
   const ops = config.operatori||[];
+  const repartoDefault = defaultOperatore? (ops.find(o=>o.nome===defaultOperatore)?.reparti?.[0] || REPARTI[0]) : REPARTI[0];
   openSheet("Nuovo turno", `
     <label class="field">Data</label><input type="date" id="turnoData" value="${defaultDate||todayISO()}">
     <label class="field">Reparto</label>
-    <select id="turnoReparto">${REPARTI.map(r=>`<option value="${r}">${r}</option>`).join("")}</select>
+    <select id="turnoReparto">${REPARTI.map(r=>`<option value="${r}" ${r===repartoDefault?'selected':''}>${r}</option>`).join("")}</select>
     <label class="field">Fascia</label>
     <select id="turnoFascia">
       <option value="mattina">☀️ Pranzo (M)</option>
@@ -4268,9 +4306,44 @@ function openAddTurnoForm(defaultDate){
       <option value="riposo">💤 Riposo (R)</option>
     </select>
     <label class="field">Operatore</label>
-    <select id="turnoOperatore">${ops.length? ops.map(o=>`<option value="${o.nome}">${o.nome}</option>`).join("") : `<option value="">Nessun operatore configurato</option>`}</select>
+    <select id="turnoOperatore">${ops.length? ops.map(o=>`<option value="${o.nome}" ${o.nome===defaultOperatore?'selected':''}>${o.nome}</option>`).join("") : `<option value="">Nessun operatore configurato</option>`}</select>
     <div class="rowbtns"><button class="btn block" onclick="salvaTurno()">Aggiungi turno</button></div>
   `);
+}
+function openEditTurnoForm(id){
+  const t = (config.turni||[]).find(x=>x.id===id);
+  if(!t) return;
+  const ops = config.operatori||[];
+  openSheet(`Modifica turno — ${t.operatore}`, `
+    <label class="field">Data</label><input type="date" id="turnoData" value="${t.data}">
+    <label class="field">Reparto</label>
+    <select id="turnoReparto">${REPARTI.map(r=>`<option value="${r}" ${r===t.reparto?'selected':''}>${r}</option>`).join("")}</select>
+    <label class="field">Fascia</label>
+    <select id="turnoFascia">
+      <option value="mattina" ${t.fascia==='mattina'?'selected':''}>☀️ Pranzo (M)</option>
+      <option value="cena" ${t.fascia==='cena'?'selected':''}>🌆 Cena (S)</option>
+      <option value="seraLunga" ${t.fascia==='seraLunga'?'selected':''}>🌙 Lungo — Pranzo+Cena (L)</option>
+      <option value="intermedio" ${t.fascia==='intermedio'?'selected':''}>🌤️ Intermedio — 12:30-18:30, solo Domenica (T)</option>
+      <option value="riposo" ${t.fascia==='riposo'?'selected':''}>💤 Riposo (R)</option>
+    </select>
+    <label class="field">Operatore</label>
+    <select id="turnoOperatore">${ops.length? ops.map(o=>`<option value="${o.nome}" ${o.nome===t.operatore?'selected':''}>${o.nome}</option>`).join("") : `<option value="${t.operatore}">${t.operatore}</option>`}</select>
+    <div class="rowbtns">
+      <button class="btn block" onclick="salvaModificaTurno('${id}')">Salva modifiche</button>
+      <button class="btn danger" onclick="eliminaTurno('${id}')">🗑️ Elimina</button>
+    </div>
+  `);
+}
+async function salvaModificaTurno(id){
+  const t = (config.turni||[]).find(x=>x.id===id);
+  if(!t) return;
+  t.data = document.getElementById("turnoData").value;
+  t.reparto = document.getElementById("turnoReparto").value;
+  t.fascia = document.getElementById("turnoFascia").value;
+  t.operatore = document.getElementById("turnoOperatore").value;
+  await saveConfig();
+  toast("Turno aggiornato");
+  activeTab="turni"; closeSheet();
 }
 async function salvaTurno(){
   const data = document.getElementById("turnoData").value;
@@ -4289,7 +4362,7 @@ async function eliminaTurno(id){
   config.turni = (config.turni||[]).filter(t=>t.id!==id);
   await saveConfig();
   toast("Turno eliminato");
-  render();
+  activeTab="turni"; closeSheet();
 }
 
 // ---------- ORDINI ----------
@@ -5856,7 +5929,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "2.5";
+const APP_VERSION = "2.6";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
