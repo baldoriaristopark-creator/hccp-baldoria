@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 2.4 · tutti possono aumentare e diminuire quantità · 21/09/2026</div>
+        <div class="sub" style="opacity:.85;">versione 2.5 · turni con 5 codici M/S/L/T/R + piano Sala/Bar caricato · 29/09/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -532,6 +532,80 @@ function repartoFilterHtml(currentValue, onchangeFn){
     <option value="" ${!currentValue?'selected':''}>Tutti i reparti</option>
     ${opzioni.map(r=>`<option value="${r}" ${currentValue===r?'selected':''}>${r}</option>`).join("")}
   </select>`;
+}
+function seedTurniPianoIniziale(){
+  // Carica una tantum il piano turni Sala+Bar già costruito per la settimana 28/9-4/10/2026,
+  // così i dati non vanno persi passando dal vecchio formato (solo Mattina/Sera lunga) al nuovo (M/S/L/T/R).
+  if(config.turniSeedFatto) return false;
+  if(!config.turni) config.turni = [];
+  const piano = [
+    {data:"2026-09-28", reparto:"Sala", fascia:"seraLunga", operatore:"Bassi Fabiana"},
+    {data:"2026-09-29", reparto:"Sala", fascia:"cena", operatore:"Bassi Fabiana"},
+    {data:"2026-09-30", reparto:"Sala", fascia:"riposo", operatore:"Bassi Fabiana"},
+    {data:"2026-10-01", reparto:"Sala", fascia:"cena", operatore:"Bassi Fabiana"},
+    {data:"2026-10-02", reparto:"Sala", fascia:"mattina", operatore:"Bassi Fabiana"},
+    {data:"2026-10-03", reparto:"Sala", fascia:"seraLunga", operatore:"Bassi Fabiana"},
+    {data:"2026-10-04", reparto:"Sala", fascia:"mattina", operatore:"Bassi Fabiana"},
+    {data:"2026-09-28", reparto:"Sala", fascia:"mattina", operatore:"Morieri Myriam"},
+    {data:"2026-09-29", reparto:"Sala", fascia:"seraLunga", operatore:"Morieri Myriam"},
+    {data:"2026-09-30", reparto:"Sala", fascia:"cena", operatore:"Morieri Myriam"},
+    {data:"2026-10-01", reparto:"Sala", fascia:"riposo", operatore:"Morieri Myriam"},
+    {data:"2026-10-02", reparto:"Sala", fascia:"cena", operatore:"Morieri Myriam"},
+    {data:"2026-10-03", reparto:"Sala", fascia:"seraLunga", operatore:"Morieri Myriam"},
+    {data:"2026-10-04", reparto:"Sala", fascia:"mattina", operatore:"Morieri Myriam"},
+    {data:"2026-09-28", reparto:"Sala", fascia:"cena", operatore:"Ilardi Ilenia"},
+    {data:"2026-09-29", reparto:"Sala", fascia:"riposo", operatore:"Ilardi Ilenia"},
+    {data:"2026-09-30", reparto:"Sala", fascia:"seraLunga", operatore:"Ilardi Ilenia"},
+    {data:"2026-10-01", reparto:"Sala", fascia:"cena", operatore:"Ilardi Ilenia"},
+    {data:"2026-10-02", reparto:"Sala", fascia:"mattina", operatore:"Ilardi Ilenia"},
+    {data:"2026-10-03", reparto:"Sala", fascia:"seraLunga", operatore:"Ilardi Ilenia"},
+    {data:"2026-10-04", reparto:"Sala", fascia:"mattina", operatore:"Ilardi Ilenia"},
+    {data:"2026-09-28", reparto:"Sala", fascia:"riposo", operatore:"Carrese Sara"},
+    {data:"2026-09-29", reparto:"Sala", fascia:"mattina", operatore:"Carrese Sara"},
+    {data:"2026-09-30", reparto:"Sala", fascia:"cena", operatore:"Carrese Sara"},
+    {data:"2026-10-01", reparto:"Sala", fascia:"seraLunga", operatore:"Carrese Sara"},
+    {data:"2026-10-02", reparto:"Sala", fascia:"cena", operatore:"Carrese Sara"},
+    {data:"2026-10-03", reparto:"Sala", fascia:"seraLunga", operatore:"Carrese Sara"},
+    {data:"2026-10-04", reparto:"Sala", fascia:"mattina", operatore:"Carrese Sara"},
+    {data:"2026-09-28", reparto:"Sala", fascia:"mattina", operatore:"Garofalo Ciro"},
+    {data:"2026-09-29", reparto:"Sala", fascia:"mattina", operatore:"Garofalo Ciro"},
+    {data:"2026-09-30", reparto:"Sala", fascia:"seraLunga", operatore:"Garofalo Ciro"},
+    {data:"2026-10-01", reparto:"Sala", fascia:"riposo", operatore:"Garofalo Ciro"},
+    {data:"2026-10-02", reparto:"Sala", fascia:"cena", operatore:"Garofalo Ciro"},
+    {data:"2026-10-03", reparto:"Sala", fascia:"seraLunga", operatore:"Garofalo Ciro"},
+    {data:"2026-10-04", reparto:"Sala", fascia:"seraLunga", operatore:"Garofalo Ciro"},
+    {data:"2026-09-28", reparto:"Sala", fascia:"cena", operatore:"Onesto Daniele"},
+    {data:"2026-09-29", reparto:"Sala", fascia:"riposo", operatore:"Onesto Daniele"},
+    {data:"2026-09-30", reparto:"Sala", fascia:"cena", operatore:"Onesto Daniele"},
+    {data:"2026-10-01", reparto:"Sala", fascia:"cena", operatore:"Onesto Daniele"},
+    {data:"2026-10-02", reparto:"Sala", fascia:"cena", operatore:"Onesto Daniele"},
+    {data:"2026-10-03", reparto:"Sala", fascia:"cena", operatore:"Onesto Daniele"},
+    {data:"2026-10-04", reparto:"Sala", fascia:"seraLunga", operatore:"Onesto Daniele"},
+    {data:"2026-09-28", reparto:"Sala", fascia:"cena", operatore:"Di Pierri Cristian"},
+    {data:"2026-09-29", reparto:"Sala", fascia:"cena", operatore:"Di Pierri Cristian"},
+    {data:"2026-09-30", reparto:"Sala", fascia:"riposo", operatore:"Di Pierri Cristian"},
+    {data:"2026-10-01", reparto:"Sala", fascia:"cena", operatore:"Di Pierri Cristian"},
+    {data:"2026-10-02", reparto:"Sala", fascia:"cena", operatore:"Di Pierri Cristian"},
+    {data:"2026-10-03", reparto:"Sala", fascia:"cena", operatore:"Di Pierri Cristian"},
+    {data:"2026-10-04", reparto:"Sala", fascia:"seraLunga", operatore:"Di Pierri Cristian"},
+    {data:"2026-09-28", reparto:"Bar", fascia:"riposo", operatore:"Roati Raffaele"},
+    {data:"2026-09-29", reparto:"Bar", fascia:"cena", operatore:"Roati Raffaele"},
+    {data:"2026-09-30", reparto:"Bar", fascia:"mattina", operatore:"Roati Raffaele"},
+    {data:"2026-10-01", reparto:"Bar", fascia:"seraLunga", operatore:"Roati Raffaele"},
+    {data:"2026-10-02", reparto:"Bar", fascia:"cena", operatore:"Roati Raffaele"},
+    {data:"2026-10-03", reparto:"Bar", fascia:"seraLunga", operatore:"Roati Raffaele"},
+    {data:"2026-10-04", reparto:"Bar", fascia:"cena", operatore:"Roati Raffaele"},
+    {data:"2026-09-28", reparto:"Bar", fascia:"cena", operatore:"Mosca Francesco"},
+    {data:"2026-09-29", reparto:"Bar", fascia:"cena", operatore:"Mosca Francesco"},
+    {data:"2026-09-30", reparto:"Bar", fascia:"riposo", operatore:"Mosca Francesco"},
+    {data:"2026-10-01", reparto:"Bar", fascia:"cena", operatore:"Mosca Francesco"},
+    {data:"2026-10-02", reparto:"Bar", fascia:"cena", operatore:"Mosca Francesco"},
+    {data:"2026-10-03", reparto:"Bar", fascia:"cena", operatore:"Mosca Francesco"},
+    {data:"2026-10-04", reparto:"Bar", fascia:"cena", operatore:"Mosca Francesco"}
+  ];
+  piano.forEach(t=>config.turni.push({id:uid(), ...t}));
+  config.turniSeedFatto = true;
+  return true;
 }
 function migrateReparti(){
   let changed = false;
@@ -4131,7 +4205,14 @@ function renderTurni(){
   });
   const turni = config.turni || [];
   const mieiTurni = me? turni.filter(t=>giorni.includes(t.data) && t.operatore===me.nome).sort((a,b)=>a.data.localeCompare(b.data)) : [];
-  const fasciaLbl = f => f==='mattina'? '☀️ Mattina' : '🌙 Sera lunga';
+  const FASCE_TURNO = {
+    mattina:     {icon:"☀️", label:"Pranzo"},
+    cena:        {icon:"🌆", label:"Cena"},
+    seraLunga:   {icon:"🌙", label:"Lungo (Pranzo+Cena)"},
+    intermedio:  {icon:"🌤️", label:"Intermedio (12:30-18:30, solo Domenica)"},
+    riposo:      {icon:"💤", label:"Riposo"},
+  };
+  const fasciaLbl = f => { const x = FASCE_TURNO[f]; return x? `${x.icon} ${x.label}` : f; };
   const giornoLbl = iso => WEEKDAY_LOCALE[new Date(iso+"T00:00:00").getDay()];
 
   $main.innerHTML = `
@@ -4180,8 +4261,11 @@ function openAddTurnoForm(defaultDate){
     <select id="turnoReparto">${REPARTI.map(r=>`<option value="${r}">${r}</option>`).join("")}</select>
     <label class="field">Fascia</label>
     <select id="turnoFascia">
-      <option value="mattina">☀️ Mattina</option>
-      <option value="seraLunga">🌙 Sera lunga</option>
+      <option value="mattina">☀️ Pranzo (M)</option>
+      <option value="cena">🌆 Cena (S)</option>
+      <option value="seraLunga">🌙 Lungo — Pranzo+Cena (L)</option>
+      <option value="intermedio">🌤️ Intermedio — 12:30-18:30, solo Domenica (T)</option>
+      <option value="riposo">💤 Riposo (R)</option>
     </select>
     <label class="field">Operatore</label>
     <select id="turnoOperatore">${ops.length? ops.map(o=>`<option value="${o.nome}">${o.nome}</option>`).join("") : `<option value="">Nessun operatore configurato</option>`}</select>
@@ -5772,7 +5856,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "2.4";
+const APP_VERSION = "2.5";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
@@ -5826,6 +5910,7 @@ function proceedToApp(){
     $main.innerHTML = `<div class="empty"><span class="spinner"></span> Caricamento registri...</div>`;
     await loadAll();
     migrateReparti();
+    if(seedTurniPianoIniziale()) saveConfig().catch(()=>{});
     const sessId = LS.get(SESSION_KEY);
     const sessOp = sessId ? (config.operatori||[]).find(o=>o.id===sessId) : null;
     if(sessOp && sessOp.attivo){
