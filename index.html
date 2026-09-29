@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 2.7 · turni divisi per reparto, piano completo caricato · 29/09/2026</div>
+        <div class="sub" style="opacity:.85;">versione 2.8 · backup su Google Drive · 29/09/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -5144,6 +5144,14 @@ function renderImpostazioni(){
       ${DB.mode==="supabase"? `<div class="rowbtns"><button class="iconbtn block" onclick="openBackupPanel()">📂 Vedi backup automatici disponibili</button></div>`:""}
       <div class="rowbtns"><button class="btn danger block" onclick="openRestoreBackupForm()">♻️ Ripristina da un file di backup</button></div>
     </div>
+    ${isAdmin()? `
+    <div class="card">
+      <h2>☁️ Backup su Google Drive</h2>
+      <p class="muted">Salva nel tuo Google Drive, cartella <b>${GDRIVE_FOLDER}</b>: temperature, articoli/lotti, consegne MOMA e schede di produzione (file CSV, si aprono con Excel) più una copia completa per il ripristino. Se lo rifai nello stesso giorno, i file di oggi vengono aggiornati.</p>
+      <p class="muted" style="margin-top:6px;">Ultimo backup su Drive: <b>${gdLastBackupLabel()}</b></p>
+      <div class="rowbtns"><button class="btn block" id="gdBackupBtn" onclick="driveBackupNow()" ${_gdBusy? "disabled":""}>☁️ Salva su Google Drive adesso</button></div>
+    </div>
+    ` : ''}
     <div class="card">
       <h2>🖨️ Stampa registri (mese corrente)</h2>
       <p class="muted">Genera la versione stampabile della scheda, con intestazione e spazio firme.</p>
@@ -6045,6 +6053,154 @@ function openBackupPanel(){
   });
 }
 
+// ---------- BACKUP SU GOOGLE DRIVE ----------
+// Login Google lato browser (Google Identity Services, token model): nessun server, nessun client secret.
+// Scope drive.file = l'app vede SOLO i file che crea lei, non il resto del Drive.
+const GDRIVE_CLIENT_ID = "163125551813-ujr6jbjbas9m353i7il3st4n8t3d8v5m.apps.googleusercontent.com";
+const GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+const GDRIVE_FOLDER = "HACCP Baldoria – Backup";
+let _gisLoading = null, _gdToken = null, _gdTokenExp = 0;
+function gisReady(){ return !!(window.google && google.accounts && google.accounts.oauth2); }
+function loadGis(){
+  if(gisReady()) return Promise.resolve();
+  if(_gisLoading) return _gisLoading;
+  _gisLoading = new Promise((res,rej)=>{
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client"; s.async = true;
+    s.onload = ()=>res();
+    s.onerror = ()=>{ _gisLoading = null; rej(new Error("impossibile collegarsi a Google")); };
+    document.head.appendChild(s);
+  });
+  return _gisLoading;
+}
+// ATTENZIONE: va chiamata in modo SINCRONO dentro il tocco dell'utente, altrimenti Safari blocca il popup Google.
+function gdGetToken(){
+  if(_gdToken && Date.now() < _gdTokenExp - 60000) return Promise.resolve(_gdToken);
+  return new Promise((res,rej)=>{
+    if(!gisReady()){
+      loadGis().catch(()=>{});
+      rej(new Error("collegamento a Google in preparazione, premi di nuovo tra qualche secondo"));
+      return;
+    }
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GDRIVE_CLIENT_ID,
+      scope: GDRIVE_SCOPE,
+      callback: (r)=>{
+        if(r.error){ rej(new Error(r.error==="access_denied"? "accesso negato" : r.error)); return; }
+        _gdToken = r.access_token;
+        _gdTokenExp = Date.now() + (Number(r.expires_in)||3600)*1000;
+        res(_gdToken);
+      },
+      error_callback: (e)=>rej(new Error(e && e.type==="popup_closed"? "accesso a Google annullato" :
+                                         e && e.type==="popup_failed_to_open"? "popup bloccato: consenti i popup e riprova" :
+                                         "accesso a Google non riuscito"))
+    });
+    client.requestAccessToken({prompt: ""});
+  });
+}
+async function gdFetch(url, opts={}){
+  const r = await fetch(url, {...opts, headers: {...(opts.headers||{}), Authorization: "Bearer "+_gdToken}});
+  if(r.status===401){ _gdToken = null; throw new Error("sessione Google scaduta, premi di nuovo"); }
+  if(!r.ok){ let t=""; try{ t = await r.text(); }catch(e){} throw new Error("Drive "+r.status+" "+t.slice(0,120)); }
+  return r.json();
+}
+function gdQ(s){ return String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'"); }
+async function gdFindOrCreateFolder(){
+  const cached = LS.get("gdrive-folder-id");
+  if(cached){
+    try{
+      const f = await gdFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(cached)}?fields=id,trashed`);
+      if(f && f.id && !f.trashed) return f.id;
+    }catch(e){ /* cartella non più accessibile: la ricerchiamo/ricreiamo */ }
+  }
+  const q = encodeURIComponent(`name='${gdQ(GDRIVE_FOLDER)}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const l = await gdFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&spaces=drive`);
+  let id = l.files && l.files[0] && l.files[0].id;
+  if(!id){
+    const c = await gdFetch("https://www.googleapis.com/drive/v3/files?fields=id", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({name: GDRIVE_FOLDER, mimeType: "application/vnd.google-apps.folder"})
+    });
+    id = c.id;
+  }
+  LS.set("gdrive-folder-id", id);
+  return id;
+}
+// Crea il file, oppure lo aggiorna se esiste già con lo stesso nome (es. secondo backup nello stesso giorno).
+async function gdUpload(folderId, name, content, mime){
+  const q = encodeURIComponent(`name='${gdQ(name)}' and '${gdQ(folderId)}' in parents and trashed=false`);
+  const l = await gdFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`);
+  const existing = l.files && l.files[0] && l.files[0].id;
+  const boundary = "haccpbaldoria" + Date.now();
+  const meta = existing? {} : {name, parents: [folderId]};
+  const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n` +
+               `--${boundary}\r\nContent-Type: ${mime}\r\n\r\n${content}\r\n--${boundary}--`;
+  const url = existing
+    ? `https://www.googleapis.com/upload/drive/v3/files/${existing}?uploadType=multipart&fields=id`
+    : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id`;
+  return gdFetch(url, {method: existing? "PATCH" : "POST", headers: {"Content-Type": `multipart/related; boundary=${boundary}`}, body});
+}
+// CSV per Excel italiano: separatore ";", BOM UTF-8, niente foto incorporate (restano nel database).
+function buildCsvText(kind){
+  const rows = logs[kind] || [];
+  if(!rows.length) return null;
+  const flat = rows.map(r=>{
+    const f = flatten(r);
+    for(const k in f){
+      if(typeof f[k]==="string" && f[k].startsWith("data:")) delete f[k];
+      else if(Array.isArray(f[k])) f[k] = JSON.stringify(f[k]);
+    }
+    return f;
+  });
+  const keys = Array.from(new Set(flat.flatMap(f=>Object.keys(f))));
+  const cell = v => '"' + (v===undefined||v===null? "" : String(v)).replace(/"/g,'""') + '"';
+  return "\uFEFF" + [keys.map(cell).join(";"), ...flat.map(f=>keys.map(k=>cell(f[k])).join(";"))].join("\r\n");
+}
+const GDRIVE_PARTS = [
+  ["temperature",  "Temperature"],
+  ["produzione",   "Articoli-Lotti"],
+  ["moma",         "Consegne-MOMA"],
+  ["composizioni", "Schede-produzione-Lotti"]
+];
+let _gdBusy = false;
+function driveBackupNow(){
+  if(!isAdmin()){ toast("⛔ Solo un amministratore può fare il backup su Drive"); return; }
+  if(_gdBusy) return;
+  if(Object.values(loadFailures).some(v=>v)){ toast("⚠️ Alcuni dati non si sono caricati: ricarica la pagina prima del backup"); return; }
+  const tokenP = gdGetToken(); // subito, dentro il tocco
+  _gdBusy = true;
+  const btn = document.getElementById("gdBackupBtn");
+  if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Backup in corso...'; }
+  (async ()=>{
+    try{
+      await tokenP;
+      const folder = await gdFindOrCreateFolder();
+      const d = todayISO();
+      let n = 0;
+      for(const [k,label] of GDRIVE_PARTS){
+        const csv = buildCsvText(k);
+        if(csv){ await gdUpload(folder, `${d} ${label}.csv`, csv, "text/csv; charset=UTF-8"); n++; }
+      }
+      await gdUpload(folder, `${d} Backup-completo.json`, JSON.stringify(buildFullSnapshot()), "application/json; charset=UTF-8");
+      n++;
+      LS.set("gdrive-last-backup", new Date().toISOString());
+      toast(`☁️ Backup su Drive completato: ${n} file nella cartella "${GDRIVE_FOLDER}"`);
+    }catch(e){
+      toast("⚠️ Backup Drive non riuscito: " + (e && e.message || "riprova"));
+    }finally{
+      _gdBusy = false;
+      if(activeTab==="impostazioni") render();
+    }
+  })();
+}
+function gdLastBackupLabel(){
+  const iso = LS.get("gdrive-last-backup");
+  if(!iso) return "mai da questo dispositivo";
+  const dt = new Date(iso);
+  return fmtDate(toLocalISODate(dt)) + " alle " + String(dt.getHours()).padStart(2,"0") + ":" + String(dt.getMinutes()).padStart(2,"0");
+}
+setTimeout(()=>loadGis().catch(()=>{}), 3000); // precarica: il popup deve aprirsi subito al tocco
+
 function exportCsv(kind){
   const rows = logs[kind];
   if(!rows.length){ toast("Nessun dato da esportare"); return; }
@@ -6088,7 +6244,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "2.7";
+const APP_VERSION = "2.8";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
