@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 3.0 · fascicolo completo su Drive · 29/09/2026</div>
+        <div class="sub" style="opacity:.85;">versione 2.9 · logout automatico iPad condiviso · 14/10/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -948,6 +948,73 @@ function hasAnyRepartoAccess(repartiArr){
   if(!miei.length) return true;
   return repartiArr.some(r=>miei.includes(r));
 }
+// ===== Sicurezza sessione per iPad condiviso =====
+// Ogni operatore deve entrare con il proprio PIN: la sessione si chiude da sola quando l'iPad va
+// in standby/pausa (app in background) o dopo un periodo di inattività.
+const INATTIVITA_MS = 5*60*1000;      // 5 minuti senza toccare lo schermo -> uscita automatica
+const GRACE_FOTO_MS = 3*60*1000;      // tolleranza se si sta scattando una foto (la fotocamera sposta l'app in background)
+const RIPRESA_RELOAD_MS = 60*1000;    // un ricaricamento della pagina entro 60s (es. aggiornamento versione) non richiede un nuovo PIN
+let ultimaAttivita = Date.now();
+let ultimoFilePicker = 0;
+let nascostoDa = null;
+let ultimoSalvataggioSessione = 0;
+function salvaSessione(id){
+  LS.set(SESSION_KEY, id + "|" + Date.now());
+  ultimoSalvataggioSessione = Date.now();
+  ultimaAttivita = Date.now();
+}
+function leggiSessioneValida(){
+  const raw = LS.get(SESSION_KEY);
+  if(!raw || raw.indexOf("|")<0) return null; // vecchio formato o assente: richiede PIN
+  const [id, ts] = raw.split("|");
+  if(Date.now() - parseInt(ts,10) > RIPRESA_RELOAD_MS) return null;
+  return id;
+}
+function logoutAutomatico(){
+  if(!currentOperatorId) return; // già alla schermata di accesso
+  try{ $overlay.innerHTML = ""; }catch(e){}
+  LS.remove(SESSION_KEY);
+  currentOperatorId = null;
+  activeTab = "home";
+  window._componiDraft = null;
+  nascostoDa = null;
+  renderLoginGate();
+  toast("🔒 Sessione chiusa: reinserisci il tuo PIN");
+}
+function registraAttivita(){
+  ultimaAttivita = Date.now();
+  if(currentOperatorId && Date.now() - ultimoSalvataggioSessione > 10000){
+    LS.set(SESSION_KEY, currentOperatorId + "|" + Date.now());
+    ultimoSalvataggioSessione = Date.now();
+  }
+}
+function avviaSicurezzaSessione(){
+  if(window.__sicurezzaSessioneAttiva) return;
+  window.__sicurezzaSessioneAttiva = true;
+  ["touchstart","mousedown","keydown","input","scroll"].forEach(ev=>document.addEventListener(ev, registraAttivita, {capture:true, passive:true}));
+  // Ricordo quando si apre il selettore foto/fotocamera: in quel caso l'app va in background per pochi istanti
+  document.addEventListener("click", e=>{
+    const t = e.target;
+    if(t && t.tagName==="INPUT" && t.type==="file") ultimoFilePicker = Date.now();
+  }, true);
+  // iPad in standby / app in background -> esce subito (salvo scatto foto in corso)
+  document.addEventListener("visibilitychange", ()=>{
+    if(document.hidden){
+      if(Date.now() - ultimoFilePicker < GRACE_FOTO_MS){ nascostoDa = Date.now(); }
+      else logoutAutomatico();
+    } else if(nascostoDa){
+      if(Date.now() - nascostoDa > GRACE_FOTO_MS) logoutAutomatico();
+      nascostoDa = null;
+    }
+  });
+  window.addEventListener("pagehide", ()=>{
+    if(Date.now() - ultimoFilePicker >= GRACE_FOTO_MS) LS.remove(SESSION_KEY);
+  });
+  // Inattività prolungata
+  setInterval(()=>{
+    if(currentOperatorId && Date.now() - ultimaAttivita > INATTIVITA_MS) logoutAutomatico();
+  }, 15000);
+}
 function renderLoginGate(){
   $tabs.innerHTML = "";
   const nessunOperatore = !(config.operatori && config.operatori.length);
@@ -967,7 +1034,7 @@ function renderLoginGate(){
     $main.innerHTML = `
       <div class="card">
         <h2>🔒 Accesso operatore</h2>
-        <p class="muted">Inserisci il tuo PIN per continuare. Resta memorizzato su questo dispositivo finché non esci.</p>
+        <p class="muted">Inserisci il tuo PIN personale per continuare. Per sicurezza l'accesso si chiude da solo quando l'iPad va in standby o resta inutilizzato.</p>
         <label class="field">PIN</label><input type="password" inputmode="numeric" maxlength="6" id="loginPin" placeholder="••••">
         <div id="loginError" style="color:var(--red);font-size:13px;margin-top:6px;"></div>
         <div class="rowbtns"><button class="btn block" onclick="tentaLogin()">Accedi</button></div>
@@ -987,7 +1054,7 @@ async function creaPrimoAdmin(){
   const id = uid();
   config.operatori = [{id, nome, pin, ruolo:"admin", attivo:true}];
   await saveConfig();
-  LS.set(SESSION_KEY, id);
+  salvaSessione(id);
   currentOperatorId = id;
   lastOperator = nome;
   LS.set("ui-last-operator-device", nome);
@@ -1000,7 +1067,7 @@ function tentaLogin(){
   const op = (config.operatori||[]).find(o=>o.pin===pin);
   if(!op){ errEl.textContent = "PIN non riconosciuto."; return; }
   if(!op.attivo){ errEl.textContent = "Accesso bloccato per questo operatore. Contatta l'amministratore."; return; }
-  LS.set(SESSION_KEY, op.id);
+  salvaSessione(op.id);
   currentOperatorId = op.id;
   lastOperator = op.nome;
   LS.set("ui-last-operator-device", op.nome);
@@ -1031,14 +1098,14 @@ function readRepartiCheckbox(idPrefix){
     return el && el.checked;
   });
 }
-function openAddOperatoreForm(){
+function openAddOperatoreForm(repartoPreselezionato){
   if(!isAdmin()){ toast("⛔ Solo l'amministratore può aggiungere operatori"); return; }
   openSheet("Nuovo operatore", `
     <label class="field">Nome</label><input type="text" id="newOpNome">
     <label class="field">PIN (4-6 cifre)</label><input type="password" inputmode="numeric" maxlength="6" id="newOpPin">
     <label class="field">Ruolo</label>
     <select id="newOpRuolo"><option value="operatore">Operatore</option><option value="admin">Amministratore</option></select>
-    ${repartiCheckboxHtml("newOpReparti", [])}
+    ${repartiCheckboxHtml("newOpReparti", repartoPreselezionato? [repartoPreselezionato] : [])}
     <div id="newOpError" style="color:var(--red);font-size:13px;margin-top:6px;"></div>
     <div class="rowbtns"><button class="btn block" onclick="salvaNuovoOperatore()">Aggiungi operatore</button></div>
   `);
@@ -1056,7 +1123,7 @@ async function salvaNuovoOperatore(){
   config.operatori.push({id:uid(), nome, pin, ruolo, attivo:true, reparti});
   await saveConfig();
   toast("Operatore aggiunto");
-  activeTab="impostazioni"; closeSheet();
+  closeSheet();
 }
 async function toggleOperatoreAttivo(id){
   const o = config.operatori.find(x=>x.id===id);
@@ -1073,6 +1140,22 @@ async function eliminaOperatore(id){
   config.operatori = config.operatori.filter(x=>x.id!==id);
   await saveConfig();
   toast(`${o.nome} eliminato`);
+  render();
+}
+async function eliminaOperatoreDaTurni(id, nome){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  if(!confirm(`Eliminare definitivamente "${nome}" dagli operatori? I turni già assegnati a questa persona restano nello storico ma non sarà più selezionabile per nuovi turni.`)) return;
+  config.operatori = (config.operatori||[]).filter(x=>x.id!==id);
+  await saveConfig();
+  toast(`${nome} eliminato`);
+  render();
+}
+async function eliminaNomeDaTurni(nome){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  if(!confirm(`"${nome}" non ha un account operatore collegato (è solo un nome presente nei turni). Vuoi eliminare TUTTI i suoi turni pianificati? Questa azione non è reversibile.`)) return;
+  config.turni = (config.turni||[]).filter(t=>t.operatore!==nome);
+  await saveConfig();
+  toast(`Turni di ${nome} rimossi`);
   render();
 }
 function openEditOperatoreForm(id){
@@ -4387,6 +4470,7 @@ function renderTurni(){
           <thead><tr>
             <th style="text-align:left;">Dipendente</th>
             ${giorni.map(g=>`<th>${giornoBrevi(g)}<br><span style="font-weight:400;font-size:10px;">${fmtDate(g).slice(0,5)}</span></th>`).join("")}
+            ${isAdmin()? `<th></th>`:''}
           </tr></thead>
           <tbody>
           ${operatoriReparto.map(op=>`<tr>
@@ -4397,10 +4481,12 @@ function renderTurni(){
                 const bg = t? COLORE[t.fascia]||"#fff" : "#fff";
                 return `<td style="background:${bg};cursor:${isAdmin()?'pointer':'default'};font-weight:700;" ${isAdmin()? `onclick="openCellaTurno('${g}','${op.nome.replace(/'/g,"\\'")}','${t?t.id:''}')"` : ''} title="${t? fasciaLbl(t.fascia) : 'Nessun turno'}">${cod}</td>`;
               }).join("")}
+              ${isAdmin()? `<td>${op.id? `<button class="iconbtn" style="padding:3px 6px;font-size:13px;" onclick="eliminaOperatoreDaTurni('${op.id}','${op.nome.replace(/'/g,"\\'")}')" title="Elimina operatore">🗑️</button>` : `<button class="iconbtn" style="padding:3px 6px;font-size:13px;" onclick="eliminaNomeDaTurni('${op.nome.replace(/'/g,"\\'")}')" title="Rimuovi dai turni (nessun account collegato)">🗑️</button>`}</td>`:''}
             </tr>`).join("")}
           </tbody>
         </table>
-      </div>`;
+      </div>
+      ${isAdmin()? `<div class="rowbtns" style="margin-top:8px;"><button class="iconbtn" onclick="openAddOperatoreForm('${reparto}')">+ Aggiungi operatore a ${reparto}</button></div>`:''}`;
   }
 
   $main.innerHTML = `
@@ -5147,7 +5233,7 @@ function renderImpostazioni(){
     ${isAdmin()? `
     <div class="card">
       <h2>☁️ Backup su Google Drive</h2>
-      <p class="muted">Salva nel tuo Google Drive, cartella <b>${GDRIVE_FOLDER}</b>: il <b>fascicolo completo per ispezione</b> del mese in PDF (riepilogo + tutti i registri) più una copia completa per il ripristino. Ogni backup aggiorna il fascicolo del mese in corso.</p>
+      <p class="muted">Salva nel tuo Google Drive, cartella <b>${GDRIVE_FOLDER}</b>: temperature, articoli/lotti, consegne MOMA e schede di produzione (file CSV, si aprono con Excel) più una copia completa per il ripristino. Se lo rifai nello stesso giorno, i file di oggi vengono aggiornati.</p>
       <p class="muted" style="margin-top:6px;">Ultimo backup su Drive: <b>${gdLastBackupLabel()}</b></p>
       <div class="rowbtns"><button class="btn block" id="gdBackupBtn" onclick="driveBackupNow()" ${_gdBusy? "disabled":""}>☁️ Salva su Google Drive adesso</button></div>
     </div>
@@ -5496,113 +5582,6 @@ async function assicuraLibrericePdf(){
   await caricaScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
   await caricaScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js");
 }
-// jsPDF con font standard non disegna emoji e simboli fuori dalla codifica WinAnsi: li ripuliamo.
-function pdfTxt(s){
-  return String(s==null? "" : s)
-    .replace(/≤/g,"<=").replace(/≥/g,">=")
-    .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\uFE0F\u200D]/gu,"")
-    .replace(/\s{2,}/g," ").trim();
-}
-function pdfIntestazione(doc, title, monthLbl){
-  const marginX = 36;
-  let y = 40;
-  doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.setTextColor(30);
-  doc.text("Baldoria — Autocontrollo HACCP", marginX, y);
-  y += 16;
-  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(100);
-  doc.text(pdfTxt(`${title} · Periodo: ${monthLbl} · Salvato il ${fmtDate(todayISO())} alle ${nowTime()}`), marginX, y);
-  doc.setTextColor(30);
-  return y + 18;
-}
-// Disegna nel PDF l'HTML già usato per la stampa (titoli, tabelle, avvisi) mantenendo l'ordine.
-function pdfCorpo(doc, bodyHtml, y){
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const marginX = 36;
-  const parser = new DOMParser();
-  const bodyDoc = parser.parseFromString(`<div>${bodyHtml}</div>`, "text/html");
-  const nodi = Array.from(bodyDoc.body.firstChild.childNodes).filter(n=>n.nodeType===1);
-  const cellText = el => pdfTxt(el.innerHTML.replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g,"")
-                                  .replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'"))
-                                  .replace(/ ?\n ?/g,"\n");
-  for(const nodo of nodi){
-    if(y > 760){ doc.addPage(); y = 40; }
-    if(nodo.tagName === "H1" || nodo.tagName === "H2" || nodo.tagName === "H3"){
-      const big = nodo.tagName === "H1";
-      y += big? 10 : 6;
-      if(y > 760){ doc.addPage(); y = 40; }
-      doc.setFont("helvetica","bold"); doc.setFontSize(big? 13 : nodo.tagName==="H2"? 11 : 10); doc.setTextColor(21,83,52);
-      doc.text(pdfTxt(nodo.textContent), marginX, y);
-      if(big){ doc.setDrawColor(31,111,74); doc.setLineWidth(1.5); doc.line(marginX, y+4, pageWidth-marginX, y+4); }
-      doc.setTextColor(30);
-      y += big? 16 : 10;
-    } else if(nodo.tagName === "TABLE"){
-      const headers = Array.from(nodo.querySelectorAll("thead th")).map(th=>pdfTxt(th.textContent));
-      const rows = Array.from(nodo.querySelectorAll("tbody tr")).map(tr=>Array.from(tr.querySelectorAll("td")).map(cellText));
-      doc.autoTable({
-        startY: y, margin:{left:marginX, right:marginX},
-        head: headers.length? [headers] : undefined,
-        body: rows,
-        styles:{ fontSize:8, cellPadding:3 },
-        headStyles:{ fillColor:[228,241,233], textColor:[21,83,52], fontStyle:'bold' },
-        didParseCell: function(data){
-          const raw = data.cell.raw;
-          if(data.section==="body" && typeof raw === "string" && /scaduto|non conforme|fuori soglia|PRESENZA|APERTA|ancora aperte|anomalie|con presenze|: NC\b/i.test(raw)) data.cell.styles.textColor = [192,57,43];
-        }
-      });
-      y = doc.lastAutoTable.finalY + 14;
-    } else if(nodo.textContent.trim()){
-      const rosso = /C0392B/i.test(nodo.getAttribute("style")||"");
-      doc.setFont("helvetica", rosso? "bold" : "italic"); doc.setFontSize(9);
-      if(rosso) doc.setTextColor(192,57,43); else doc.setTextColor(130);
-      const lines = doc.splitTextToSize(pdfTxt(nodo.textContent), pageWidth - 2*marginX);
-      doc.text(lines, marginX, y);
-      doc.setTextColor(30);
-      y += 12*lines.length + 4;
-    }
-  }
-  return y;
-}
-function pdfFirme(doc, y){
-  const pageWidth = doc.internal.pageSize.getWidth();
-  if(y > 740){ doc.addPage(); y = 40; }
-  y += 30;
-  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(60);
-  doc.text("Firma dell'operatore: ________________________", 36, y);
-  doc.text("Firma del responsabile: ________________________", pageWidth/2 + 10, y);
-}
-function meseLabel(mk){ return MONTHS[parseInt(mk.slice(5,7),10)-1] + " " + mk.slice(0,4); }
-async function buildSchedaPdf(kind, mese){
-  const {title, body} = buildSchedaContent(kind, mese);
-  const mk = mese || monthKeyNow();
-  await assicuraLibrericePdf();
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:"pt", format:"a4"});
-  let y = pdfIntestazione(doc, title, meseLabel(mk));
-  y = pdfCorpo(doc, body, y);
-  pdfFirme(doc, y);
-  return doc;
-}
-// Fascicolo completo per ispezione in PDF: riepilogo + ogni registro su pagina nuova, firme in fondo.
-async function buildFascicoloPdf(mese){
-  const f = buildFascicoloContent(mese);
-  await assicuraLibrericePdf();
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:"pt", format:"a4"});
-  let y = pdfIntestazione(doc, f.title, meseLabel(f.mk));
-  y = pdfCorpo(doc, f.riepilogo, y);
-  for(const sez of f.sezioni){
-    doc.addPage();
-    y = pdfCorpo(doc, `<h1>${esc(sez.titolo)}</h1>` + sez.body, 30);
-  }
-  pdfFirme(doc, y);
-  const n = doc.getNumberOfPages();
-  for(let i=1; i<=n; i++){
-    doc.setPage(i);
-    doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(130);
-    doc.text(pdfTxt(`Baldoria — Fascicolo HACCP ${meseLabel(f.mk)} · pagina ${i} di ${n}`), 36, doc.internal.pageSize.getHeight() - 20);
-  }
-  return doc;
-}
 async function saveScheda(kind, mese){
   const {title, body} = buildSchedaContent(kind, mese);
   const mk = mese || monthKeyNow();
@@ -5629,7 +5608,64 @@ async function saveScheda(kind, mese){
   </body></html>`;
   toast("📄 Preparo il PDF...");
   try{
-    const doc = await buildSchedaPdf(kind, mese);
+    await assicuraLibrericePdf();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({unit:"pt", format:"a4"});
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const marginX = 36;
+    let y = 40;
+
+    doc.setFont("helvetica","bold"); doc.setFontSize(15);
+    doc.text("Baldoria — Autocontrollo HACCP", marginX, y);
+    y += 16;
+    doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(100);
+    doc.text(`${title} · Periodo: ${monthLbl} · Salvato il ${fmtDate(todayISO())} alle ${nowTime()}`, marginX, y);
+    doc.setTextColor(30);
+    y += 18;
+
+    // Analizzo il contenuto già costruito (titoli, tabelle, messaggi vuoti) mantenendo l'ordine originale
+    const parser = new DOMParser();
+    const bodyDoc = parser.parseFromString(`<div>${body}</div>`, "text/html");
+    const nodi = Array.from(bodyDoc.body.firstChild.childNodes).filter(n=>n.nodeType===1);
+
+    for(const nodo of nodi){
+      if(y > 760){ doc.addPage(); y = 40; }
+      if(nodo.tagName === "H2"){
+        y += 6;
+        if(y > 760){ doc.addPage(); y = 40; }
+        doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(21,83,52);
+        doc.text(nodo.textContent.trim(), marginX, y);
+        doc.setTextColor(30);
+        y += 10;
+      } else if(nodo.tagName === "TABLE"){
+        const headers = Array.from(nodo.querySelectorAll("thead th")).map(th=>th.textContent.trim());
+        const rows = Array.from(nodo.querySelectorAll("tbody tr")).map(tr=>Array.from(tr.querySelectorAll("td")).map(td=>td.textContent.trim()));
+        doc.autoTable({
+          startY: y, margin:{left:marginX, right:marginX},
+          head: headers.length? [headers] : undefined,
+          body: rows,
+          styles:{ fontSize:8, cellPadding:3 },
+          headStyles:{ fillColor:[228,241,233], textColor:[21,83,52], fontStyle:'bold' },
+          didParseCell: function(data){
+            const raw = data.cell.raw;
+            if(typeof raw === "string" && /scaduto|non conforme|fuori soglia/i.test(raw)) data.cell.styles.textColor = [192,57,43];
+          }
+        });
+        y = doc.lastAutoTable.finalY + 14;
+      } else if(nodo.classList && nodo.classList.contains("empty")){
+        doc.setFont("helvetica","italic"); doc.setFontSize(9); doc.setTextColor(130);
+        doc.text(nodo.textContent.trim(), marginX, y);
+        doc.setTextColor(30);
+        y += 16;
+      }
+    }
+
+    if(y > 740){ doc.addPage(); y = 40; }
+    y += 30;
+    doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(60);
+    doc.text("Firma dell'operatore: ________________________", marginX, y);
+    doc.text("Firma del responsabile: ________________________", pageWidth/2 + 10, y);
+
     doc.save(`${kind}-${mk}.pdf`);
     toast("💾 PDF salvato — controlla la cartella Download del telefono");
   }catch(e){
@@ -5665,8 +5701,8 @@ function confermaMeseAzione(kind, azione){
 }
 
 // ---------- FASCICOLO COMPLETO PER ISPEZIONE ----------
-function schedaBody(kind, mese){
-  const mk = mese || monthKeyNow();
+function schedaBody(kind){
+  const mk = monthKeyNow();
   const inMonth = r => (r.data||"").startsWith(mk);
   if(kind==="temperature"){
     return config.points.map(p=>{
@@ -5728,8 +5764,8 @@ function schedaBody(kind, mese){
   }
   return "";
 }
-function buildFascicoloContent(mese){
-  const mk = mese || monthKeyNow();
+function printFascicolo(){
+  const mk = monthKeyNow();
   const inMonth = r => (r.data||"").startsWith(mk);
   const temps = logs.temperature.filter(inMonth);
   const tempNC = temps.filter(r=>!r.spento && !r.conforme);
@@ -5763,7 +5799,7 @@ function buildFascicoloContent(mese){
   </table>
   ${nocoAperte.length? `<div style="font-size:11px;color:#C0392B;margin-bottom:10px;">Attenzione: risultano verbali di non conformità ancora aperti. Verificare l'efficacia delle azioni correttive prima dell'archiviazione.</div>`:""}`;
 
-  const sezioniList = [
+  const sezioni = [
     ["Registro temperature (MOTE)","temperature"],
     ["Registro sanificazione (MOSA)","sanificazione"],
     ["Controllo matrici in ingresso (MOMA)","moma"],
@@ -5771,13 +5807,9 @@ function buildFascicoloContent(mese){
     ["Schede di produzione e composizioni","ricette"],
     ["Controllo agenti infestanti (COAI)","coai"],
     ["Verbali di non conformità (NOCO)","noco"]
-  ].map(([titolo,kind])=>({titolo, body: schedaBody(kind, mk)}));
-  return {title: "Fascicolo di autocontrollo — documentazione completa", mk, riepilogo, sezioni: sezioniList};
-}
-function printFascicolo(){
-  const f = buildFascicoloContent();
-  const sezioni = f.sezioni.map(x=>`<div style="page-break-before:always;"><h1 style="font-size:15px;margin:0 0 10px 0;">${x.titolo}</h1>${x.body}</div>`).join("");
-  printWindow(f.title, f.riepilogo + sezioni);
+  ].map(([titolo,kind])=>`<div style="page-break-before:always;"><h1 style="font-size:15px;margin:0 0 10px 0;">${titolo}</h1>${schedaBody(kind)}</div>`).join("");
+
+  printWindow("Fascicolo di autocontrollo — documentazione completa", riepilogo + sezioni);
 }
 // Stampa scheda mensile a griglia — temperatura di un punto
 function printTempMese(pointId){
@@ -6187,12 +6219,8 @@ async function gdUpload(folderId, name, content, mime){
   const existing = l.files && l.files[0] && l.files[0].id;
   const boundary = "haccpbaldoria" + Date.now();
   const meta = existing? {} : {name, parents: [folderId]};
-  const body = new Blob([
-    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n` +
-    `--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`,
-    content,   // stringa (JSON) oppure ArrayBuffer (PDF)
-    `\r\n--${boundary}--`
-  ]);
+  const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n` +
+               `--${boundary}\r\nContent-Type: ${mime}\r\n\r\n${content}\r\n--${boundary}--`;
   const url = existing
     ? `https://www.googleapis.com/upload/drive/v3/files/${existing}?uploadType=multipart&fields=id`
     : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id`;
@@ -6214,6 +6242,12 @@ function buildCsvText(kind){
   const cell = v => '"' + (v===undefined||v===null? "" : String(v)).replace(/"/g,'""') + '"';
   return "\uFEFF" + [keys.map(cell).join(";"), ...flat.map(f=>keys.map(k=>cell(f[k])).join(";"))].join("\r\n");
 }
+const GDRIVE_PARTS = [
+  ["temperature",  "Temperature"],
+  ["produzione",   "Articoli-Lotti"],
+  ["moma",         "Consegne-MOMA"],
+  ["composizioni", "Schede-produzione-Lotti"]
+];
 let _gdBusy = false;
 function driveBackupNow(){
   if(!isAdmin()){ toast("⛔ Solo un amministratore può fare il backup su Drive"); return; }
@@ -6228,23 +6262,15 @@ function driveBackupNow(){
       await tokenP;
       const folder = await gdFindOrCreateFolder();
       const d = todayISO();
-      // Schede PDF del mese in corso; nei primi 5 giorni del mese aggiorno anche quelle del mese
-      // precedente, così gli ultimi giorni del mese chiuso finiscono comunque nel PDF.
-      const mesi = [d.slice(0,7)];
-      if(parseInt(d.slice(8,10),10) <= 5){
-        const p = new Date(parseInt(d.slice(0,4),10), parseInt(d.slice(5,7),10)-2, 1);
-        mesi.unshift(toLocalISODate(p).slice(0,7));
-      }
       let n = 0;
-      for(const mese of mesi){
-        const doc = await buildFascicoloPdf(mese);
-        await gdUpload(folder, `${mese} Fascicolo HACCP completo.pdf`, doc.output("arraybuffer"), "application/pdf");
-        n++;
+      for(const [k,label] of GDRIVE_PARTS){
+        const csv = buildCsvText(k);
+        if(csv){ await gdUpload(folder, `${d} ${label}.csv`, csv, "text/csv; charset=UTF-8"); n++; }
       }
       await gdUpload(folder, `${d} Backup-completo.json`, JSON.stringify(buildFullSnapshot()), "application/json; charset=UTF-8");
       n++;
       LS.set("gdrive-last-backup", new Date().toISOString());
-      toast(`☁️ Backup su Drive completato: fascicolo PDF + copia di ripristino nella cartella "${GDRIVE_FOLDER}"`);
+      toast(`☁️ Backup su Drive completato: ${n} file nella cartella "${GDRIVE_FOLDER}"`);
     }catch(e){
       toast("⚠️ Backup Drive non riuscito: " + (e && e.message || "riprova"));
     }finally{
@@ -6304,7 +6330,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "3.0";
+const APP_VERSION = "2.9";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
@@ -6342,6 +6368,9 @@ function proceedToApp(){
     setTimeout(()=>toast("📱 Dati salvati solo su questo dispositivo — configurali in Impostazioni"), 1200);
   }
   if(pendingSyncCount()>0) setTimeout(()=>toast(`📡 ${pendingSyncCount()} modifica/he in attesa di sincronizzazione`), 1200);
+  avviaSicurezzaSessione();
+  if(window.__intervalliAvviati) return; // con i logout automatici si rientra più volte: non duplicare timer e listener
+  window.__intervalliAvviati = true;
   setInterval(tickTimers, 1000);
   setInterval(pollTimersFromStorage, 10000);
   setInterval(pollAuditsFromStorage, 10000);
@@ -6361,14 +6390,14 @@ function proceedToApp(){
     let turniCaricati = seedTurniPianoIniziale();
     if(seedTurniAltriRepartiIniziale()) turniCaricati = true;
     if(turniCaricati) saveConfig().catch(()=>{});
-    const sessId = LS.get(SESSION_KEY);
+    const sessId = leggiSessioneValida();
     const sessOp = sessId ? (config.operatori||[]).find(o=>o.id===sessId) : null;
     if(sessOp && sessOp.attivo){
       currentOperatorId = sessOp.id;
       lastOperator = sessOp.nome;
       proceedToApp();
     } else {
-      if(sessId) LS.remove(SESSION_KEY);
+      LS.remove(SESSION_KEY);
       renderLoginGate();
     }
   }catch(err){
