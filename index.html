@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 3.1 · etichette senza data di scadenza · 15/10/2026</div>
+        <div class="sub" style="opacity:.85;">versione 3.2 · data abbattimento sulle etichette · 15/10/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4138,7 +4138,7 @@ async function saveComposizione(recipeId){
     const sogliaDurata = abb.tipo==="negativo" ? 240 : 110;
     const tempOk = temp!==null && (abb.tipo==="negativo"? temp<=sogliaTemp : temp<=sogliaTemp);
     const durataOk = durata!==null && durata<=sogliaDurata;
-    abbattimento = { tipo: abb.tipo, temperatura: temp, durataMinuti: durata, conforme: !!(tempOk && durataOk) };
+    abbattimento = { tipo: abb.tipo, temperatura: temp, durataMinuti: durata, conforme: !!(tempOk && durataOk), data: todayISO(), ora: nowTime() };
   }
   const rec = {
     id: uid(), ricettaId: recipeId, ricettaNome: r.nome,
@@ -5916,6 +5916,7 @@ function printEtichetta(prodId){
     <div class="n">${esc(p.prodotto)}</div>
     <div class="r"><b>Lotto:</b> ${esc(p.lotto)}</div>
     <div class="r"><b>Preparato il:</b> ${fmtDate(p.dataConsegna)}${p.operatore? ' · <b>Op.:</b> '+esc(p.operatore):''}</div>
+    ${p.abbattuto? `<div class="r"><b>Abbattuto il:</b> ${fmtDate((p.abbattimento && p.abbattimento.data) || p.dataConsegna)}${p.abbattimento && p.abbattimento.ora? ' ore '+esc(p.abbattimento.ora):''}</div>`:""}
     ${p.quantita? `<div class="r"><b>Quantità:</b> ${esc(p.quantita)}</div>`:""}
   </div>
   <script>
@@ -6339,7 +6340,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "3.1";
+const APP_VERSION = "3.2";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
