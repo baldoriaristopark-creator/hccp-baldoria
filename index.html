@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 2.9 · logout automatico iPad condiviso · 14/10/2026</div>
+        <div class="sub" style="opacity:.85;">versione 3.0 · etichette 5x3 cm · 15/10/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -5899,22 +5899,33 @@ function printEtichetta(prodId){
   document.body.appendChild(iframe);
   const doc = iframe.contentWindow.document;
   doc.open();
+  // Etichetta 5 x 3 cm (50 x 30 mm): pagina e contenuto dimensionati in millimetri.
+  // Il testo si rimpicciolisce da solo se lotto/nome sono lunghi, così resta sempre tutto dentro l'etichetta.
   doc.write(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Etichetta</title>
-  <style>body{font-family:Arial,sans-serif;margin:0;padding:14px;}
-  .lab{border:2px solid #000;border-radius:8px;padding:12px;width:280px;}
-  .n{font-size:17px;font-weight:bold;margin-bottom:6px;}
-  .r{font-size:12px;margin-bottom:3px;}
-  .abb{display:inline-block;font-size:11px;font-weight:bold;border:1.5px solid #000;border-radius:5px;padding:2px 7px;margin-bottom:6px;}
-  .sc{font-size:15px;font-weight:bold;border-top:1px solid #000;margin-top:8px;padding-top:6px;}</style></head><body>
-  <div class="lab">
+  <style>
+  @page{size:50mm 30mm;margin:0;}
+  html,body{margin:0;padding:0;width:50mm;height:30mm;overflow:hidden;}
+  body{font-family:Arial,sans-serif;color:#000;}
+  .lab{box-sizing:border-box;width:50mm;height:30mm;padding:1.5mm;overflow:hidden;font-size:6.5pt;line-height:1.15;page-break-after:avoid;page-break-inside:avoid;}
+  .abb{display:inline-block;font-size:.85em;font-weight:bold;border:.2mm solid #000;border-radius:.8mm;padding:0 1mm;margin-bottom:.4mm;}
+  .n{font-size:1.5em;font-weight:bold;line-height:1.1;margin-bottom:.5mm;word-break:break-word;}
+  .r{margin-bottom:.2mm;word-break:break-word;}
+  .sc{font-size:1.05em;font-weight:bold;border-top:.2mm solid #000;margin-top:.6mm;padding-top:.5mm;}
+  </style></head><body>
+  <div class="lab" id="lab">
     ${p.abbattuto? `<div class="abb">❄️ ABBATTUTO${p.abbattimento? ' — '+(p.abbattimento.tipo==='negativo'?'negativo':'positivo'):''}</div>`:""}
     <div class="n">${esc(p.prodotto)}</div>
     <div class="r"><b>Lotto:</b> ${esc(p.lotto)}</div>
-    <div class="r"><b>Preparato il:</b> ${fmtDate(p.dataConsegna)}</div>
+    <div class="r"><b>Preparato il:</b> ${fmtDate(p.dataConsegna)}${p.operatore? ' · <b>Op.:</b> '+esc(p.operatore):''}</div>
     ${p.quantita? `<div class="r"><b>Quantità:</b> ${esc(p.quantita)}</div>`:""}
-    ${p.operatore? `<div class="r"><b>Operatore:</b> ${esc(p.operatore)}</div>`:""}
-    <div class="sc">DA CONSUMARSI ENTRO IL ${fmtDate(p.dataScadenza)}</div>
+    <div class="sc">DA CONSUMARSI ENTRO IL <span style="white-space:nowrap;">${fmtDate(p.dataScadenza)}</span></div>
   </div>
+  <script>
+  (function(){
+    var b = document.getElementById('lab'), fs = 6.5;
+    while(b.scrollHeight > b.clientHeight + 1 && fs > 3.5){ fs -= 0.25; b.style.fontSize = fs + 'pt'; }
+  })();
+  <\/script>
   </body></html>`);
   doc.close();
   setTimeout(()=>{
@@ -6330,7 +6341,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "2.9";
+const APP_VERSION = "3.0";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
