@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 3.4 · stazione di stampa etichette · 15/10/2026</div>
+        <div class="sub" style="opacity:.85;">versione 3.5 · prova stampante Bluetooth · 15/10/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -5232,6 +5232,34 @@ function renderImpostazioni(){
       ${DB.mode!=="supabase"? `<p class="muted" style="font-size:12px;">Funziona solo con il database condiviso attivo.</p>`:''}
     </div>
     ` : ''}
+    ${isAdmin()? `
+    <div class="card">
+      <h2>🔵 Stampante Bluetooth (sperimentale)</h2>
+      <p class="muted">Prova di collegamento diretto via Bluetooth, senza computer. Funziona solo con Chrome/Edge su Android o computer, oppure con un browser come Bluefy su iPad: <b>non funziona con il Safari dell'iPad</b>. Il linguaggio della CT221D non è documentato, quindi la prima prova serve a capire come risponde.</p>
+      <div class="card" style="padding:10px;background:${btSupportato()?'var(--green-pale)':'var(--red-pale)'};border:none;margin:8px 0;">
+        <div style="font-weight:800;font-size:13px;">${btSupportato()? '✅ Questo browser supporta il Bluetooth' : '❌ Questo browser non supporta il Bluetooth'}</div>
+        <div class="muted" style="font-size:12px;margin-top:3px;">${btPrinter? (btPrinter.connected? '🟢 Collegata: '+btEscAttr(btPrinter.nome) : '⚪ Scollegata: '+btEscAttr(btPrinter.nome)) : '⚪ Nessuna stampante collegata'}</div>
+      </div>
+      <label class="field">UUID servizio aggiuntivo (solo se serve)</label>
+      <input type="text" id="btServizioExtra" placeholder="es. 0000ff00-0000-1000-8000-00805f9b34fb" value="${btEscAttr(LS.get('bt-servizio-extra')||'')}">
+      <div class="rowbtns">
+        <button class="iconbtn" onclick="btCollega()">🔍 Collega stampante</button>
+        <button class="iconbtn" onclick="btProvaTesto()">Prova 1: testo</button>
+        <button class="iconbtn" onclick="btProvaEtichetta()">Prova 2: etichetta</button>
+        <button class="iconbtn" onclick="btScollega()">⛔ Scollega</button>
+      </div>
+      <label class="ac-opt ${LS.get('bt-inverti')==='1'?'sel':''}" onclick="btToggleInverti()" style="margin-top:10px;">
+        <span class="ac-box">${LS.get('bt-inverti')==='1'?'☑':'☐'}</span>
+        <span>Inverti i colori (se l'etichetta esce tutta nera o vuota)</span>
+      </label>
+      <label class="ac-opt ${LS.get('bt-usa')==='1'?'sel':''}" onclick="btToggleUsa()">
+        <span class="ac-box">${LS.get('bt-usa')==='1'?'☑':'☐'}</span>
+        <span>Usa questa stampante per i pulsanti Etichetta di questo dispositivo</span>
+      </label>
+      <label class="field">Diagnostica (mandamela dopo la prova)</label>
+      <textarea readonly style="min-height:150px;font-family:monospace;font-size:11px;">${esc(btDiagnosticaTesto())}</textarea>
+    </div>
+    ` : ''}
     ${isAdmin() && DB.mode==="supabase"? `
     <div class="card">
       <h2>🧹 Libera spazio — elimina foto vecchie</h2>
@@ -5994,6 +6022,7 @@ async function inviaEtichettaAllaStazione(dati){
   }catch(e){ toast("⚠️ Invio all'etichettatrice non riuscito: " + (e && e.message ? e.message : "errore")); }
 }
 function instradaEtichetta(dati){
+  if(btUsaPerEtichette()) return btStampaEtichetta(dati);
   if(stampaRemotaAttiva() && !isStazioneStampa()) return inviaEtichettaAllaStazione(dati);
   stampaEtichettaLocale(dati);
 }
@@ -6071,6 +6100,290 @@ function toggleStazioneStampa(){
 function provaStampaEtichetta(){
   instradaEtichetta({prodotto:"PROVA DI STAMPA", lotto:"TEST-001", dataConsegna:todayISO(), operatore:lastOperator||"", quantita:"1", abbattuto:false, abbattimento:null});
 }
+
+// ---------- STAMPANTE BLUETOOTH (SPERIMENTALE) ----------
+// Web Bluetooth funziona solo su Chrome/Edge (Android e computer) e su alcuni browser speciali per iPad (es. Bluefy).
+// Il linguaggio della stampante CT221D non è documentato: si prova TSPL (usato da molte stampanti di etichette) e
+// la schermata mostra cosa risponde la stampante, per correggere il tiro dopo la prima prova.
+const BT_U16 = x => "0000" + x + "-0000-1000-8000-00805f9b34fb";
+const BT_SERVIZI_NOTI = [
+  BT_U16("ff00"), BT_U16("ff10"), BT_U16("ff12"), BT_U16("ffb0"), BT_U16("ffc0"), BT_U16("ffe0"), BT_U16("fff0"),
+  BT_U16("ae00"), BT_U16("ae30"), BT_U16("18f0"), BT_U16("fee7"), BT_U16("fd00"),
+  "49535343-fe7d-4ae5-8fa9-9fafd205e455", "e7810a71-73ae-499d-8c15-faa9aef0c3f2", "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+  BT_U16("1800"), BT_U16("180a")
+];
+const BT_SERVIZI_STANDARD = [BT_U16("1800"), BT_U16("1801"), BT_U16("180a"), BT_U16("180f")];
+let btPrinter = null;   // {device, server, service, char, nome, connected, chunk, servUuid, charUuid}
+let btLog = [];
+function btSupportato(){ return !!(typeof navigator !== "undefined" && navigator.bluetooth && navigator.bluetooth.requestDevice); }
+function btUsaPerEtichette(){ return LS.get("bt-usa") === "1" && btSupportato(); }
+function btLogga(msg){
+  const t = new Date().toLocaleTimeString("it-IT");
+  btLog.push(t + "  " + msg);
+  if(btLog.length > 40) btLog.shift();
+}
+function btRefresh(){ if(activeTab === "impostazioni" && currentOperatorId) render(); }
+function btUuidValido(v){
+  v = String(v||"").trim().toLowerCase();
+  if(/^[0-9a-f]{4}$/.test(v)) return BT_U16(v);
+  if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v)) return v;
+  return null;
+}
+function btDiagnosticaTesto(){
+  const righe = [];
+  righe.push("Bluetooth del browser: " + (btSupportato() ? "disponibile" : "NON disponibile"));
+  righe.push("Stampante: " + (btPrinter ? (btPrinter.nome + (btPrinter.connected ? " (collegata)" : " (scollegata)")) : "nessuna"));
+  if(btPrinter){
+    righe.push("Servizio di scrittura: " + btPrinter.servUuid);
+    righe.push("Caratteristica di scrittura: " + btPrinter.charUuid);
+    if(btPrinter.elenco) righe.push("", btPrinter.elenco);
+  }
+  righe.push("", "--- Registro ---");
+  return righe.concat(btLog).join("\n");
+}
+async function btCollega(){
+  btSalvaExtra();
+  if(!btSupportato()){ toast("❌ Questo browser non supporta il Bluetooth"); return false; }
+  ultimoFilePicker = Date.now(); // la ricerca può mandare l'app in background: non chiudere la sessione
+  const extra = btUuidValido(LS.get("bt-servizio-extra"));
+  const servizi = BT_SERVIZI_NOTI.concat(extra ? [extra] : []);
+  try{
+    btLogga("Ricerca stampante...");
+    const device = await navigator.bluetooth.requestDevice({acceptAllDevices: true, optionalServices: servizi});
+    return await btConnettiDevice(device);
+  }catch(e){
+    if(e && e.name === "NotFoundError" && /cancel/i.test(e.message || "")){ toast("Selezione annullata"); btLogga("Selezione annullata"); }
+    else {
+      btLogga("Errore: " + (e && e.name ? e.name + ": " : "") + (e && e.message ? e.message : e));
+      toast("⚠️ Collegamento Bluetooth non riuscito: " + (e && e.message ? e.message : "errore"));
+    }
+    btRefresh();
+    return false;
+  }
+}
+async function btConnettiDevice(device){
+  const nome = device.name || "(senza nome)";
+  btLogga("Dispositivo scelto: " + nome);
+  device.addEventListener("gattserverdisconnected", ()=>{
+    if(btPrinter) btPrinter.connected = false;
+    btLogga("Stampante scollegata");
+    btRefresh();
+  });
+  const server = await device.gatt.connect();
+  let servizi = [];
+  try{ servizi = await server.getPrimaryServices(); }
+  catch(e){
+    btLogga("Nessun servizio riconosciuto (" + (e && e.name) + "). Se conosci l'UUID del servizio, scrivilo nel campo apposito e ricollega.");
+    throw new Error("nessun servizio di stampa riconosciuto");
+  }
+  const elenco = [];
+  let migliore = null;
+  for(const sv of servizi){
+    let chars = [];
+    try{ chars = await sv.getCharacteristics(); }catch(e){}
+    elenco.push("Servizio " + sv.uuid);
+    for(const c of chars){
+      const p = c.properties || {};
+      const f = [p.read && "read", p.write && "write", p.writeWithoutResponse && "writeNoResp", p.notify && "notify"].filter(Boolean).join(",");
+      elenco.push("   - " + c.uuid + " [" + f + "]");
+      if(BT_SERVIZI_STANDARD.indexOf(sv.uuid) >= 0) continue;
+      if(!(p.write || p.writeWithoutResponse)) continue;
+      const pos = BT_SERVIZI_NOTI.indexOf(sv.uuid);
+      const rank = (pos < 0 ? 99 : pos) * 2 + (p.writeWithoutResponse ? 0 : 1);
+      if(!migliore || rank < migliore.rank) migliore = {rank, sv, c};
+    }
+  }
+  btLogga("Servizi trovati: " + servizi.length);
+  if(!migliore) throw new Error("nessuna caratteristica di scrittura trovata (vedi diagnostica)");
+  btPrinter = {device, server, service: migliore.sv, char: migliore.c, nome, connected: true, chunk: null,
+    servUuid: migliore.sv.uuid, charUuid: migliore.c.uuid, elenco: elenco.join("\n")};
+  btLogga("Pronta: scrittura su " + migliore.c.uuid);
+  toast("🔵 Stampante collegata: " + nome);
+  btRefresh();
+  return true;
+}
+async function btAssicuraConnessione(){
+  if(btPrinter && btPrinter.device.gatt && btPrinter.device.gatt.connected) return true;
+  if(btPrinter){
+    try{
+      const server = await btPrinter.device.gatt.connect();
+      const sv = await server.getPrimaryService(btPrinter.servUuid);
+      const c = await sv.getCharacteristic(btPrinter.charUuid);
+      Object.assign(btPrinter, {server, service: sv, char: c, connected: true});
+      btLogga("Riconnessa alla stampante");
+      return true;
+    }catch(e){ btLogga("Riconnessione non riuscita: " + (e && e.message)); }
+  }
+  return await btCollega(); // chiede di scegliere la stampante (serve il tocco dell'operatore)
+}
+function btAscii(str){ const a = new Uint8Array(str.length); for(let i=0;i<str.length;i++) a[i] = str.charCodeAt(i) & 0xff; return a; }
+function btUnisci(parti){
+  const tot = parti.reduce((n,p)=>n+p.length, 0);
+  const out = new Uint8Array(tot); let o = 0;
+  parti.forEach(p=>{ out.set(p, o); o += p.length; });
+  return out;
+}
+function btComandiTSPL(bm){
+  return btUnisci([
+    btAscii("SIZE 50 mm,30 mm\r\nGAP 2 mm,0 mm\r\nDIRECTION 1\r\nCLS\r\nBITMAP 0,0," + bm.wBytes + "," + bm.h + ",0,"),
+    bm.bytes,
+    btAscii("\r\nPRINT 1,1\r\n")
+  ]);
+}
+function btComandiTesto(){
+  return btAscii('SIZE 50 mm,30 mm\r\nGAP 2 mm,0 mm\r\nDIRECTION 1\r\nCLS\r\nTEXT 20,20,"3",0,1,1,"PROVA BLUETOOTH"\r\nTEXT 20,80,"2",0,1,1,"Baldoria HACCP"\r\nPRINT 1,1\r\n');
+}
+async function btInvia(bytes){
+  const ch = btPrinter.char;
+  const p = ch.properties || {};
+  const scrivi = (buf)=> (p.writeWithoutResponse && ch.writeValueWithoutResponse) ? ch.writeValueWithoutResponse(buf)
+    : (ch.writeValueWithResponse ? ch.writeValueWithResponse(buf) : ch.writeValue(buf));
+  const tentativi = btPrinter.chunk ? [btPrinter.chunk] : [180, 100, 20];
+  let ultimo = null;
+  for(const dim of tentativi){
+    let inviati = 0;
+    try{
+      for(let i=0; i<bytes.length; i+=dim){
+        await scrivi(bytes.slice(i, i+dim));
+        inviati += Math.min(dim, bytes.length - i);
+        if(dim <= 100) await new Promise(r=>setTimeout(r, 4));
+      }
+      btPrinter.chunk = dim;
+      btLogga("Inviati " + bytes.length + " byte a blocchi di " + dim);
+      return;
+    }catch(e){
+      ultimo = e;
+      btLogga("Blocchi da " + dim + " non riusciti: " + (e && e.message));
+      if(inviati > 0) throw e; // già partito qualcosa: non si ripete (si avrebbero caratteri doppi)
+    }
+  }
+  throw ultimo || new Error("invio non riuscito");
+}
+function btRigheEtichetta(d){
+  const r = [];
+  if(d.abbattuto) r.push({t: "ABBATTUTO" + (d.abbattimento ? " — " + (d.abbattimento.tipo === "negativo" ? "negativo" : "positivo") : ""), k: "badge"});
+  r.push({t: String(d.prodotto || ""), k: "nome"});
+  r.push({t: "Lotto: " + (d.lotto || "—"), k: "riga"});
+  r.push({t: "Preparato il: " + fmtDate(d.dataConsegna) + (d.operatore ? " · Op.: " + d.operatore : ""), k: "riga"});
+  if(d.abbattuto) r.push({t: "Abbattuto il: " + fmtDate((d.abbattimento && d.abbattimento.data) || d.dataConsegna) + (d.abbattimento && d.abbattimento.ora ? " ore " + d.abbattimento.ora : ""), k: "riga"});
+  if(d.quantita) r.push({t: "Quantità: " + d.quantita, k: "riga"});
+  return r;
+}
+function btAvvolgi(g, testo, maxW){
+  const out = []; let riga = "";
+  String(testo).split(/\s+/).forEach(parola=>{
+    let w = parola;
+    while(g.measureText(w).width > maxW && w.length > 1){ // parola troppo lunga: la spezzo
+      let n = w.length;
+      while(n > 1 && g.measureText(w.slice(0, n)).width > maxW) n--;
+      if(riga){ out.push(riga); riga = ""; }
+      out.push(w.slice(0, n)); w = w.slice(n);
+    }
+    const prova = riga ? riga + " " + w : w;
+    if(g.measureText(prova).width <= maxW) riga = prova;
+    else { if(riga) out.push(riga); riga = w; }
+  });
+  if(riga) out.push(riga);
+  return out;
+}
+function btDisegna(g, righe, scala, W, disegna){
+  const M = 8; let y = M;
+  const spec = {badge:{px:20, bold:true, lh:1.2}, nome:{px:32, bold:true, lh:1.12}, riga:{px:22, bold:false, lh:1.18}};
+  righe.forEach(r=>{
+    const sp = spec[r.k];
+    const px = Math.max(8, Math.round(sp.px * scala));
+    g.font = (sp.bold ? "bold " : "") + px + "px Arial, Helvetica, sans-serif";
+    g.textBaseline = "top";
+    btAvvolgi(g, r.t, W - 2*M - (r.k === "badge" ? 10 : 0)).forEach(l=>{
+      if(disegna){
+        g.fillStyle = "#000";
+        if(r.k === "badge"){ g.lineWidth = 2; g.strokeStyle = "#000"; g.strokeRect(M, y, g.measureText(l).width + 12, px + 6); g.fillText(l, M + 6, y + 3); }
+        else g.fillText(l, M, y);
+      }
+      y += Math.round(px * sp.lh) + (r.k === "badge" ? 6 : 0);
+    });
+    if(r.k === "nome") y += 3;
+  });
+  return y;
+}
+function btRenderBitmap(dati, inverti){
+  const W = 400, H = 240; // 50 x 30 mm a 203 dpi
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const g = cv.getContext("2d");
+  if(!g) throw new Error("il browser non permette di disegnare l'etichetta");
+  const righe = btRigheEtichetta(dati);
+  let scala = 1;
+  for(let i=0; i<14; i++){
+    if(btDisegna(g, righe, scala, W, false) <= H - 4) break;
+    scala -= 0.06;
+  }
+  g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+  btDisegna(g, righe, scala, W, true);
+  const px = g.getImageData(0, 0, W, H).data;
+  const wBytes = W / 8;
+  const bytes = new Uint8Array(wBytes * H);
+  for(let y=0; y<H; y++){
+    for(let x=0; x<W; x++){
+      const i = (y*W + x) * 4;
+      const nero = (px[i]*0.299 + px[i+1]*0.587 + px[i+2]*0.114) < 140;
+      let bit = nero ? 0 : 1;      // TSPL: 0 = punto nero, 1 = bianco
+      if(inverti) bit ^= 1;
+      if(bit) bytes[y*wBytes + (x >> 3)] |= (0x80 >> (x & 7));
+    }
+  }
+  return {bytes, wBytes, h: H, scala};
+}
+async function btStampaEtichetta(dati){
+  try{
+    if(!(await btAssicuraConnessione())) return false;
+    const bm = btRenderBitmap(dati, LS.get("bt-inverti") === "1");
+    const cmd = btComandiTSPL(bm);
+    btLogga("Etichetta pronta: " + cmd.length + " byte (testo in scala " + bm.scala.toFixed(2) + ")");
+    await btInvia(cmd);
+    toast("🔵 Etichetta inviata alla stampante Bluetooth");
+    btRefresh();
+    return true;
+  }catch(e){
+    btLogga("Errore invio: " + (e && e.message ? e.message : e));
+    toast("⚠️ Stampa Bluetooth non riuscita: " + (e && e.message ? e.message : "errore"));
+    btRefresh();
+    return false;
+  }
+}
+async function btProvaTesto(){
+  try{
+    if(!(await btAssicuraConnessione())) return;
+    await btInvia(btComandiTesto());
+    toast("🔵 Prova di testo inviata");
+  }catch(e){ btLogga("Errore prova testo: " + (e && e.message)); toast("⚠️ Prova non riuscita: " + (e && e.message ? e.message : "errore")); }
+  btRefresh();
+}
+async function btProvaEtichetta(){
+  await btStampaEtichetta({prodotto:"PROVA DI STAMPA", lotto:"PROD 15/10/2026 · prova etichetta · sett. 42 · L01 · Produzione interna",
+    dataConsegna: todayISO(), operatore: lastOperator || "", quantita: "1 kg", abbattuto: true, abbattimento: {tipo:"positivo", data: todayISO(), ora: nowTime()}});
+}
+function btSalvaExtra(){ const el = document.getElementById("btServizioExtra"); if(el) LS.set("bt-servizio-extra", el.value.trim()); }
+function btToggleUsa(){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  btSalvaExtra();
+  LS.set("bt-usa", LS.get("bt-usa") === "1" ? "0" : "1");
+  render();
+}
+function btToggleInverti(){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  btSalvaExtra();
+  LS.set("bt-inverti", LS.get("bt-inverti") === "1" ? "0" : "1");
+  render();
+}
+function btScollega(){
+  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
+  try{ if(btPrinter && btPrinter.device.gatt && btPrinter.device.gatt.connected) btPrinter.device.gatt.disconnect(); }catch(e){}
+  btPrinter = null;
+  btLogga("Stampante scollegata dall'amministratore");
+  render();
+}
+function btEscAttr(v){ return String(v||"").replace(/"/g, "&quot;").replace(/</g, "&lt;"); }
 
 // ---------- CONFIGURAZIONE DATABASE ----------
 const SQL_SETUP = `create table if not exists haccp_kv (
@@ -6477,7 +6790,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "3.4";
+const APP_VERSION = "3.5";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
