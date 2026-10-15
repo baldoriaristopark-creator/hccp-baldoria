@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 3.2 · data abbattimento sulle etichette · 15/10/2026</div>
+        <div class="sub" style="opacity:.85;">versione 3.3 · fix pulsante etichetta e stampa · 15/10/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4231,7 +4231,8 @@ async function saveComposizione(recipeId){
 }
 function openComposizioneDetail(id){
   const c = logs.composizioni.find(x=>x.id===id);
-  const semilavorato = c.semilavoratoId? logs.produzione.find(p=>p.id===c.semilavoratoId) : null;
+  const semilavorato = (c.semilavoratoId? logs.produzione.find(p=>p.id===c.semilavoratoId) : null)
+    || logs.produzione.find(p=>p.semilavorato && p.composizioneId===c.id) || null;
   openSheet(c.ricettaNome, `
     <p class="muted">${fmtDate(c.data)} · ${c.ora} · ${c.operatore}</p>
     ${c.lottoProdotto? `<div class="card" style="padding:11px;background:var(--green-pale);border:none;margin-bottom:10px;">
@@ -4240,9 +4241,9 @@ function openComposizioneDetail(id){
       ${semilavorato? `<div class="muted" style="font-size:12px;margin-top:4px;">
         ${semilavorato.esaurito? `❌ Non più disponibile dal ${fmtDate(semilavorato.dataEsaurimento)}` : `Scadenza prevista: ${fmtDate(semilavorato.dataScadenza)}`}
       </div>`:""}
-      ${c.semilavoratoId && semilavorato? `<div class="rowbtns" style="margin-top:8px;">
-        <button class="printbtn" onclick="printEtichetta('${c.semilavoratoId}')">🏷️ Etichetta</button>
-        <button class="printbtn" onclick="printFiliera('${c.semilavoratoId}')">🔗 Catena</button>
+      ${semilavorato? `<div class="rowbtns" style="margin-top:8px;">
+        <button class="printbtn" onclick="printEtichetta('${semilavorato.id}')">🏷️ Etichetta</button>
+        <button class="printbtn" onclick="printFiliera('${semilavorato.id}')">🔗 Catena</button>
       </div>`:""}
       ${semilavorato? `<label class="field" style="margin-top:10px;">Data fine disponibilità (non più utilizzabile da)</label>
       <input type="date" id="compEsaurimento" value="${semilavorato.dataEsaurimento||todayISO()}" max="${todayISO()}">
@@ -5413,6 +5414,7 @@ function monthKeyNow(){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
 function printWindow(title, bodyHtml){
+  ultimoFilePicker = Date.now(); // la finestra di stampa può mandare l'app in background: non chiudere la sessione
   // Un iframe nascosto è molto più affidabile di window.open() su Safari/iPhone,
   // dove aprire una nuova finestra per la stampa causa spesso un errore "blob" e la pagina resta vuota.
   const vecchio = document.getElementById("printFrame");
@@ -5890,12 +5892,19 @@ function printFiliera(prodId){
     `<h2>Risalita dei lotti dal prodotto finito alle materie prime</h2>${filieraHtml(prodId, 0)}`);
 }
 function printEtichetta(prodId){
+  try{ stampaEtichetta(prodId); }
+  catch(e){ toast("⚠️ Etichetta non stampata: " + (e && e.message ? e.message : "errore sconosciuto")); }
+}
+function stampaEtichetta(prodId){
   const p = logs.produzione.find(x=>x.id===prodId);
+  if(!p){ toast("⚠️ Prodotto non trovato su questo dispositivo: aggiorna la pagina e riprova"); return; }
+  ultimoFilePicker = Date.now(); // la finestra di stampa può mandare l'app in background: non chiudere la sessione
   const vecchio = document.getElementById("printFrame");
   if(vecchio) vecchio.remove();
   const iframe = document.createElement("iframe");
   iframe.id = "printFrame";
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
+  // Dimensioni reali dell'etichetta, fuori dallo schermo: alcuni browser (iPad/Safari) non stampano un iframe a 0x0 nascosto
+  iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:50mm;height:30mm;border:0;";
   document.body.appendChild(iframe);
   const doc = iframe.contentWindow.document;
   doc.open();
@@ -6340,7 +6349,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "3.2";
+const APP_VERSION = "3.3";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
