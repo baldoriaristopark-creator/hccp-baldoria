@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 3.0 · etichette 5x3 cm · 15/10/2026</div>
+        <div class="sub" style="opacity:.85;">versione 3.1 · etichette senza data di scadenza · 15/10/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -5910,7 +5910,6 @@ function printEtichetta(prodId){
   .abb{display:inline-block;font-size:.85em;font-weight:bold;border:.2mm solid #000;border-radius:.8mm;padding:0 1mm;margin-bottom:.4mm;}
   .n{font-size:1.5em;font-weight:bold;line-height:1.1;margin-bottom:.5mm;word-break:break-word;}
   .r{margin-bottom:.2mm;word-break:break-word;}
-  .sc{font-size:1.05em;font-weight:bold;border-top:.2mm solid #000;margin-top:.6mm;padding-top:.5mm;}
   </style></head><body>
   <div class="lab" id="lab">
     ${p.abbattuto? `<div class="abb">❄️ ABBATTUTO${p.abbattimento? ' — '+(p.abbattimento.tipo==='negativo'?'negativo':'positivo'):''}</div>`:""}
@@ -5918,7 +5917,6 @@ function printEtichetta(prodId){
     <div class="r"><b>Lotto:</b> ${esc(p.lotto)}</div>
     <div class="r"><b>Preparato il:</b> ${fmtDate(p.dataConsegna)}${p.operatore? ' · <b>Op.:</b> '+esc(p.operatore):''}</div>
     ${p.quantita? `<div class="r"><b>Quantità:</b> ${esc(p.quantita)}</div>`:""}
-    <div class="sc">DA CONSUMARSI ENTRO IL <span style="white-space:nowrap;">${fmtDate(p.dataScadenza)}</span></div>
   </div>
   <script>
   (function(){
@@ -6341,7 +6339,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "3.0";
+const APP_VERSION = "3.1";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
