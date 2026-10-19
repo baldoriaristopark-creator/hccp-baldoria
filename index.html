@@ -168,7 +168,7 @@
     <div class="row1">
       <div>
         <h1>🔥 Baldoria — Autocontrollo HACCP</h1>
-        <div class="sub" style="opacity:.85;">versione 3.6 · rimossa prova Bluetooth, stampa predefinita · 19/10/2026</div>
+        <div class="sub" style="opacity:.85;">versione 3.7 · rimossa stazione di stampa CT221D e Bluetooth · 19/10/2026</div>
         <div class="sub" id="todayLabel"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -5214,24 +5214,6 @@ function renderImpostazioni(){
       </div>
     </div>
     ` : ''}
-    ${isAdmin()? `
-    <div class="card">
-      <h2>🖨️ Stampa etichette</h2>
-      <p class="muted">La stampante Clabel non si collega direttamente all'iPad. Serve una <b>stazione di stampa</b>: un computer collegato alla stampante, acceso e con l'app aperta. L'iPad invia l'etichetta e il computer la stampa da solo.</p>
-      <label class="ac-opt ${config.stampaRemota?'sel':''}" onclick="toggleStampaRemota()">
-        <span class="ac-box">${config.stampaRemota?'☑':'☐'}</span>
-        <span>Stampa le etichette sulla stazione di stampa (invece che su questo dispositivo)</span>
-      </label>
-      <div class="card" style="padding:10px;background:${isStazioneStampa()?'var(--green-pale)':'var(--cream)'};border:1px solid var(--line);margin:8px 0;">
-        <div style="font-weight:800;font-size:13px;">${isStazioneStampa()? '✅ Questo dispositivo è la stazione di stampa' : 'Questo dispositivo non è la stazione di stampa'}</div>
-      </div>
-      <div class="rowbtns">
-        <button class="iconbtn" onclick="toggleStazioneStampa()">${isStazioneStampa()? '⛔ Togli questo dispositivo come stazione' : '🖥️ Imposta questo dispositivo come stazione di stampa'}</button>
-        <button class="iconbtn" onclick="provaStampaEtichetta()">🏷️ Prova di stampa</button>
-      </div>
-      ${DB.mode!=="supabase"? `<p class="muted" style="font-size:12px;">Funziona solo con il database condiviso attivo.</p>`:''}
-    </div>
-    ` : ''}
     ${isAdmin() && DB.mode==="supabase"? `
     <div class="card">
       <h2>🧹 Libera spazio — elimina foto vecchie</h2>
@@ -5909,29 +5891,26 @@ function printFiliera(prodId){
   printWindow(`Catena di tracciabilità — ${p.prodotto}`,
     `<h2>Risalita dei lotti dal prodotto finito alle materie prime</h2>${filieraHtml(prodId, 0)}`);
 }
-// ---------- STAMPA ETICHETTE: sul dispositivo oppure su una "stazione di stampa" ----------
-// L'iPad non può comunicare con la stampante Clabel (solo Bluetooth verso telefono o USB verso computer).
-// Con la "stazione di stampa" l'iPad invia l'etichetta al database condiviso e un computer collegato
-// alla stampante la preleva e la stampa da solo.
-const STAZIONE_KEY = "haccp-baldoria-stazione-stampa";
-const CODA_STAMPA_SCADENZA_MS = 10*60*1000;   // un lavoro più vecchio di 10 minuti non viene più stampato
-const STAZIONE_ATTIVA_ENTRO_MS = 90*1000;     // la stazione è "attiva" se si è fatta sentire negli ultimi 90 secondi
-let stazioneInCorso = false;
-let stazioneTimer = null;
-let ultimoHeartbeatStazione = 0;
-let stazioneUltimaStampa = null;
-function isStazioneStampa(){ return LS.get(STAZIONE_KEY) === "1"; }
-function stampaRemotaAttiva(){ return !!(config && config.stampaRemota) && DB.mode === "supabase"; }
-function snapshotEtichetta(p){
-  return {
-    prodotto: p.prodotto, lotto: p.lotto, dataConsegna: p.dataConsegna,
-    operatore: p.operatore || "", quantita: p.quantita || "",
-    abbattuto: !!p.abbattuto,
-    abbattimento: p.abbattimento ? {tipo:p.abbattimento.tipo, data:p.abbattimento.data||null, ora:p.abbattimento.ora||null} : null
-  };
+function printEtichetta(prodId){
+  try{ stampaEtichetta(prodId); }
+  catch(e){ toast("⚠️ Etichetta non stampata: " + (e && e.message ? e.message : "errore sconosciuto")); }
 }
-function etichettaHtml(p){
-  return `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Etichetta</title>
+function stampaEtichetta(prodId){
+  const p = logs.produzione.find(x=>x.id===prodId);
+  if(!p){ toast("⚠️ Prodotto non trovato su questo dispositivo: aggiorna la pagina e riprova"); return; }
+  ultimoFilePicker = Date.now(); // la finestra di stampa può mandare l'app in background: non chiudere la sessione
+  const vecchio = document.getElementById("printFrame");
+  if(vecchio) vecchio.remove();
+  const iframe = document.createElement("iframe");
+  iframe.id = "printFrame";
+  // Dimensioni reali dell'etichetta, fuori dallo schermo: alcuni browser (iPad/Safari) non stampano un iframe a 0x0 nascosto
+  iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:50mm;height:30mm;border:0;";
+  document.body.appendChild(iframe);
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  // Etichetta 5 x 3 cm (50 x 30 mm): pagina e contenuto dimensionati in millimetri.
+  // Il testo si rimpicciolisce da solo se lotto/nome sono lunghi, così resta sempre tutto dentro l'etichetta.
+  doc.write(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Etichetta</title>
   <style>
   @page{size:50mm 30mm;margin:0;}
   html,body{margin:0;padding:0;width:50mm;height:30mm;overflow:hidden;}
@@ -5955,20 +5934,7 @@ function etichettaHtml(p){
     while(b.scrollHeight > b.clientHeight + 1 && fs > 3.5){ fs -= 0.25; b.style.fontSize = fs + 'pt'; }
   })();
   <\/script>
-  </body></html>`;
-}
-function stampaEtichettaLocale(p){
-  ultimoFilePicker = Date.now(); // la finestra di stampa può mandare l'app in background: non chiudere la sessione
-  const vecchio = document.getElementById("printFrame");
-  if(vecchio) vecchio.remove();
-  const iframe = document.createElement("iframe");
-  iframe.id = "printFrame";
-  // Dimensioni reali dell'etichetta, fuori dallo schermo: alcuni browser (iPad/Safari) non stampano un iframe a 0x0 nascosto
-  iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:50mm;height:30mm;border:0;";
-  document.body.appendChild(iframe);
-  const doc = iframe.contentWindow.document;
-  doc.open();
-  doc.write(etichettaHtml(p));
+  </body></html>`);
   doc.close();
   setTimeout(()=>{
     try{
@@ -5976,100 +5942,6 @@ function stampaEtichettaLocale(p){
       iframe.contentWindow.print();
     }catch(e){ toast("⚠️ Impossibile avviare la stampa, riprova"); }
   }, 300);
-}
-async function stazioneRaggiungibile(){
-  try{
-    const g = await DB.get("printstation-heartbeat", true);
-    return Date.now() - parseInt(g.value, 10) < STAZIONE_ATTIVA_ENTRO_MS;
-  }catch(e){ return false; }
-}
-async function inviaEtichettaAllaStazione(dati){
-  const attiva = await stazioneRaggiungibile();
-  const id = "printjob-" + Date.now() + "-" + Math.random().toString(36).slice(2,6);
-  try{
-    const r = await DB.set(id, JSON.stringify({id, creato: Date.now(), da: lastOperator||"", etichetta: dati}), true);
-    if(r && r.offline) toast("📡 Nessuna connessione: l'etichetta verrà inviata appena torna la rete");
-    else if(attiva) toast("🖨️ Etichetta inviata alla stazione di stampa");
-    else toast("⚠️ Etichetta inviata, ma la stazione di stampa non risponde: controlla che il computer sia acceso con l'app aperta");
-  }catch(e){ toast("⚠️ Invio all'etichettatrice non riuscito: " + (e && e.message ? e.message : "errore")); }
-}
-function instradaEtichetta(dati){
-  if(stampaRemotaAttiva() && !isStazioneStampa()) return inviaEtichettaAllaStazione(dati);
-  stampaEtichettaLocale(dati);
-}
-function printEtichetta(prodId){
-  try{ stampaEtichetta(prodId); }
-  catch(e){ toast("⚠️ Etichetta non stampata: " + (e && e.message ? e.message : "errore sconosciuto")); }
-}
-function stampaEtichetta(prodId){
-  const p = logs.produzione.find(x=>x.id===prodId);
-  if(!p){ toast("⚠️ Prodotto non trovato su questo dispositivo: aggiorna la pagina e riprova"); return; }
-  instradaEtichetta(snapshotEtichetta(p));
-}
-// --- Lato stazione di stampa: preleva i lavori dal database condiviso e li stampa ---
-async function controllaCodaStampa(){
-  if(!isStazioneStampa() || stazioneInCorso || DB.mode !== "supabase") return;
-  stazioneInCorso = true;
-  try{
-    if(Date.now() - ultimoHeartbeatStazione > 30000){
-      await DB.set("printstation-heartbeat", String(Date.now()), true);
-      ultimoHeartbeatStazione = Date.now();
-    }
-    const res = await DB.list("printjob-", true);
-    for(const k of (res.keys||[]).sort()){
-      let job = null;
-      try{ job = JSON.parse((await DB.get(k, true)).value); }catch(e){}
-      // Elimino il lavoro PRIMA di stamparlo: se non riesco a "prenotarlo" non lo stampo (evita doppie stampe)
-      try{ await DB.delete(k, true); }catch(e){ continue; }
-      if(!job || !job.etichetta) continue;
-      if(Date.now() - (job.creato||0) > CODA_STAMPA_SCADENZA_MS) continue; // troppo vecchio: scartato
-      stampaEtichettaLocale(job.etichetta);
-      stazioneUltimaStampa = Date.now();
-      aggiornaBadgeStazione();
-      await new Promise(r=>setTimeout(r, 3000)); // lascia il tempo di stampare prima della successiva
-    }
-  }catch(e){ /* rete assente: si riprova al prossimo giro */ }
-  finally{ stazioneInCorso = false; }
-}
-function aggiornaBadgeStazione(){
-  let b = document.getElementById("stazioneBadge");
-  if(!isStazioneStampa()){ if(b) b.remove(); return; }
-  if(!b){
-    b = document.createElement("div");
-    b.id = "stazioneBadge";
-    b.style.cssText = "position:fixed;left:10px;bottom:10px;background:#1F6F4A;color:#fff;font-size:12px;font-weight:700;padding:6px 10px;border-radius:10px;z-index:9998;opacity:.92;";
-    document.body.appendChild(b);
-  }
-  b.textContent = "🖨️ Stazione di stampa attiva" + (stazioneUltimaStampa ? " · ultima stampa " + new Date(stazioneUltimaStampa).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}) : "");
-}
-function avviaStazioneStampa(){
-  if(stazioneTimer){ clearInterval(stazioneTimer); stazioneTimer = null; }
-  aggiornaBadgeStazione();
-  if(!isStazioneStampa()) return;
-  stazioneTimer = setInterval(controllaCodaStampa, 4000);
-  controllaCodaStampa();
-}
-async function toggleStampaRemota(){
-  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
-  config.stampaRemota = !config.stampaRemota;
-  await saveConfig();
-  render();
-}
-function toggleStazioneStampa(){
-  if(!isAdmin()){ toast("⛔ Solo l'amministratore può farlo"); return; }
-  if(isStazioneStampa()){
-    LS.remove(STAZIONE_KEY);
-    toast("Questo dispositivo non è più la stazione di stampa");
-  } else {
-    if(!confirm("Impostare QUESTO dispositivo come stazione di stampa? Deve essere il computer collegato alla stampante etichette, acceso con l'app aperta.")) return;
-    LS.set(STAZIONE_KEY, "1");
-    toast("🖨️ Questo dispositivo è ora la stazione di stampa");
-  }
-  avviaStazioneStampa();
-  render();
-}
-function provaStampaEtichetta(){
-  instradaEtichetta({prodotto:"PROVA DI STAMPA", lotto:"TEST-001", dataConsegna:todayISO(), operatore:lastOperator||"", quantita:"1", abbattuto:false, abbattimento:null});
 }
 
 // ---------- CONFIGURAZIONE DATABASE ----------
@@ -6477,7 +6349,7 @@ function openOfflineInfo(){
     ${n>0? `<div class="rowbtns"><button class="btn block" onclick="flushPendingSync().then(()=>{closeSheet();toast('🔄 Sincronizzazione tentata');})">🔄 Riprova ora</button></div>`:""}
   `);
 }
-const APP_VERSION = "3.6";
+const APP_VERSION = "3.7";
 async function checkForNewVersion(silentReloadIfChanged){
   try{
     const url = location.href.split("?")[0].split("#")[0] + "?_v=" + Date.now();
@@ -6537,8 +6409,6 @@ function proceedToApp(){
     let turniCaricati = seedTurniPianoIniziale();
     if(seedTurniAltriRepartiIniziale()) turniCaricati = true;
     if(turniCaricati) saveConfig().catch(()=>{});
-    avviaStazioneStampa();
-    ["bt-usa","bt-inverti","bt-servizio-extra"].forEach(k=>LS.remove(k)); // impostazioni della vecchia prova Bluetooth, ormai rimossa
     const sessId = leggiSessioneValida();
     const sessOp = sessId ? (config.operatori||[]).find(o=>o.id===sessId) : null;
     if(sessOp && sessOp.attivo){
